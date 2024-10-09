@@ -1,9 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';  
 import Assos from './pages/Assos';  
@@ -11,7 +12,7 @@ import Forum from './pages/Forum';
 import Events from './pages/Events';  
 import About from './pages/About';  
 import Login from './pages/Login';  
-import Footer from './components/Footer';  // N'oublie pas d'importer le Footer
+import Footer from './components/Footer';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 // Créer une instance ApolloClient pour interagir avec ton serveur GraphQL
@@ -23,6 +24,14 @@ const client = new ApolloClient({
 // Créer le root du rendu React
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
+
+
 // Utiliser ApolloProvider pour fournir l'instance client à l'application
 root.render(
   <React.StrictMode>
@@ -30,12 +39,12 @@ root.render(
       <Router>
         <Navbar />
         <Switch>
-          <Route path="/" exact component={Home} />
-          <Route path="/assos" component={Assos} />
-          <Route path="/forum" component={Forum} />
-          <Route path="/events" component={Events} />
-          <Route path="/about" component={About} />
-          <Route path="/login" component={Login} />
+          <Route path="/" element={<Home />} />
+          <Route path="/assos" element={<Assos />} />
+          <Route path="/forum" element={<Forum />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/login" element={<Login />} />
         </Switch>
         <Footer />
       </Router>

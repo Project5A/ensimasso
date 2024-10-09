@@ -38,7 +38,7 @@ const Navbar = () => {
         <NavItem><Link to="/">Accueil</Link></NavItem>
         <NavItem><Link to="/assos">Associations</Link></NavItem>
         <NavItem><Link to="/forum">Forum</Link></NavItem>
-        <NavItem><Link to="/events">Événements</Link></NavItem>
+        <NavItem><Link to="/events">Events</Link></NavItem>
         <NavItem><Link to="/about">About</Link></NavItem>
         <NavItem><Link to="/login">Login</Link></NavItem>
       </NavMenu>
