@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom/client';  // Keep this one for React 18+
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
@@ -23,28 +23,20 @@ const client = new ApolloClient({
 // Créer le root du rendu React
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
-
-
 // Utiliser ApolloProvider pour fournir l'instance client à l'application
 root.render(
   <React.StrictMode>
     <ApolloProvider client={client}>
       <Router>
         <Navbar />
-        <Switch>
+        <Routes> {/* Use Routes instead of Switch for React Router v6 */}
           <Route path="/" element={<Home />} />
           <Route path="/assos" element={<Assos />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/events" element={<Events />} />
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
-        </Switch>
+        </Routes>
         <Footer />
       </Router>
     </ApolloProvider>
