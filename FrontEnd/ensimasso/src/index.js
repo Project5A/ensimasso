@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';  // Keep this one for React 18+
 import './index.css';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Navbar } from './components/Navbar';
+import { Navbar } from './components/Navbar/index.jsx';
 import Home from './pages/Home';  
 import Assos from './pages/Assos';  
 import Forum from './pages/Forum';  

@@ -1,0 +1,83 @@
+@font-face {
+    font-family: poppins;
+    src: url('/public/fonts/poppins/Poppins-Regular.ttf');
+}
+
+@font-face {
+    font-family: poppinsBold;
+    src: url('/public/fonts/poppins/Poppins-Bold.ttf');
+}
+
+.NavbarContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #333;
+    padding: 1rem;
+    /* Ensure compatibility with Tailwind */
+    opacity: 1;
+}
+
+.Logo {
+    font-size: 2rem;
+    color: #fff;
+    cursor: pointer;
+    font-family: 'poppinsBold';
+}
+
+/* Ensure this doesn't conflict with Tailwind's flex classes */
+.NavMenu {
+    display: flex;
+    list-style: none;
+    gap: 5rem;
+    align-items: center;
+}
+
+.NavItem {
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    font-family: 'poppins';
+    text-decoration: none;
+    transition: color 0.3s ease; /* Smooth hover effect */
+}
+
+.NavItem:hover {
+    color: #ddd;
+}
+
+/* AccountMenu - same principles as NavMenu */
+.AccountMenu {
+    display: flex;
+    list-style: none;
+    gap: 5rem;
+    align-items: center;
+    padding-right: 10rem;
+}
+
+.LoginItem {
+    font-family: 'poppins';
+    font-size: 1.3rem;
+    color: #111;
+    background-color: #BBB;
+    padding: 0.6rem 1.5rem;
+    border-radius: 25px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.LoginItem:hover {
+    background-color: #999;
+}
+
+/* Ensure the hover behavior for the profile image */
+.ProfileItem {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.ProfileItem:hover {
+    color: #ddd;
+}
