@@ -46,6 +46,11 @@
     color: #ddd;
 }
 
+.DropItem {
+    font-family: 'poppins' ;
+   @apply block px-4 py-2 hover:bg-gray-700; 
+}
+
 /* AccountMenu - same principles as NavMenu */
 .AccountMenu {
     display: flex;

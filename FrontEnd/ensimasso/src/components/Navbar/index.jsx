@@ -11,15 +11,15 @@ const Navbar = () => {
       <div className="NavMenu">
         <Link to="/" className="NavItem">Accueil</Link>
 
-        {/* Associations Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="NavItem flex items-center"
-          >
-            Associations
+        <div 
+          className="relative"
+          onMouseEnter={() => setIsDropdownOpen(true)}
+          onMouseLeave={() => setIsDropdownOpen(false)}
+        >
+          <button className="NavItem flex items-center gap-2">
+            Associations 
             <svg
-              className="w-2 h-2 ml-1" // Adjusted width and height for smaller arrow
+              className="w-2 h-2 ml-1"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 10 6"
@@ -35,27 +35,34 @@ const Navbar = () => {
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute z-10 mt-2 w-44 rounded-lg shadow bg-gray-400">
+            <div 
+              className="absolute z-10 w-75 rounded-lg shadow bg-gray-400"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+              onMouseLeave={() => setIsDropdownOpen(false)}
+              style={{ top: '100%', left: '20%' }} // Align directly below button
+            >
+              <ul className="py-2 text-base text-white">
                 <li>
-                  <Link to="/assos/bdlc" className="block px-4 py-2 hover:bg-gray-700">
+                  <Link to="/assos/bdlc" className="DropItem">
                     BDLC
                   </Link>
                 </li>
                 <li>
-                  <Link to="/assos/gala" className="block px-4 py-2 hover:bg-gray-700">
+                  <Link to="/assos/gala" className="DropItem">
                     GALA
                   </Link>
                 </li>
                 <li>
-                  <Link to="/assos/ensimersion" className="block px-4 py-2 hover:bg-gray-700">
+                  <Link to="/assos/ensimersion" className="DropItem">
                     ENSIMersion
                   </Link>
                 </li>
                 <li>
-                <Link to="/assos/kfet" className="block px-4 py-2 hover:bg-gray-700">
-                  Kfet
-                </Link>
+                  <Link to="/assos/kfet" className="DropItem">
+                    Kfet
+                  </Link>
                 </li>
+              </ul>
             </div>
           )}
         </div>
