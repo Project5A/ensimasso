@@ -1,10 +1,12 @@
-function Home() {
-    return (
-      <div>
-        <h1>Welcome to Home Page</h1>
-      </div>
-    );
-  }
-  
-  export default Home;
-  
+
+import Slider  from '../components/Slider';
+
+const Home = () => {
+  return (
+    <div>
+      <Slider />
+    </div>
+  );
+};
+
+export default Home;
