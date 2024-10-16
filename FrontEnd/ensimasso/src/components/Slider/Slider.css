@@ -2,7 +2,7 @@
 
 /* Slider Section */
 .slider {
-    height: 91vh;
+    height: 100vh;
     width: 100vw;
     overflow: hidden;
     position: relative;
@@ -42,9 +42,12 @@
 
 .slider .list .item .content {
     position: absolute;
-    top: 20%;
-    width: 800px;
-    max-width: 80%;
+    top: 10%;
+    margin-bottom: 20%;
+    width: 50%;
+    height: 50%;
+    max-height: 50%;
+    max-width: 50%;
     left: 25%;
     transform: translateX(-50%);
     padding: 1%;
@@ -96,6 +99,7 @@
 }
 
 .slider .list .item .button button {
+    color: #000;
     border: none;
     border-radius: 20px;
     background-color: #eee;
@@ -196,5 +200,31 @@
     }
     to {
         transform: translateY(-100%); /* L'élément sort par le haut */
+    }
+}
+
+.slide-in-reverse {
+    animation: slide-in-reverse 0.5s forwards;
+}
+
+@keyframes slide-in-reverse {
+    from {
+        transform: translateY(-100%); /* L'élément arrive par le haut */
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.slide-out-reverse {
+    animation: slide-out-reverse 0.5s forwards;
+}
+
+@keyframes slide-out-reverse {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(100%); /* L'élément sort par le bas */
     }
 }

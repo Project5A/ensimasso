@@ -9,47 +9,40 @@ const Slider = () => {
   const prevBtnRef = useRef(null);
 
   useEffect(() => {
-    const thumbnailItems = thumbnailRef.current.querySelectorAll('.item');
-    thumbnailRef.current.appendChild(thumbnailItems[0]);
-  
     const moveSlider = (direction) => {
       const sliderItems = sliderListRef.current.querySelectorAll('.item');
+      const thumbnailItems = thumbnailRef.current.querySelectorAll('.item');
 
-      // Gérer les animations des éléments de slider
-      sliderItems.forEach(item => {
-        item.classList.remove('slide-in', 'slide-out', 'fade-out', 'fade-in');
-      });
+      sliderItems.forEach(item => item.classList.remove('slide-in', 'slide-out', 'slide-in-reverse'));
 
       if (direction === 'next') {
-        sliderItems[0].classList.add('slide-out', 'fade-out');
-        sliderItems[1].classList.add('slide-in', 'fade-in');
-
+        sliderItems[0].classList.add('slide-out');
+        sliderItems[1].classList.add('slide-in');
+        
         setTimeout(() => {
           sliderListRef.current.appendChild(sliderItems[0]);
-          sliderItems[0].classList.remove('slide-out', 'fade-out');
+          sliderItems[0].classList.remove('slide-out');
         }, 500);
       } else {
-        sliderItems[sliderItems.length - 1].classList.add('slide-in', 'fade-in');
-        sliderItems[sliderItems.length - 2].classList.add('slide-out', 'fade-out');
-
+        sliderItems[sliderItems.length - 1].classList.add('slide-in-reverse');
+        sliderItems[0].classList.add('slide-out-reverse');
+        
         setTimeout(() => {
           sliderListRef.current.prepend(sliderItems[sliderItems.length - 1]);
-          sliderItems[sliderItems.length - 2].classList.remove('slide-out', 'fade-out');
+          sliderItems[0].classList.remove('slide-out-reverse');
         }, 500);
       }
-    
-      // Mettre à jour l'animation des vignettes
+
       if (direction === 'next') {
         thumbnailRef.current.appendChild(thumbnailItems[0]);
       } else {
         thumbnailRef.current.prepend(thumbnailItems[thumbnailItems.length - 1]);
       }
-    };    
+    };  
      
     nextBtnRef.current.onclick = () => moveSlider('next');
     prevBtnRef.current.onclick = () => moveSlider('prev');
   }, []);
-  
   
   return (
     <div className="slider" ref={sliderRef}>
@@ -109,6 +102,9 @@ const Slider = () => {
       </div>
       <div className="thumbnail" ref={thumbnailRef}>
         <div className="item">
+          <img src="./assets/gala_logo.jpg" alt="" />
+        </div>
+        <div className="item">
           <img src="./assets/bde_logo.jpg" alt="" />
         </div>
         <div className="item">
@@ -116,9 +112,6 @@ const Slider = () => {
         </div>
         <div className="item">
           <img src="./assets/ensimersion_logo.png" alt="" />
-        </div>
-        <div className="item">
-          <img src="./assets/gala_logo.jpg" alt="" />
         </div>
       </div>
       <div className="nextPrevArrows">
