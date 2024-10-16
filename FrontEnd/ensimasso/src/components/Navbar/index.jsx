@@ -11,7 +11,7 @@ const Navbar = () => {
   // Check window width for mobile view
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768); // Set breakpoint for mobile view
+      setIsMobile(window.innerWidth <= 968); // Set breakpoint for mobile view
     };
 
     handleResize(); // Check initial width
