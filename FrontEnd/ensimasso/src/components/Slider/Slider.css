@@ -2,7 +2,11 @@
 
 /* Slider Section */
 .slider {
+<<<<<<< HEAD
     height: 83vh;
+=======
+    height: 91vh;
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
     width: 100vw;
     overflow: hidden;
     position: relative;
@@ -14,7 +18,11 @@
     position: absolute;
     inset: 0 0 0 0;
     opacity: 0; /* Tous les items sont cachés par défaut */
+<<<<<<< HEAD
     transition: opacity 0.5s ease-in-out; /* Transition douce pour les changements d'opacité */
+=======
+    transition: opacity ease-in-out; /* Transition douce pour les changements d'opacité */
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
     z-index: 0; /* Assurez-vous que tous les items sont au même niveau */
 }
 
@@ -29,25 +37,57 @@
     z-index: 2;
 }
 
+<<<<<<< HEAD
+=======
+.slider .list .item.slide-in {
+    opacity: 1; /* Affiche l'item lors de l'animation */
+    z-index: 2; /* L'élément animé est au-dessus */
+}
+
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
 .slider .list .item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
 .slider .list .item .content {
     position: absolute;
     top: 20%;
     width: 800px;
     max-width: 80%;
+<<<<<<< HEAD
     left: 50%;
+=======
+    left: 25%;
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
     transform: translateX(-50%);
     padding: 1%;
     border-radius: 20px;
     box-sizing: border-box;
     color: #fff;
     text-shadow: 0 5px 10px #0004;
+<<<<<<< HEAD
+=======
+    opacity: 0; /* Cache le texte par défaut */
+    animation: fade-in-up 0.5s forwards; /* Animation de fondu et montée */
+    animation-delay: 0.5s; /* Délai avant l'apparition du texte */
+}
+
+@keyframes fade-in-up {
+    0% {
+        opacity: 0;
+        transform: translateY(20px); /* Début légèrement vers le bas */
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0); /* Fin en position normale */
+    }
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
 }
 
 .slider .list .item .content .title,
@@ -64,7 +104,11 @@
     color: #e7da22cb;
 }
 
+<<<<<<< HEAD
 .slider .list .item .content .description{
+=======
+.slider .list .item .content .description {
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
     text-align: justify;
     text-justify: inter-word;
 }
@@ -154,6 +198,7 @@
     color: #000;
 }
 
+<<<<<<< HEAD
 /* Animation Part */
 .slider .list .item:nth-child(1) {
     z-index: 1;
@@ -305,5 +350,31 @@
 
     .slider .list .item .content .title {
         font-size: 50px;
+=======
+/* Effets d'animation */
+.slide-in {
+    animation: slide-in 0.5s forwards;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateY(100%); /* L'élément arrive par le bas */
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.slide-out {
+    animation: slide-out 0.5s forwards;
+}
+
+@keyframes slide-out {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-100%); /* L'élément sort par le haut */
+>>>>>>> 2bc3f65729f3bafdd0658a7262e7f57b1b81024e
     }
 }
