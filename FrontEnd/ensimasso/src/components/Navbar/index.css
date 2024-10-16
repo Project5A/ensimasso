@@ -9,13 +9,14 @@
 }
 
 .NavbarContainer {
+    position: absolute;
+    z-index: 10;
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    align-items: center;
     background-color: #333;
     padding: 1rem;
-    /* Ensure compatibility with Tailwind */
-    opacity: 1;
+    background: transparent;
 }
 
 .Logo {
@@ -25,10 +26,10 @@
     font-family: 'poppinsBold';
 }
 
-/* Ensure this doesn't conflict with Tailwind's flex classes */
 .NavMenu {
     display: flex;
     list-style: none;
+    margin-left: auto;
     gap: 5rem;
     align-items: center;
 }
@@ -39,7 +40,7 @@
     cursor: pointer;
     font-family: 'poppins';
     text-decoration: none;
-    transition: color 0.3s ease; /* Smooth hover effect */
+    transition: color 0.3s ease;
 }
 
 .NavItem:hover {
@@ -47,17 +48,21 @@
 }
 
 .DropItem {
-    font-family: 'poppins' ;
-   @apply block px-4 py-2 hover:bg-gray-700; 
+    font-family: 'poppins';
+    @apply block px-4 py-2 hover:bg-gray-700;
 }
 
-/* AccountMenu - same principles as NavMenu */
+.DropItem2 {
+    font-family: 'poppins';
+    @apply block px-16 py-2 hover:bg-gray-700;
+}
+
+/* Adjust AccountMenu to be on the right side */
 .AccountMenu {
     display: flex;
     list-style: none;
     gap: 5rem;
-    align-items: center;
-    padding-right: 10rem;
+    margin-left: auto; 
 }
 
 .LoginItem {
@@ -76,13 +81,15 @@
     background-color: #999;
 }
 
-/* Ensure the hover behavior for the profile image */
-.ProfileItem {
+.HamburgerMenu {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 20;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-}
-
-.ProfileItem:hover {
-    color: #ddd;
-}
+    transition: transform 0.3s ease;
+  }
+  
+  .HamburgerMenu.open {
+    transform: rotate(90deg); /* Exemple : faire tourner le bouton quand il est ouvert */
+  }
