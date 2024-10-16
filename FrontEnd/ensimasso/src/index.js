@@ -14,7 +14,6 @@ import { Footer } from './components/Footer/Footer';
 import { Slider } from './components/Slider/Slider';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
-
 // Créer une instance ApolloClient pour interagir avec ton serveur GraphQL
 const client = new ApolloClient({
   uri: 'http://localhost:4000/graphql',  // Remplacer par l'URI de ton serveur GraphQL
