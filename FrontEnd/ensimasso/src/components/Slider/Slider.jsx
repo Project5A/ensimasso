@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import './styles/Slider.css'; 
+import '././Slider.css'; 
 
 const Slider = () => {
   const sliderRef = useRef(null);
@@ -138,4 +138,4 @@ const Slider = () => {
   );
 };
 
-export default Slider;
+export {Slider};

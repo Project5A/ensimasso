@@ -12,6 +12,7 @@ import About from './pages/About';
 import Login from './pages/Login';  
 import { Footer } from './components/Footer/Footer';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+import {Slider} from './components/Slider/Slider.jsx';
 
 // Créer une instance ApolloClient pour interagir avec ton serveur GraphQL
 const client = new ApolloClient({
@@ -36,6 +37,7 @@ root.render(
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
         </Routes>
+        <Slider/>
         <Footer />
       </Router>
     </ApolloProvider>
