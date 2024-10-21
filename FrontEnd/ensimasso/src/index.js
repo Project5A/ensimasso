@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar/index.jsx';
 import Home from './pages/Home';  
 import Assos from './pages/Assos';  
-import Forum from './pages/Forum';  
+import Forum from './components/Forum';  
 import Events from './pages/Events';  
 import About from './pages/About';  
 import Login from './pages/Login';  
