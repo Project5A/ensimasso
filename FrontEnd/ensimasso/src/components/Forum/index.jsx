@@ -11,7 +11,7 @@ const Forum = () => {
           <div key={post.id} className="post">
             <h2>{post.title}</h2>
             <p>{post.description}</p>
-            <img src={post.image} alt={`Image for ${post.title}`} />
+            <img src={post.image} alt={`${post.title}`} />
             <div className="post-info">
               <span>Auteur: {post.auteur}</span>
               <span>Date: {post.date}</span>

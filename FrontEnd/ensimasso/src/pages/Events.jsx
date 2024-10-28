@@ -1,9 +1,14 @@
+import React from 'react';
+import EventTimeline from '../components/Event/EventTimeline.tsx';
+
+
 function Events() {
     return (
-      <div>
+      <div className="App">
+        <EventTimeline />
       </div>
     );
   }
   
-  export default Events;
-  
+export default Events;
+
