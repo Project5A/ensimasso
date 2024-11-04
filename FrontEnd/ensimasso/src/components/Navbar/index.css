@@ -14,6 +14,7 @@
     width: 100%;
     display: flex;
     justify-content: space-between;
+    align-items: center;
     background-color: #333;
     padding: 1rem;
     background: transparent;
@@ -26,6 +27,7 @@
     font-family: 'poppinsBold';
 }
 
+/* Ensure this doesn't conflict with Tailwind's flex classes */
 .NavMenu {
     display: flex;
     list-style: none;
