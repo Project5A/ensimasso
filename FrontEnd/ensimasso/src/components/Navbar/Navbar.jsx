@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import './index.css';
+import './Navbar.css';
+import { Login } from '../Login/Login.jsx';
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -24,7 +25,7 @@ const Navbar = () => {
 
   return (
     <div className="NavbarContainer">
-      <div className="Logo">ENSIMASSO</div>
+      <Link to="/" className="Logo">ENSIMASSO</Link>
 
       {/* Mobile Menu Button */}
       {isMobile && (
@@ -119,6 +120,10 @@ const Navbar = () => {
       {!isMobile && (
         <div className="AccountMenu flex">
           <Link to="/login" className="LoginItem">Login</Link>
+          <button
+          className=""
+          onClick={Login}
+        ></button>
         </div>
       )}
 
