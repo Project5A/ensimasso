@@ -115,8 +115,8 @@ const Slider = () => {
         </div>
       </div>
       <div className="nextPrevArrows">
-        <button className="prev" ref={prevBtnRef}> &lt; </button>
-        <button className="next" ref={nextBtnRef}> &gt; </button>
+        <button className="prev" ref={prevBtnRef}> ← </button>
+        <button className="next" ref={nextBtnRef}> → </button>
       </div>
     </div>
   );

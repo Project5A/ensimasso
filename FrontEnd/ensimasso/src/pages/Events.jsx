@@ -1,9 +1,12 @@
+import React from 'react';
+
+
 function Events() {
     return (
-      <div>
+      <div className="App">
       </div>
     );
   }
   
-  export default Events;
-  
+export default Events;
+

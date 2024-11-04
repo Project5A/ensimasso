@@ -6,11 +6,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar/Navbar.jsx';
 import Home from './pages/Home';  
 import Assos from './pages/Assos';  
-import Forum from './pages/Forum';  
+import ForumPage from './pages/Forum';  
 import Events from './pages/Events';  
 import About from './pages/About';  
 import { Footer } from './components/Footer/Footer';
-import { Slider } from './components/Slider/Slider';
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 // Créer une instance ApolloClient pour interagir avec ton serveur GraphQL
@@ -31,11 +30,10 @@ root.render(
         <Routes> {/* Use Routes instead of Switch for React Router v6 */}
           <Route path="/" element={<Home />} />
           <Route path="/assos" element={<Assos />} />
-          <Route path="/forum" element={<Forum />} />
+          <Route path="/forum" element={<ForumPage/>} />
           <Route path="/events" element={<Events />} />
           <Route path="/about" element={<About />} />
         </Routes>
-        <Slider />
         <Footer />
       </Router>
     </ApolloProvider>

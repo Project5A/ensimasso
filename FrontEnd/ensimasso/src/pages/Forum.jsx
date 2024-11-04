@@ -1,10 +1,12 @@
 import React from 'react';
+import Forum from '../components/Forum';
 
-const Forum = () => {
+const ForumPage = () => {
   return (
     <div>
+      <Forum />
     </div>
   );
 };
 
-export default Forum;
+export default ForumPage;

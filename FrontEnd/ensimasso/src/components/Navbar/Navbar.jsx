@@ -25,7 +25,7 @@ const Navbar = () => {
 
   return (
     <div className="NavbarContainer">
-      <div className="Logo">ENSIMASSO</div>
+      <Link to="/" className="Logo">ENSIMASSO</Link>
 
       {/* Mobile Menu Button */}
       {isMobile && (
