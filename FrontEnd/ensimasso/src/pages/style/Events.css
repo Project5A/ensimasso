@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background-color: #f8fafc;
+    min-height: 100vh;
+  }
+  
+  @layer utilities {
+    .backdrop-blur-sm {
+      backdrop-filter: blur(4px);
+    }
+    .backdrop-blur-lg {
+      backdrop-filter: blur(8px);
+    }
+  }
