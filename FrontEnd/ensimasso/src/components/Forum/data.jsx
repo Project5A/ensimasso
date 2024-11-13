@@ -15,7 +15,6 @@ export const data = [
         description: "Quelles sont les meilleures pratiques actuelles pour assurer la sécurité des systèmes informatiques d'une entreprise ?",
         date: "2024-11-05",
         auteur: "Alice Martin",
-        image: "https://via.placeholder.com/150",
         reponse: 0,
         reaction:15,
     },
