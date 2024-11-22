@@ -20,13 +20,18 @@ const Forum = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        document.getElementById('quote').innerHTML = data[0].q;
+        const quoteElement = document.getElementById('quote');
+        if (quoteElement) {
+          quoteElement.innerHTML = data[0].q; // Set the quote only if the element exists
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
-        document.getElementById('quote').innerHTML = `Error fetching quote: ${error.message}`;
+        const quoteElement = document.getElementById('quote');
+        if (quoteElement) {
+          quoteElement.innerHTML = `Error fetching quote: ${error.message}`;
+        }
       }
     };
-  
     getapi(api_url);
   }, []);
 
