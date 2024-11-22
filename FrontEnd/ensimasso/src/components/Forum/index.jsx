@@ -58,6 +58,7 @@ const Forum = () => {
               <li>#design</li>
               <li>#innovation</li>
               <li>#tutorial</li>
+              <p></p>
             </ul>
           </div>
           {/* Additional sidebar sections can be added here */}
