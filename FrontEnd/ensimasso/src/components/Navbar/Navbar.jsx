@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
 import { Login } from '../Login/Login.jsx';
@@ -6,13 +6,16 @@ import { Login } from '../Login/Login.jsx';
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAssociationsOpen, setIsAssociationsOpen] = useState(false); // New state for Associations dropdown in mobile
+  const [isAssociationsOpen, setIsAssociationsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
+
+  const popupRef = useRef(null); // Reference for the popup
 
   // Check window width for mobile view
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 968); // Set breakpoint for mobile view
+      setIsMobile(window.innerWidth <= 968);
     };
 
     handleResize(); // Check initial width
@@ -22,6 +25,28 @@ const Navbar = () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  const toggleLoginPopup = () => {
+    setIsLoginPopupOpen(!isLoginPopupOpen);
+  };
+
+  const handleClickOutside = (event) => {
+    if (popupRef.current && !popupRef.current.contains(event.target)) {
+      setIsLoginPopupOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoginPopupOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isLoginPopupOpen]);
 
   return (
     <div className="NavbarContainer">
@@ -33,7 +58,6 @@ const Navbar = () => {
           className={`HamburgerMenu ${isMobileMenuOpen ? 'open' : ''}`}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          {/* Icon for Hamburger (three bars) */}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-white"
@@ -51,7 +75,7 @@ const Navbar = () => {
         </button>
       )}
 
-      {/* Desktop Menu (hidden on mobile) */}
+      {/* Desktop Menu */}
       {!isMobile && (
         <div className="NavMenu flex">
           <div
@@ -86,24 +110,16 @@ const Navbar = () => {
               >
                 <ul className="py-2 text-base text-white">
                   <li>
-                    <Link to="/assos/bdlc" className="DropItem">
-                      BDLC
-                    </Link>
+                    <Link to="/assos/bdlc" className="DropItem">BDLC</Link>
                   </li>
                   <li>
-                    <Link to="/assos/gala" className="DropItem">
-                      GALA
-                    </Link>
+                    <Link to="/assos/gala" className="DropItem">GALA</Link>
                   </li>
                   <li>
-                    <Link to="/assos/ensimersion" className="DropItem">
-                      ENSIMersion
-                    </Link>
+                    <Link to="/assos/ensimersion" className="DropItem">ENSIMersion</Link>
                   </li>
                   <li>
-                    <Link to="/assos/kfet" className="DropItem">
-                      Kfet
-                    </Link>
+                    <Link to="/assos/kfet" className="DropItem">Kfet</Link>
                   </li>
                 </ul>
               </div>
@@ -116,24 +132,37 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Desktop Account Menu (hidden on mobile) */}
+      {/* Account Menu */}
       {!isMobile && (
-        <div className="AccountMenu flex">
-          <Link to="/login" className="LoginItem">Login</Link>
-          <button
-          className=""
-          onClick={Login}
-        ></button>
+      <div className="AccountMenu flex">
+        <button
+          className="LoginItem"
+          onClick={toggleLoginPopup}
+        >
+          Login
+        </button>
+      </div>
+    )}
+
+      {/* Login Popup */}
+      {isLoginPopupOpen && (
+        <div className="popup-overlay">
+          <div className="popup" ref={popupRef}>
+            <button className="close-button" onClick={toggleLoginPopup}>
+              🗙
+            </button>
+            <Login />
+          </div>
         </div>
       )}
 
-      {/* Mobile Dropdown Menu (Initially hidden) */}
+      {/* Mobile Dropdown Menu */}
       {isMobileMenuOpen && (
         <div className="MobileDropdownMenu bg-gray-800 absolute top-16 left-0 w-full p-4">
           <ul className="py-2 text-base text-white">
             <li>
               <button
-                className="DropItem "
+                className="DropItem"
                 onClick={() => setIsAssociationsOpen(!isAssociationsOpen)}
               >
                 Associations
@@ -158,24 +187,16 @@ const Navbar = () => {
               {isAssociationsOpen && (
                 <ul className="pl-4 mt-2 space-y-2">
                   <li>
-                    <Link to="/assos/bdlc" className="DropItem2">
-                      BDLC
-                    </Link>
+                    <Link to="/assos/bdlc" className="DropItem2">BDLC</Link>
                   </li>
                   <li>
-                    <Link to="/assos/gala" className="DropItem2">
-                      GALA
-                    </Link>
+                    <Link to="/assos/gala" className="DropItem2">GALA</Link>
                   </li>
                   <li>
-                    <Link to="/assos/ensimersion" className="DropItem2">
-                      ENSIMersion
-                    </Link>
+                    <Link to="/assos/ensimersion" className="DropItem2">ENSIMersion</Link>
                   </li>
                   <li>
-                    <Link to="/assos/kfet" className="DropItem2">
-                      Kfet
-                    </Link>
+                    <Link to="/assos/kfet" className="DropItem2">Kfet</Link>
                   </li>
                 </ul>
               )}
@@ -190,7 +211,9 @@ const Navbar = () => {
               <Link to="/about" className="DropItem">About</Link>
             </li>
             <li>
-              <Link to="/login" className="DropItem">Login</Link>
+              <button className="DropItem" onClick={toggleLoginPopup}>
+                Login
+              </button>
             </li>
           </ul>
         </div>
