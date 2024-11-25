@@ -1,0 +1,153 @@
+/* Container for the timeline */
+.timeline {
+    position: relative;
+    max-width: 1200px;
+    top: 80px;
+    margin: 0 auto;
+    padding: 40px 0;
+}
+
+/* Vertical Line representing the timeline */
+.timeline-line {
+    position: absolute;
+    width: 5px;
+    background: rgba(27, 44, 87, 0.8);
+    top: 0;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+/* Individual Event in Timeline */
+.timeline-event {
+    position: relative;
+    display: flex;
+    justify-content: space-between; /* To space out event card and organizer */
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+/* Event Card Section Styling */
+.event-card-section {
+    width: 37%; /* Adjust width to fit both sides of the timeline */
+}
+
+/* Organizer Section */
+.organizer-section {
+    position: relative;
+    width: 45%; /* Align the name section symmetrically */
+    text-align: center;
+}
+
+.event-organizer-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #efefef;
+    margin-top: 0;
+    margin-bottom:30px;
+}
+
+/* Timeline Marker (Logo) */
+.timeline-marker {
+    position: absolute;
+    top: 180px; /* Adjust this value to move the logo further down */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    text-align: center;
+}
+
+.event-logo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+
+/* Left Event Styling */
+.timeline-event.left .event-card-section {
+    order: 1; /* Event Card appears on the left */
+    margin-left: 20px;
+    padding-left: 20px;
+}
+
+.timeline-event.left .organizer-section {
+    order: 2; /* Event Name appears on the right */
+    margin-right: 20px;
+    padding-right: 20px;
+}
+
+/* Right Event Styling */
+.timeline-event.right .event-card-section {
+    order: 2; /* Event Card appears on the right */
+    margin-right: 20px;
+    padding-right: 20px;
+}
+
+.timeline-event.right .organizer-section {
+    order: 1; /* Event Name appears on the left */
+    margin-left: 20px;
+    padding-left: 20px;
+}
+
+.event-card {
+    background: rgba(255, 255, 255, 0.2); /* Couleur semi-transparente pour l'effet vitré */
+    backdrop-filter: blur(10px) saturate(150%); /* Effet flou pour le fond */
+    -webkit-backdrop-filter: blur(10px) saturate(150%); /* Support des anciens navigateurs WebKit */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Légère bordure pour délimiter le contour */
+    border-radius: 16px; /* Coins arrondis pour un design moderne */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* Ombre subtile pour un effet 3D */
+    padding: 20px; /* Espace interne */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animation pour les interactions */
+}
+
+/* Effet au survol pour une touche interactive */
+.event-card:hover {
+    transform: scale(1.05); /* Légère mise en avant */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2); /* Ombre plus marquée */
+}
+
+
+.event-card .event-image {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.event-card .event-details h4 {
+    margin-bottom: 10px;
+    color: #efefef;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .timeline-event {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .timeline-event.left .organizer-section,
+    .timeline-event.right .organizer-section,
+    .timeline-event.left .event-card-section,
+    .timeline-event.right .event-card-section {
+        margin: 10px 0;
+        text-align: center;
+        padding: 0;
+    }
+
+    .timeline-marker {
+        position: relative;
+    }
+
+    .timeline-line,
+    .organizer-section,
+    .timeline-marker {
+        display: none; /* Hide timeline and other elements */
+    }
+
+    .event-card-section {
+        width: 80%; /* Make the event card take 80% of the screen width */
+        margin: 0 auto; /* Center the event card */
+    }
+}

@@ -1,0 +1,141 @@
+/* Event Card Container */
+.event-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s ease-in-out;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px; /* Space between cards */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Hover effect on card */
+.event-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Event image styling */
+.event-card-image {
+    width: 100%;
+    height: 180px;
+    border-radius: 12px;
+    object-fit: cover;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Card content container */
+.event-card-content {
+    padding: 20px;
+    text-align: center;
+    width: 100%;
+}
+
+.event-card .icon {
+    margin-right: 8px;
+    color: #e6e6e6; /* Adjust color as needed */
+    font-size: 1.2rem; /* Adjust size as needed */
+    vertical-align: middle;
+  }
+  
+
+/* Event title styling */
+.event-card-title {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Event date and location */
+.event-card-date, .event-card-location {
+    font-size: 1.1rem;
+    color: #ddd;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.event-card-content {
+    padding: 0; /* Réduit le padding si nécessaire */
+    margin: 0; /* Élimine les marges inutiles */
+}
+
+
+/* Button container */
+.event-card-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+    margin-bottom: 5px; /* Réduit l'espace en dessous */
+}
+
+/* Event buttons style */
+.event-card-button {
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(27, 44, 87, 0.8);
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+    min-width: 120px; /* Ensures buttons have consistent width */
+    backdrop-filter: blur(5px);
+}
+
+/* Hover effect on buttons */
+.event-card-button:hover {
+    background: rgba(38, 24, 47, 0.8);
+    transform: scale(1.05);
+}
+
+/* For expanding description (See More / See Less) */
+.event-card-description {
+    padding: 20px;
+    font-size: 1rem;
+    color: #eee;
+    text-align: left;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    width: 100%;
+    max-width: 600px; /* More room for description */
+    margin-top: 10px;
+    line-height: 1.6;
+    transition: height 0.3s ease-in-out;
+}
+
+/* Style for the "See More" / "See Less" button */
+.event-card-description p {
+    margin-top: 10px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .event-card {
+        width: 100%;
+        margin: 10px auto;
+    }
+
+    .event-card-title {
+        font-size: 1.5rem;
+    }
+
+    .event-card-date, .event-card-location {
+        font-size: 0.9rem;
+    }
+
+    .event-card-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .event-card-button {
+        min-width: 100%;
+    }
+}
