@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { data } from './data.jsx';
 import './index.css';
+import axios from '../../axios';
+import Modal from 'react-modal';
+import { FaTimes } from 'react-icons/fa'; // Import de l'icône
+
 const Forum = () => {
   const [newPost, setNewPost] = useState({
     title: '',
@@ -10,41 +13,51 @@ const Forum = () => {
     reponse: 0,
     reaction: 0,
   });
+
+  const [posts, setPosts] = useState([]);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+
   useEffect(() => {
-    const api_url = "https://zylalabs.com/api/936/motivational+phrases+api/754/get+a+quote";
-  
-    const getapi = async (url) => {
+    const fetchPosts = async () => {
       try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        const quoteElement = document.getElementById('quote');
-        if (quoteElement) {
-          quoteElement.innerHTML = data[0].q; // Set the quote only if the element exists
-        }
+        const response = await axios.get('/api/posts');
+        setPosts(response.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        const quoteElement = document.getElementById('quote');
-        if (quoteElement) {
-          quoteElement.innerHTML = `Error fetching quote: ${error.message}`;
-        }
+        console.error('Error fetching posts:', error);
       }
     };
-    getapi(api_url);
+    fetchPosts();
   }, []);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const postToSubmit = {
+      title: newPost.title,
+      description: newPost.description,
+      auteur: newPost.auteur,
+      date: new Date().toISOString().split('T')[0],
+      reponse: 0,
+      reaction: 0,
+    };
+
+    try {
+      const response = await axios.post('/api/posts', postToSubmit);
+      console.log('Post created:', response.data);
+      setPosts([...posts, response.data]);
+      setNewPost({ title: '', description: '', auteur: '', date: '', reponse: 0, reaction: 0 });
+      setModalIsOpen(false);
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
+  };
 
   return (
     <>
-      {/* Full-width Header Image */}
       <div className="header-image">
         <img src={"./images/Forum_ensim.jpg"} alt="forum" className="img"/>
       </div>
 
-      {/* Main Content with Sidebars */}
       <div className="forum-container">
-        {/* Left Sidebar */}
         <div className="left-sidebar">
           <div className="sidebar-section">
             <h3>Newest and Recent</h3>
@@ -58,24 +71,52 @@ const Forum = () => {
               <li>#design</li>
               <li>#innovation</li>
               <li>#tutorial</li>
-              <p></p>
             </ul>
           </div>
-          {/* Additional sidebar sections can be added here */}
         </div>
 
-        {/* Main Forum Content */}
         <div className="forum">
-           {/* Add New Post Form */}
-           <form className="add-post-form">
-            <button type ="button">Testez le puzzle du jour</button>
-            <button type="submit">Ajouter votre poste</button>
+          <form className="add-post-form" onSubmit={handleSubmit}>
+            <button onClick={() => setModalIsOpen(true)} className="modal-open-button">Ajouter votre poste</button>
+            <Modal 
+              isOpen={modalIsOpen} 
+              onRequestClose={() => setModalIsOpen(false)} 
+              className="add-post-modal"
+              overlayClassName="ReactModal__Overlay"
+            >
+              <button 
+                onClick={() => setModalIsOpen(false)} 
+                className="modal-close-button"
+              >
+                <FaTimes /> {/* Icône de fermeture */}
+              </button>
+              <input 
+                type="text" 
+                placeholder="Title" 
+                value={newPost.title} 
+                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} 
+                className="modal-input" 
+              />
+              <textarea 
+                placeholder="Description" 
+                value={newPost.description} 
+                onChange={(e) => setNewPost({ ...newPost, description: e.target.value })} 
+                className="modal-textarea" 
+              />
+              <input 
+                type="text" 
+                placeholder="Auteur" 
+                value={newPost.auteur} 
+                onChange={(e) => setNewPost({ ...newPost, auteur: e.target.value })} 
+                className="modal-input" 
+              />
+              <button type="submit" className="modal-submit-button">Submit Post</button>
+            </Modal>
           </form>
-          {data.map((post) => (
+          {posts.map((post) => (
             <div key={post.id} className="post">
               <h2>{post.title}</h2>
               <p>{post.description}</p>    
-              {post.image && <img src={post.image} alt={`${post.title}`} />}
               <div className="post-info">
                 <span>Auteur: {post.auteur}</span>
                 <span>Date: {post.date}</span>
@@ -86,11 +127,8 @@ const Forum = () => {
               </div>
             </div>
           ))}
-
-         
         </div>
 
-        {/* Right Sidebar */}
         <div className="right-sidebar">
           <div className="meetups-section">
             <h3>Meetups</h3>
@@ -100,7 +138,6 @@ const Forum = () => {
             <h3>Podcasts</h3>
             <p>Listen to industry insights.</p>
           </div>
-          {/* Additional sidebar sections can be added here */}
         </div>
       </div>
     </>
@@ -108,4 +145,3 @@ const Forum = () => {
 };
 
 export default Forum;
-
