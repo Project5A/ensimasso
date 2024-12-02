@@ -35,6 +35,8 @@ function TimeLine() {
 
     return (
         <div className="timeline">
+            <h2 className="timeline-title">Upcoming Events</h2>
+            <div className="timeline-arrow"></div>
             <div className="timeline-line"></div>
             {events.map((event, index) => (
                 <div 

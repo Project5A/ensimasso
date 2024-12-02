@@ -4,20 +4,53 @@
     max-width: 1200px;
     top: 80px;
     margin: 0 auto;
-    padding: 40px 0;
+    padding: 40px 0 100px;
 }
+
+ /* Couleur du titre */
+.timeline-title {
+    text-align: center; /* Centrer le titre */
+    font-size: 2rem; /* Taille du texte */
+    font-weight: bold; /* Texte en gras */
+    color: #efefef; /* Couleur du titre */
+    margin: 0; /* Supprimer la marge par défaut */
+    padding-top: 20px; /* Espacement entre le haut de la page et le titre */
+    position: absolute; /* Position absolue pour le placer tout en haut */
+    top: 0; /* Placer tout en haut */
+    left: 50%; /* Centrer horizontalement */
+    transform: translateX(-50%); /* Centrer horizontalement */
+    z-index: 2; /* S'assurer qu'il soit au-dessus des autres éléments */
+}
+
+
+/* Flèche vers le haut */
+.timeline-arrow {
+    position: absolute;
+    top: 70px; /* Ajustez cette valeur selon l'emplacement souhaité */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 20px solid rgba(27, 44, 87, 0.8); /* Couleur de la flèche */
+    z-index: 1;
+}
+
 
 /* Vertical Line representing the timeline */
 .timeline-line {
     position: absolute;
     width: 5px;
     background: rgba(27, 44, 87, 0.8);
-    top: 0;
+    top: 90px;
     bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1;
 }
+
+
 
 /* Individual Event in Timeline */
 .timeline-event {
@@ -121,7 +154,7 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1111px) {
     .timeline-event {
         flex-direction: column;
         align-items: center;
@@ -138,6 +171,10 @@
 
     .timeline-marker {
         position: relative;
+    }
+
+    .timeline-arrow {
+        display: none; /* Masque la flèche sur les petits écrans */
     }
 
     .timeline-line,
