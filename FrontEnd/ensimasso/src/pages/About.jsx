@@ -1,11 +1,10 @@
 import React from 'react';
-import {Login} from '../components/Login/Login';
+import { AboutSection } from '../components/AboutSection/Aboutsection.jsx'
 
 
 const About = () => {
     return (
-      <div>
-      </div>
+      <AboutSection/>
     );
   };
   

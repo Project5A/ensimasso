@@ -92,8 +92,30 @@
     font-family: 'poppins';
     font-size: 1.3rem;
     color: #111;
-    background-color: #BBB;
-    padding: 0.6rem 1.5rem;
+    background-color: #fff;
+    padding: 0.4rem 1.5rem;
+    border-radius: 25px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+    box-shadow: 0
+    5px
+    10px
+    rgba(
+      0,
+      0,
+      0,
+      0.6
+    );
+}
+
+.LoginItemMobile {
+    margin-left: -100%; 
+    font-family: 'poppins';
+    font-size: 1.3rem;
+    color: #111;
+    background-color: #fff;
+    padding: 0.4rem 1.5rem;
     border-radius: 25px;
     cursor: pointer;
     text-decoration: none;
@@ -137,7 +159,7 @@ background: rgba(0, 0, 0, 0.5);
 display: flex;
 justify-content: center;
 align-items: center;
-z-index: 1000;
+z-index: 99;
 }
 
 .popup {
@@ -146,6 +168,7 @@ border-radius: 8px;
 width: 90%;
 max-width: 400px;
 position: relative;
+z-index: 100;
 }
 
 .close-button {

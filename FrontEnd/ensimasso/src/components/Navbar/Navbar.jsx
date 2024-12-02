@@ -144,6 +144,18 @@ const Navbar = () => {
       </div>
     )}
 
+    {isMobile && (
+      <div className="AccountMenu flex">
+        <button
+          className="LoginItemMobile"
+          onClick={toggleLoginPopup}
+        >
+          Login
+        </button>
+      </div>
+    )}
+
+
       {/* Login Popup */}
       {isLoginPopupOpen && (
         <div className="popup-overlay">
@@ -209,11 +221,6 @@ const Navbar = () => {
             </li>
             <li>
               <Link to="/about" className="DropItem">About</Link>
-            </li>
-            <li>
-              <button className="DropItem" onClick={toggleLoginPopup}>
-                Login
-              </button>
             </li>
           </ul>
         </div>

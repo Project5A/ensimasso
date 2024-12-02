@@ -1,0 +1,52 @@
+/* Aboutsection.css */
+
+.about-section-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #ffffff;
+    padding: 20px;
+    padding-top: 250px;
+    padding-bottom: 250px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 800px;
+    min-height: 60%;
+    margin: auto; /* Optional: centers for non-flexbox parents */
+}
+
+.about-section-text {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.team {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.team-member {
+    background: #e6f0fa;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    flex: 1 1 calc(33.33% - 20px);
+    max-width: 250px;
+}
+
+.team-member h2 {
+    margin: 10px 0;
+    color: #0056a4;
+}
+
+.team-member p {
+    font-size: 0.9rem;
+    color: #555;
+}
