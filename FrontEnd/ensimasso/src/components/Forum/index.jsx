@@ -29,23 +29,22 @@ const Forum = () => {
     fetchPosts();
   }, []);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
+    if (!newPost.title || !newPost.description || !newPost.auteur) {
+      console.error('All fields must be filled');
+      return;
+    }
     const postToSubmit = {
-      title: newPost.title,
-      description: newPost.description,
-      auteur: newPost.auteur,
+      ...newPost,
       date: new Date().toISOString().split('T')[0],
-      reponse: 0,
-      reaction: 0,
     };
 
     try {
       const response = await axios.post('/api/posts', postToSubmit);
       console.log('Post created:', response.data);
-      setPosts([...posts, response.data]);
+      setPosts([...posts, response.data]); // Ajoute directement le nouveau post
       setNewPost({ title: '', description: '', auteur: '', date: '', reponse: 0, reaction: 0 });
-      setModalIsOpen(false);
+      setModalIsOpen(false); // Ferme le modal après la soumission
     } catch (error) {
       console.error('Error creating post:', error);
     }
@@ -54,7 +53,7 @@ const Forum = () => {
   return (
     <>
       <div className="header-image">
-        <img src={"./images/Forum_ensim.jpg"} alt="forum" className="img"/>
+        <img src={"./images/Forum_ensim.jpg"} alt="forum" className="img" />
       </div>
 
       <div className="forum-container">
@@ -76,8 +75,13 @@ const Forum = () => {
         </div>
 
         <div className="forum">
-          <form className="add-post-form" onSubmit={handleSubmit}>
-            <button onClick={() => setModalIsOpen(true)} className="modal-open-button">Ajouter votre poste</button>
+          <div className="add-post-form">
+            <button 
+              onClick={() => setModalIsOpen(true)} 
+              className="modal-open-button"
+            >
+              Ajouter votre poste
+            </button>
             <Modal 
               isOpen={modalIsOpen} 
               onRequestClose={() => setModalIsOpen(false)} 
@@ -90,6 +94,7 @@ const Forum = () => {
               >
                 <FaTimes /> {/* Icône de fermeture */}
               </button>
+              
               <input 
                 type="text" 
                 placeholder="Title" 
@@ -110,9 +115,15 @@ const Forum = () => {
                 onChange={(e) => setNewPost({ ...newPost, auteur: e.target.value })} 
                 className="modal-input" 
               />
-              <button type="submit" className="modal-submit-button">Submit Post</button>
+              
+              <button 
+                onClick={handleSubmit} 
+                className="modal-submit-button"
+              >
+                Confirmation de poste
+              </button>
             </Modal>
-          </form>
+          </div>
           {posts.map((post) => (
             <div key={post.id} className="post">
               <h2>{post.title}</h2>

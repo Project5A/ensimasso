@@ -11,10 +11,8 @@ import java.util.List;
 @RequestMapping("/api/posts")
 @CrossOrigin(origins = "http://localhost:3000") // Allow requests from your React app
 public class PostController {
-
     @Autowired
     private PostRepository postRepository;
-
     // Get all posts
     @GetMapping
     public List<Post> getAllPosts() {
