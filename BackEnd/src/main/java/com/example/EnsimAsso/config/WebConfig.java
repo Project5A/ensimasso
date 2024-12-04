@@ -8,12 +8,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import java.util.Arrays;
 
 @Configuration
-@EnableWebMvc
 public class WebConfig {
 
     private static final Long MAX_AGE = 3600L;
@@ -24,7 +22,7 @@ public class WebConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:3000");
+        config.addAllowedOrigin("http://localhost:3000");  // Adjust for your frontend's URL
         config.setAllowedHeaders(Arrays.asList(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
@@ -38,7 +36,7 @@ public class WebConfig {
         source.registerCorsConfiguration("/**", config);
         FilterRegistrationBean bean = new FilterRegistrationBean(new CorsFilter(source));
 
-        // should be set order to -100 because we need to CorsFilter before SpringSecurityFilter
+        // Ensure the CORS filter runs before the Spring Security filter
         bean.setOrder(CORS_FILTER_ORDER);
         return bean;
     }

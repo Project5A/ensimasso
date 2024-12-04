@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { request } from '../axios_helper'; // Adjust the import path as needed
+import { useUser } from '../../contexts/UserContext'; // Import user context
 import './Login.css';
 
 const Login = () => {
   const wrapperRef = useRef(null);
+  const { setUser } = useUser(); // Access setUser to update user context
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '' });
   const [message, setMessage] = useState({ type: '', content: '' }); // Message state
@@ -26,14 +28,24 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await request('POST', '/api/login', loginData);
-      setMessage({ type: 'success', content: 'Login successful!' }); // Show success message
+      const { token, user } = response.data; // Assuming response contains token and user data
+
+      // Store the JWT token in localStorage
+      localStorage.setItem('token', token);
+
+      // Update the user context
+      setUser(user); 
+
+      setMessage({ type: 'success', content: 'Login successful!' });
       console.log('Login response:', response.data);
-      // Handle further login logic, e.g., save token, redirect, etc.
+
+      // Optional: Redirect or close the login popup
+      // For example, use React Router's history.push or navigate to a different page
     } catch (error) {
       setMessage({
         type: 'error',
         content: error.response?.data?.message || 'Login failed. Please try again.',
-      }); // Show error message
+      });
       console.error('Login error:', error.response?.data || error.message);
     }
   };
@@ -42,14 +54,13 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await request('POST', '/api/signup', signupData);
-      setMessage({ type: 'success', content: 'Signup successful! You can now log in.' }); // Show success message
+      setMessage({ type: 'success', content: 'Signup successful! You can now log in.' });
       console.log('Signup response:', response.data);
-      // Handle further signup logic, e.g., redirect to login
     } catch (error) {
       setMessage({
         type: 'error',
         content: error.response?.data?.message || 'Signup failed. Please try again.',
-      }); // Show error message
+      });
       console.error('Signup error:', error.response?.data || error.message);
     }
   };

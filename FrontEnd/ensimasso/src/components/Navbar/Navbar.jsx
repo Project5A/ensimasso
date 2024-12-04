@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './Navbar.css';
+import { AccountButton } from '../AccountButton/AccountButton.jsx';
 import { Login } from '../Login/Login.jsx';
 
 const Navbar = () => {
@@ -9,8 +10,6 @@ const Navbar = () => {
   const [isAssociationsOpen, setIsAssociationsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
-
-  const popupRef = useRef(null); // Reference for the popup
 
   // Check window width for mobile view
   useEffect(() => {
@@ -30,23 +29,16 @@ const Navbar = () => {
     setIsLoginPopupOpen(!isLoginPopupOpen);
   };
 
-  const handleClickOutside = (event) => {
-    if (popupRef.current && !popupRef.current.contains(event.target)) {
-      setIsLoginPopupOpen(false);
-    }
+  const handleLoginSuccess = (fullName) => {
+    // Save user info in localStorage
+    localStorage.setItem('user', JSON.stringify({ fullName }));
+    setIsLoginPopupOpen(false);
   };
 
-  useEffect(() => {
-    if (isLoginPopupOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isLoginPopupOpen]);
+  const handleLogout = () => {
+    // Perform additional logout actions if needed
+    localStorage.removeItem('user');
+  };
 
   return (
     <div className="NavbarContainer">
@@ -133,37 +125,21 @@ const Navbar = () => {
       )}
 
       {/* Account Menu */}
-      {!isMobile && (
-      <div className="AccountMenu flex">
-        <button
-          className="LoginItem"
-          onClick={toggleLoginPopup}
-        >
-          Login
-        </button>
+      <div className="AccountMenu">
+        <AccountButton
+          onLoginClick={toggleLoginPopup}
+          onLogout={handleLogout}
+        />
       </div>
-    )}
-
-    {isMobile && (
-      <div className="AccountMenu flex">
-        <button
-          className="LoginItemMobile"
-          onClick={toggleLoginPopup}
-        >
-          Login
-        </button>
-      </div>
-    )}
-
 
       {/* Login Popup */}
       {isLoginPopupOpen && (
         <div className="popup-overlay">
-          <div className="popup" ref={popupRef}>
+          <div className="popup">
             <button className="close-button" onClick={toggleLoginPopup}>
               🗙
             </button>
-            <Login />
+            <Login onLoginSuccess={handleLoginSuccess} />
           </div>
         </div>
       )}

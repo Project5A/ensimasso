@@ -11,6 +11,7 @@ import Events from './pages/Events';
 import About from './pages/About';  
 import { Footer } from './components/Footer/Footer';
 
+import { UserProvider } from './contexts/UserContext.js'; // Adjust path as needed
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 // Créer une instance ApolloClient pour interagir avec ton serveur GraphQL
@@ -26,17 +27,19 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <ApolloProvider client={client}>
-      <Router>
-        <Navbar />
-        <Routes> {/* Use Routes instead of Switch for React Router v6 */}
-          <Route path="/" element={<Home />} />
-          <Route path="/assos" element={<Assos />} />
-          <Route path="/forum" element={<Forum/>} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/about" element={<About />} />
-        </Routes>
-        <Footer />
-      </Router>
+      <UserProvider>
+        <Router>
+          <Navbar />
+          <Routes> {/* Use Routes instead of Switch for React Router v6 */}
+            <Route path="/" element={<Home />} />
+            <Route path="/assos" element={<Assos />} />
+            <Route path="/forum" element={<Forum/>} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/about" element={<About />} />
+          </Routes>
+          <Footer />
+        </Router>
+      </UserProvider>
     </ApolloProvider>
   </React.StrictMode>
 );
