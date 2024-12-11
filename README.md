@@ -51,7 +51,7 @@ Bienvenue sur le dépôt officiel du projet **ENSIMAsso**, une plateforme web ce
    ```
 2. **Frontend** :
    ```bash
-   cd frontend
+   cd frontend/ensimasso
    npm install
    npm start
    ```
@@ -77,8 +77,9 @@ Les contributions sont les bienvenues ! Veuillez suivre les étapes suivantes :
 4. Soumettez une pull request en expliquant vos changements.
 
 ## Auteurs
-- [Votre nom] ([Votre email])
-- [Collaborateurs supplémentaires]
+- [ELYACOUBI YAHYA]
+- [ELKALCHY ACHRAF]
+- [BOUIBER TAHA]
 
 ## Licence
 
