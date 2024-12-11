@@ -110,16 +110,16 @@ const Navbar = () => {
               >
                 <ul className="py-2 text-base text-white">
                   <li>
-                    <Link to="/assos/bdlc" className="DropItem">BDLC</Link>
+                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">BDLC</Link>
                   </li>
                   <li>
-                    <Link to="/assos/gala" className="DropItem">GALA</Link>
+                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">GALA</Link>
                   </li>
                   <li>
-                    <Link to="/assos/ensimersion" className="DropItem">ENSIMersion</Link>
+                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">ENSIMersion</Link>
                   </li>
                   <li>
-                    <Link to="/assos/kfet" className="DropItem">Kfet</Link>
+                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">Kfet</Link>
                   </li>
                 </ul>
               </div>
