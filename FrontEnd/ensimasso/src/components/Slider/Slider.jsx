@@ -56,38 +56,47 @@ const Slider = () => {
     const moveSlider = (direction) => {
         const sliderItems = sliderListRef.current.querySelectorAll('.item');
         const thumbnailItems = thumbnailRef.current.querySelectorAll('.item');
-  
+
+        // Réinitialiser toutes les classes d'animation
         sliderItems.forEach((item) =>
-            item.classList.remove('slide-in', 'slide-out', 'slide-in-reverse')
+            item.classList.remove('slide-in', 'slide-out', 'slide-in-reverse', 'slide-out-reverse')
         );
         thumbnailItems.forEach((item) =>
             item.classList.remove('move-next', 'move-prev', 'active')
         );
-  
+
         if (direction === 'next') {
+            // Ajouter les classes pour l'animation de sortie du slide actuel vers le haut
             sliderItems[0].classList.add('slide-out');
+            
+            // Ajouter les classes pour l'animation d'entrée du prochain slide depuis le bas
             sliderItems[1].classList.add('slide-in');
-  
+
             thumbnailItems[0].classList.add('move-next');
             thumbnailItems[1].classList.add('active');
-  
+
             setTimeout(() => {
                 sliderListRef.current.appendChild(sliderItems[0]);
                 thumbnailRef.current.appendChild(thumbnailItems[0]);
             }, 500);
         } else {
-            sliderItems[sliderItems.length - 1].classList.add('slide-in-reverse');
-            sliderItems[0].classList.add('slide-out-reverse');
-  
+            // Ajouter les classes pour l'animation de sortie du slide actuel vers le bas
+            sliderItems[sliderItems.length - 1].classList.add('slide-out-reverse');
+            
+            // Ajouter les classes pour l'animation d'entrée du slide précédent depuis le haut
+            sliderItems[0].classList.add('slide-in-reverse');
+
             thumbnailItems[thumbnailItems.length - 1].classList.add('move-prev');
             thumbnailItems[thumbnailItems.length - 2].classList.add('active');
-  
+
             setTimeout(() => {
                 sliderListRef.current.prepend(sliderItems[sliderItems.length - 1]);
                 thumbnailRef.current.prepend(thumbnailItems[thumbnailItems.length - 1]);
             }, 500);
         }
     };  
+
+
     nextBtnRef.current.onclick = () => moveSlider('next');
     prevBtnRef.current.onclick = () => moveSlider('prev');
 }, [slides]);
