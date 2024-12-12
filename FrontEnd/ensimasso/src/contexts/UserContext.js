@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const UserContext = createContext();
 
@@ -6,7 +6,7 @@ export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
 
   const login = async (username, password) => {
     try {
@@ -20,19 +20,21 @@ export const UserProvider = ({ children }) => {
         setToken(data.token);
         setUser({ username });
         localStorage.setItem('token', data.token);
+      } else {
+        console.error('Login failed:', data.message || 'Unknown error');
       }
     } catch (error) {
       console.error('Login failed:', error);
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
-  };
+  }, []);
 
-  const validateToken = async () => {
+  const validateToken = useCallback(async () => {
     const storedToken = localStorage.getItem('token');
     if (!storedToken) return;
     try {
@@ -40,20 +42,22 @@ export const UserProvider = ({ children }) => {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
       if (response.ok) {
-        setToken(storedToken);
+        setToken(storedToken); // Retain token in state
         setUser({ username: 'user' }); // Replace with actual decoded token data
+      } else {
+        logout();
       }
-    } catch {
+    } catch (error) {
       logout();
     }
-  };
+  }, [logout]);
 
   React.useEffect(() => {
     validateToken();
-  }, []);
+  }, [validateToken]);
 
   return (
-    <UserContext.Provider value={{ user, login, logout }}>
+    <UserContext.Provider value={{ user, token, login, logout }}>
       {children}
     </UserContext.Provider>
   );

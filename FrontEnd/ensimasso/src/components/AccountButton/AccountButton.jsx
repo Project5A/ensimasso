@@ -1,19 +1,19 @@
 import React from 'react';
 import './AccountButton.css';
-import { useUser } from '../../contexts/UserContext'; // Import the useUser hook
+import { useUser } from '../../contexts/UserContext';
 
-const AccountButton = ({ onLoginClick, onLogout }) => {
-  const { user } = useUser(); // Access the user from context
+const AccountButton = ({ onLoginClick }) => {
+  const { user, logout } = useUser(); // Access the user and logout function from context
 
   const handleLogout = () => {
-    onLogout(); // Call the logout function passed via props
+    logout(); // Call the context logout function
   };
 
   return (
     <div className="AccountButton">
       {user ? (
         <button onClick={handleLogout}>
-          {user.fullName} (Logout) {/* Display the user's full name and logout option */}
+          {user.username} (Logout) {/* Display the username and logout option */}
         </button>
       ) : (
         <button onClick={onLoginClick}>
@@ -25,4 +25,3 @@ const AccountButton = ({ onLoginClick, onLogout }) => {
 };
 
 export { AccountButton };
-

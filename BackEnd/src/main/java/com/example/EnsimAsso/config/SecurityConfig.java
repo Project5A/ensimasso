@@ -10,24 +10,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-
 @Configuration
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable()) // Disable CSRF for simplicity (only in development)
+                .csrf(csrf -> csrf.disable()) // Disable CSRF
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll() // Public endpoints
-                        .anyRequest().authenticated() // All other endpoints require authentication
+                        // Allow public access to specific endpoints
+                        .requestMatchers("/api/signup", "/api/login").permitAll()
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**")).permitAll() // Allow H2 console
+                        .anyRequest().authenticated() // Secure other endpoints
                 )
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin())) // Allow frames for H2 console
                 .build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Used for hashing passwords
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
