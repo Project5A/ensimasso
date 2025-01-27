@@ -1,0 +1,9 @@
+.shooting-stars-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw; /* Full viewport width */
+  height: 100vh; /* Full viewport height */
+  z-index: -1; /* Ensure it stays in the background */
+  display: block; /* Ensure canvas is displayed as a block element */
+}
