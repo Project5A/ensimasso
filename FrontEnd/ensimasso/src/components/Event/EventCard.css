@@ -23,7 +23,7 @@
 .share {
   button {
     font-family: inherit;
-    font-size: 20px;
+    font-size: 1em; /* Utilisation d'unités relatives */
     background: rgb(255, 255, 255);
     color: rgb(0, 0, 0);
     padding: 0.7em 1em;
@@ -96,9 +96,9 @@
 }
 
 .event-card .icon {
-    margin-right: 8px;
+    margin-right: 0.5em; /* Utilisation d'unités relatives */
     color: #e6e6e6; /* Adjust color as needed */
-    font-size: 1.2rem; /* Adjust size as needed */
+    font-size: 1.2em; /* Utilisation d'unités relatives */
     vertical-align: middle;
   }
   
@@ -131,23 +131,23 @@
 .event-card-buttons {
     display: flex;
     justify-content: center;
-    gap: 15px;
-    margin-top: 15px;
-    margin-bottom: 5px; /* Réduit l'espace en dessous */
+    gap: 1em; /* Utilisation d'unités relatives */
+    margin-top: 1em; /* Utilisation d'unités relatives */
+    margin-bottom: 0.5em; /* Utilisation d'unités relatives */
 }
 
 /* Event buttons style */
 .event-card-button {
-    padding: 5px;
+    padding: 0.5em 1em; /* Utilisation d'unités relatives */
     border: none;
     border-radius: 18px;
     background: rgb(255, 255, 255);
     color: rgb(0, 0, 0);
-    font-size: 1rem;
+    font-size: 1em; /* Utilisation d'unités relatives */
     cursor: pointer;
     transition: background 0.3s, transform 0.2s;
-    min-width: 120px; /* Ensures buttons have consistent width */
-    max-height: 65px;
+    min-width: 8em; /* Utilisation d'unités relatives */
+    max-height: 4em; /* Utilisation d'unités relatives */
     backdrop-filter: blur(5px);
 }
 
@@ -198,11 +198,12 @@
     }
 
     .event-card-buttons {
-        flex-direction: column;
-        gap: 8px;
+        flex-direction: row; /* Garde les boutons en ligne */
+        gap: 0.5em; /* Utilisation d'unités relatives */
     }
 
     .event-card-button {
-        min-width: 100%;
+        min-width: auto; /* Permet aux boutons de s'ajuster */
+        font-size: 0.9em; /* Réduit légèrement la taille de la police */
     }
 }
