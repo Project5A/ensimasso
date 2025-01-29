@@ -9,6 +9,7 @@ import Assos from './pages/Assos';
 import Forum from './pages/Forum';  
 import Events from './pages/Events';  
 import About from './pages/About';  
+import Profile from './pages/Profile';  
 import { Footer } from './components/Footer/Footer';
 
 import { UserProvider } from './contexts/UserContext.js'; // Adjust path as needed
@@ -36,6 +37,7 @@ root.render(
             <Route path="/forum" element={<Forum/>} />
             <Route path="/events" element={<Events />} />
             <Route path="/about" element={<About />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
           <Footer />
         </Router>

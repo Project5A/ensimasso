@@ -5,21 +5,22 @@ const UserContext = createContext();
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem('user')) || null
+  );
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
+
       if (response.ok) {
-        setToken(data.token);
-        setUser({ username });
-        localStorage.setItem('token', data.token);
+        setUser(data); // Update user state
+        localStorage.setItem('user', JSON.stringify(data));
       } else {
         console.error('Login failed:', data.message || 'Unknown error');
       }
@@ -29,35 +30,23 @@ export const UserProvider = ({ children }) => {
   };
 
   const logout = useCallback(() => {
-    setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }, []);
 
-  const validateToken = useCallback(async () => {
-    const storedToken = localStorage.getItem('token');
-    if (!storedToken) return;
-    try {
-      const response = await fetch('/api/auth/validate', {
-        headers: { Authorization: `Bearer ${storedToken}` },
-      });
-      if (response.ok) {
-        setToken(storedToken); // Retain token in state
-        setUser({ username: 'user' }); // Replace with actual decoded token data
-      } else {
-        logout();
-      }
-    } catch (error) {
-      logout();
+  const validateUser = useCallback(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (storedUser) {
+      setUser(storedUser);
     }
-  }, [logout]);
+  }, []);
 
   React.useEffect(() => {
-    validateToken();
-  }, [validateToken]);
+    validateUser();
+  }, [validateUser]);
 
   return (
-    <UserContext.Provider value={{ user, token, login, logout }}>
+    <UserContext.Provider value={{ user, setUser, login, logout }}>
       {children}
     </UserContext.Provider>
   );
