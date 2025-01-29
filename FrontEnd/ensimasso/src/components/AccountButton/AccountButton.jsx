@@ -1,9 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // For navigation
 import './AccountButton.css';
 import { useUser } from '../../contexts/UserContext';
 
 const AccountButton = ({ onLoginClick }) => {
   const { user, logout } = useUser(); // Access the user and logout function from context
+  const navigate = useNavigate(); // To navigate to the profile page
+
+  const handleProfileClick = () => {
+    navigate('/profile'); // Redirect to the profile page
+  };
 
   const handleLogout = () => {
     logout(); // Call the context logout function
@@ -12,9 +18,13 @@ const AccountButton = ({ onLoginClick }) => {
   return (
     <div className="AccountButton">
       {user ? (
-        <button onClick={handleLogout}>
-          {user.username} (Logout) {/* Display the username and logout option */}
-        </button>
+        <img
+          src="../../assets/profile_pic.png" // Default profile picture
+          alt="Profile"
+          className="ProfilePicture"
+          onClick={handleProfileClick} // Navigate to profile page on click
+          style={{ cursor: 'pointer', width: '40px', height: '40px', borderRadius: '50%' }} // Styling for the profile picture
+        />
       ) : (
         <button onClick={onLoginClick}>
           Login {/* Display the login button if the user is not logged in */}

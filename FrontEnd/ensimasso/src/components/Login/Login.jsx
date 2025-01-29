@@ -27,7 +27,7 @@ const Login = ({onLoginSuccess, onClose}) => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await request('POST', '/api/login', loginData);
+      const response = await request('POST', '/api/auth/login', loginData);
       const { token, user } = response.data; // Assuming response contains token and user data
 
       // Store the JWT token in localStorage
@@ -39,8 +39,11 @@ const Login = ({onLoginSuccess, onClose}) => {
       setMessage({ type: 'success', content: 'Login successful!' });
       console.log('Login response:', response.data);
 
-      // Optional: Redirect or close the login popup
-      // For example, use React Router's history.push or navigate to a different page
+      // Call onLoginSuccess prop to close the popup
+      if (onLoginSuccess) {
+        onLoginSuccess(); // This will close the popup
+      }
+      
     } catch (error) {
       setMessage({
         type: 'error',
@@ -50,10 +53,11 @@ const Login = ({onLoginSuccess, onClose}) => {
     }
   };
 
+
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await request('POST', '/api/signup', signupData);
+      const response = await request('POST', '/api/auth/signup', signupData);
       setMessage({ type: 'success', content: 'Signup successful! You can now log in.' });
       console.log('Signup response:', response.data);
     } catch (error) {

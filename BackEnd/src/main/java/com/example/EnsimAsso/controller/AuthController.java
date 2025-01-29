@@ -6,6 +6,7 @@ import com.example.EnsimAsso.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,23 +19,32 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // Login endpoint
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
-            // Attempt to authenticate the user using UserService
+            System.out.println("Attempting login for email: " + loginRequest.getEmail());
+
+            // Authenticate user
             User user = userService.login(loginRequest.getEmail(), loginRequest.getPassword());
+            System.out.println("User authenticated: " + user.getEmail());
 
             // Generate JWT token
             String token = jwtUtil.generateToken(user.getEmail());
+            System.out.println("Generated token: " + token);
 
-            // Return token in response
-            return ResponseEntity.ok(new LoginResponse(token, user.getName()));
-        } catch (Exception e) {
-            // Return error if authentication fails
+            // Return success response
+            return ResponseEntity.ok(new LoginResponse(token, user));
+        } catch (AuthenticationException e) {
+            System.err.println("Authentication failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials");
+        } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+            e.printStackTrace(); // Print stack trace to identify the root cause
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred");
         }
     }
+
+
 
     // Signup endpoint
     @PostMapping("/signup")
@@ -46,7 +56,7 @@ public class AuthController {
             newUser.setPassword(signupRequest.getPassword());
             newUser.setName(signupRequest.getName());
 
-            User savedUser = userService.signup(newUser); // Call signup method from UserService
+            userService.signup(newUser); // Call signup method from UserService
 
             // Return success response after registration
             return ResponseEntity.status(HttpStatus.CREATED).body("User created successfully");
@@ -82,19 +92,19 @@ public class AuthController {
     // Response body for login
     static class LoginResponse {
         private String token;
-        private String username;
+        private User user;
 
-        public LoginResponse(String token, String username) {
+        public LoginResponse(String token, User user) {
             this.token = token;
-            this.username = username;
+            this.user = user;
         }
 
         public String getToken() {
             return token;
         }
 
-        public String getUsername() {
-            return username;
+        public User getUser() {
+            return user;
         }
     }
 

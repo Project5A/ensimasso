@@ -32,10 +32,10 @@ const Navbar = () => {
     setIsLoginPopupOpen(!isLoginPopupOpen);
   };
 
-  const handleLoginSuccess = (fullName) => {
+  const handleLoginSuccess = (name) => {
     // Save user info in localStorage
-    localStorage.setItem('user', JSON.stringify({ fullName }));
-    setIsLoginPopupOpen(false);
+    localStorage.setItem('user', JSON.stringify({ name }));
+    setIsLoginPopupOpen(!isLoginPopupOpen);
   };
 
   const handleLogout = () => {
