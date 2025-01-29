@@ -53,7 +53,7 @@ const Forum = () => {
   return (
     <>
       <div className="forum-container">
-        <div className="left-sidebar mt-16">
+        <div className="left-sidebar mt-32">
           <div className="sidebar-section">
             <h3>Newest and Recent</h3>
             <p>Find the latest updates here.</p>
@@ -70,7 +70,7 @@ const Forum = () => {
           </div>
         </div>
 
-        <div className="forum mt-16">
+        <div className="forum mt-32">
           <div className="add-post-form">
             <button 
               onClick={() => setModalIsOpen(true)} 
@@ -136,7 +136,7 @@ const Forum = () => {
           ))}
         </div>
 
-        <div className="right-sidebar mt-16">
+        <div className="right-sidebar mt-32">
           <div className="meetups-section">
             <h3>Meetups</h3>
             <p>Upcoming events and meetups.</p>

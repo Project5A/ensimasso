@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import './Navbar.css';
 import { AccountButton } from '../AccountButton/AccountButton.jsx';
 import { Login } from '../Login/Login.jsx';
@@ -43,168 +43,172 @@ const Navbar = () => {
     localStorage.removeItem('user');
   };
 
+  const location = useLocation();
+
+  // Check if the current route is the Home page
+  const isHomePage = location.pathname === '/';
+
   return (
-    <div className="NavbarContainer">
-      <Link to="/" className="Logo">ENSIMASSO</Link>
+    <nav className={`navbar ${isHomePage ? 'absolute-position' : 'sticky-navbar'}`}>
+      <div className="NavbarContainer ">
+        <Link to="/" className="Logo"><img src="https://i.postimg.cc/bJJCNmRc/Logo-transformed.png" className="w-64 sm:mx-auto" /></Link>
 
-      {/* Mobile Menu Button */}
-      {isMobile && (
-        <button
-          className={`HamburgerMenu ${isMobileMenuOpen ? 'open' : ''}`}
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        {/* Mobile Menu Button */}
+        {isMobile && (
+          <button
+            className={`HamburgerMenu ${isMobileMenuOpen ? 'open' : ''}`}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 6h16M4 12h16m-7 6h7"
-            />
-          </svg>
-        </button>
-      )}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 6h16M4 12h16m-7 6h7"
+              />
+            </svg>
+          </button>
+        )}
 
-      {/* Desktop Menu */}
-      {!isMobile && (
-        <div className="NavMenu flex">
-          <div
-            className="relative"
-            onMouseEnter={() => setIsDropdownOpen(true)}
-            onMouseLeave={() => setIsDropdownOpen(false)}
-          >
-            <button className="NavItem flex items-center gap-2">
-              Associations
-              <svg
-                className="w-2 h-2 ml-1"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 10 6"
-              >
-                <path
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="m1 1 4 4 4-4"
-                />
-              </svg>
-            </button>
-
-            {isDropdownOpen && (
-              <div
-                className="absolute z-10 w-75 rounded-lg shadow bg-gray-400"
-                onMouseEnter={() => setIsDropdownOpen(true)}
-                onMouseLeave={() => setIsDropdownOpen(false)}
-                style={{ top: '100%', left: '20%' }}
-              >
-                <ul className="py-2 text-base text-white">
-                  <li>
-                  <Link to="/assos/bdlc" className="DropItem">BDLC</Link>
-                  </li>
-                  <li>
-                    <Link to="/association" className="DropItem">GALA</Link>
-                  </li>
-                  <li>
-                    <Link to="/association" className="DropItem">ENSIMersion</Link>
-                  </li>
-                  <li>
-                    <Link to="/association" className="DropItem">Kfet</Link>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <Link to="/forum" className="NavItem">Forum</Link>
-          <Link to="/events" className="NavItem">Events</Link>
-          <Link to="/about" className="NavItem">About</Link>
-        </div>
-      )}
-
-      {/* Account Menu */}
-      <div className="AccountMenu">
-        <AccountButton
-          onLoginClick={toggleLoginPopup}
-          onLogout={handleLogout}
-        />
-      </div>
-
-      {/* Login Popup */}
-      {isLoginPopupOpen && (
-        <div className="popup-overlay">
-          <div className="popup">
-            <button className="close-button" onClick={toggleLoginPopup}>
-              🗙
-            </button>
-            <Login onLoginSuccess={handleLoginSuccess} />
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Dropdown Menu */}
-      {isMobileMenuOpen && (
-        <div className="MobileDropdownMenu bg-gray-800 absolute top-16 left-0 w-full p-4">
-          <ul className="py-2 text-base text-white">
-            <li>
-              <button
-                className="DropItem"
-                onClick={() => setIsAssociationsOpen(!isAssociationsOpen)}
-              >
+        {/* Desktop Menu */}
+        {!isMobile && (
+          <div className="NavMenu flex">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+              onMouseLeave={() => setIsDropdownOpen(false)}
+            >
+              <button className="NavItem flex items-center gap-2">
                 Associations
                 <svg
-                  className={`w-4 h-4 transform transition-transform ${
-                    isAssociationsOpen ? 'rotate-180' : 'rotate-0'
-                  }`}
+                  className="w-2 h-2 ml-1"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  viewBox="0 0 10 6"
                 >
                   <path
+                    stroke="currentColor"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M19 9l-7 7-7-7"
+                    d="m1 1 4 4 4-4"
                   />
                 </svg>
               </button>
 
-              {isAssociationsOpen && (
-                <ul className="pl-4 mt-2 space-y-2">
-                  <li>
-                    <Link to="/assos/bdlc" className="DropItem2">BDLC</Link>
-                  </li>
-                  <li>
-                    <Link to="/assos/gala" className="DropItem2">GALA</Link>
-                  </li>
-                  <li>
-                    <Link to="/assos/ensimersion" className="DropItem2">ENSIMersion</Link>
-                  </li>
-                  <li>
-                    <Link to="/assos/kfet" className="DropItem2">Kfet</Link>
-                  </li>
-                </ul>
+              {isDropdownOpen && (
+                <div
+                  className="absolute z-10 w-75 rounded-lg shadow bg-gray-400"
+                  onMouseEnter={() => setIsDropdownOpen(true)}
+                  onMouseLeave={() => setIsDropdownOpen(false)}
+                  style={{ top: '100%', left: '20%' }}
+                >
+                  <ul className="py-2 text-base text-white">
+                    <li>
+                    <Link to="/assos/bdlc" className="DropItem">BDLC</Link>
+                    </li>
+                    <li>
+                      <Link to="/association" className="DropItem">GALA</Link>
+                    </li>
+                    <li>
+                      <Link to="/association" className="DropItem">ENSIMersion</Link>
+                    </li>
+                    <li>
+                      <Link to="/association" className="DropItem">Kfet</Link>
+                    </li>
+                  </ul>
+                </div>
               )}
-            </li>
-            <li>
-              <Link to="/forum" className="DropItem">Forum</Link>
-            </li>
-            <li>
-              <Link to="/events" className="DropItem">Events</Link>
-            </li>
-            <li>
-              <Link to="/about" className="DropItem">About</Link>
-            </li>
-          </ul>
+            </div>
+
+            <Link to="/forum" className="NavItem">Forum</Link>
+            <Link to="/events" className="NavItem">Events</Link>
+            <Link to="/about" className="NavItem">About</Link>
+          </div>
+        )}
+
+        {/* Account Menu */}
+        <div className="AccountMenu">
+          <AccountButton
+            onLoginClick={toggleLoginPopup}
+            onLogout={handleLogout}
+          />
         </div>
-      )}
-    </div>
+
+        {/* Login Popup */}
+        {isLoginPopupOpen && (
+          <div className="popup-overlay">
+            <div className="popup">
+              <Login onLoginSuccess={handleLoginSuccess} onClose={toggleLoginPopup} />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="MobileDropdownMenu bg-gray-800 absolute top-16 left-0 w-full p-4">
+            <ul className="py-2 text-base text-white">
+              <li>
+                <button
+                  className="DropItem"
+                  onClick={() => setIsAssociationsOpen(!isAssociationsOpen)}
+                >
+                  Associations
+                  <svg
+                    className={`w-4 h-4 transform transition-transform ${
+                      isAssociationsOpen ? 'rotate-180' : 'rotate-0'
+                    }`}
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                {isAssociationsOpen && (
+                  <ul className="pl-4 mt-2 space-y-2">
+                    <li>
+                      <Link to="/assos/bdlc" className="DropItem2">BDLC</Link>
+                    </li>
+                    <li>
+                      <Link to="/assos/gala" className="DropItem2">GALA</Link>
+                    </li>
+                    <li>
+                      <Link to="/assos/ensimersion" className="DropItem2">ENSIMersion</Link>
+                    </li>
+                    <li>
+                      <Link to="/assos/kfet" className="DropItem2">Kfet</Link>
+                    </li>
+                  </ul>
+                )}
+              </li>
+              <li>
+                <Link to="/forum" className="DropItem">Forum</Link>
+              </li>
+              <li>
+                <Link to="/events" className="DropItem">Events</Link>
+              </li>
+              <li>
+                <Link to="/about" className="DropItem">About</Link>
+              </li>
+            </ul>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 };
 

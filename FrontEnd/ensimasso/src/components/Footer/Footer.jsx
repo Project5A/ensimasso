@@ -31,7 +31,7 @@ const Footer = () => {
   ]
 
   return (
-      <footer className="text-gray-500 bg-black rounded-4 px-4 py-5 max-w-screen-xl mx-auto md:px-8">
+      <footer className="relative inset-x-0 bottom-0 text-white bg-black rounded-4 py-5 mx-auto md:px-8">
         <div className="max-w-lg sm:mx-auto sm:text-center">
             <img src="https://i.postimg.cc/bJJCNmRc/Logo-transformed.png" className="w-32 sm:mx-auto" />
             <p className="leading-relaxed mt-2 text-[15px]">

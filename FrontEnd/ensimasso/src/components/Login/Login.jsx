@@ -3,7 +3,7 @@ import { request } from '../axios_helper'; // Adjust the import path as needed
 import { useUser } from '../../contexts/UserContext'; // Import user context
 import './Login.css';
 
-const Login = () => {
+const Login = ({onLoginSuccess, onClose}) => {
   const wrapperRef = useRef(null);
   const { setUser } = useUser(); // Access setUser to update user context
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -76,6 +76,9 @@ const Login = () => {
 
   return (
     <div className="container">
+      <button className="close-button" onClick={onClose}>
+        🗙
+      </button>
       <section className="wrapper" ref={wrapperRef}>
         {message.content && (
           <div className={`message ${message.type}`}>

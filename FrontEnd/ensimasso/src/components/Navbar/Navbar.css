@@ -8,19 +8,43 @@
     src: url('/public/fonts/poppins/Poppins-Bold.ttf');
 }
 
+
+
 .NavbarContainer {
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    padding: 1rem;
+}
+
+
+.navbar.absolute-position {
     position: absolute;
     z-index: 10;
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #333;
+    background: linear-gradient(to bottom, rgb(0, 0, 0), rgba(0, 0, 0, 0.479), rgba(0, 0, 0, 0.014)); /* Gradient from dark to transparent */ 
+    z-index: 1000; /* Keeps the navbar above other content */
     padding: 1rem;
-    background:transparent;
-    
 
-}
+  }
+
+  .sticky-navbar {
+    position: fixed;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.479), rgba(0, 0, 0, 0.3)); /* Gradient from dark to transparent */    
+    z-index: 1000; /* Keeps the navbar above other content */
+    padding: 1rem;
+  }
 
 .Logo {
     font-size: 2rem;
@@ -171,14 +195,4 @@ position: relative;
 z-index: 100;
 }
 
-.close-button {
-position: absolute;
-top: 75px;
-right: 10px;
-background: none;
-border: none;
-font-size: 30px;
-color: #fff;
-cursor: pointer;
-}
   

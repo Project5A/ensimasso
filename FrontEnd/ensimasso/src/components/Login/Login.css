@@ -18,10 +18,10 @@
   max-width: 470px;
   width: 100%;
   border-radius: 12px;
-  padding: 20px
+  padding: 22px
     30px
     120px;
-  background: #4070f4;
+  background: #1a1a1a;
   box-shadow: 0
     5px
     10px
@@ -152,7 +152,7 @@ form
 }
 .form.login
   input[type="submit"] {
-  background: #4070f4;
+  background: #1a1a1a;
   color: #fff;
   border: none;
 }
@@ -175,4 +175,16 @@ form
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
+}
+
+.close-button {
+  position: relative;
+  bottom: 270px;
+  left: 320px;
+  z-index: 102;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #ffffff;
+  cursor: pointer;
 }

@@ -6,28 +6,31 @@
   }
   
   .AccountButton button {
-    background-color: #4CAF50; /* Green background */
-    color: white; /* White text */
+    background-color: #ffffff; /* Green background */
+    color: rgb(0, 0, 0); /* White text */
     padding: 10px 20px; /* Padding for a nice button size */
     border: none; /* Remove border */
     border-radius: 5px; /* Rounded corners */
-    font-size: 16px; /* Set font size */
+    font-size: 18px; /* Set font size */
+    font-weight: 600;
     cursor: pointer; /* Add pointer cursor on hover */
     transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth transition */
   }
   
   .AccountButton button:hover {
-    background-color: #45a049; /* Slightly darker green on hover */
+    background-color: #000000; /* Slightly darker green on hover */
+    color: rgb(255, 255, 255); /* White text */
     transform: scale(1.05); /* Slightly enlarge button on hover */
+    outline: 2px solid #ffffff; /* Add focus outline for accessibility */
   }
   
   .AccountButton button:active {
-    background-color: #3e8e41; /* Even darker green on click */
+    background-color: #636363; /* Even darker green on click */
     transform: scale(0.98); /* Slightly shrink button on click */
   }
   
   .AccountButton button:focus {
-    outline: 2px solid #2e7d32; /* Add focus outline for accessibility */
+    outline: 2px solid #ffffff; /* Add focus outline for accessibility */
     outline-offset: 2px; /* Offset the outline */
   }
   

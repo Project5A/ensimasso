@@ -1,5 +1,7 @@
+// TimeLine.jsx
 import React from 'react';
 import EventCard from './EventCard';
+import InfoCard from './InfoCard';
 import './TimeLine.css';
 
 function TimeLine() {
@@ -43,17 +45,19 @@ function TimeLine() {
                     key={index} 
                     className={`timeline-event ${index % 2 === 0 ? 'left' : 'right'}`}
                 >
-                    {/* Event Card */}
                     <div className="event-card-section">
                         <EventCard event={event} />
                     </div>
                     
-                    {/* Organizer Name and Logo */}
                     <div className="organizer-section">
-                        <h3 className="event-organizer-name">{event.organizerName}</h3>
+                        <InfoCard 
+                            organizerName={event.organizerName}
+                            date={event.date}
+                            location={event.location}
+                            description={event.description}
+                        />
                     </div>
 
-                    {/* Timeline Marker (Logo) */}
                     <div className="timeline-marker">
                         <img 
                             src={event.organizerLogo} 

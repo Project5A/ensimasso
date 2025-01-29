@@ -1,19 +1,17 @@
 /* Event Card Container - Version sans bordures */
 .event-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: rgb(255, 255, 255);
-    margin-top: 50px;
-    overflow: hidden;
-    transition: transform 0.3s, box-shadow 0.3s ease-in-out;
-    margin-bottom: 10px;
-    backdrop-filter: blur(10px);
-    
-    /* Suppression totale des bordures */
-    border: 0 !important;
-    outline: none !important;
-    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.514);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(58, 58, 58, 0.459) !important;
+  margin-top: 50px;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s ease-in-out;
+  margin-bottom: 10px;
+  backdrop-filter: blur(2px);
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0.514);
 }
 
 /* Hover effect on card */
@@ -88,7 +86,6 @@
     height: 180px;
     border-radius: 12px;
     object-fit: cover;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Card content container */
