@@ -1,11 +1,14 @@
 import React from 'react';
-import { AboutSection } from '../components/AboutSection/Aboutsection.jsx'
-
+import ShootingStars from '../components/Background/ShootingStars';
+import {AboutSection} from '../components/AboutSection/Aboutsection';
 
 const About = () => {
-    return (
-      <AboutSection/>
-    );
-  };
-  
-  export default About;
+  return (
+    <div>
+      <ShootingStars />
+      <AboutSection />
+    </div>
+  );
+};
+
+export default About;

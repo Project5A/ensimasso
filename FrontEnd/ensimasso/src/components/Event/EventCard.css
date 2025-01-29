@@ -1,17 +1,19 @@
-/* Event Card Container */
+/* Event Card Container - Version sans bordures */
 .event-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
+    background: rgb(255, 255, 255);
     margin-top: 50px;
     overflow: hidden;
     transition: transform 0.3s, box-shadow 0.3s ease-in-out;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 10px; /* Space between cards */
+    margin-bottom: 10px;
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    
+    /* Suppression totale des bordures */
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.514);
 }
 
 /* Hover effect on card */
@@ -20,6 +22,66 @@
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
+.share {
+  button {
+    font-family: inherit;
+    font-size: 20px;
+    background: rgb(255, 255, 255);
+    color: rgb(0, 0, 0);
+    padding: 0.7em 1em;
+    padding-left: 0.9em;
+    display: flex;
+    align-items: center;
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  
+  button span {
+    display: block;
+    margin-left: 0.3em;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  button svg {
+    display: block;
+    transform-origin: center center;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  button:hover .svg-wrapper {
+    animation: fly-1 0.6s ease-in-out infinite alternate;
+  }
+  
+  button:hover {
+    background: rgb(0, 0, 0);
+    color: rgb(255, 255, 255);
+  }
+
+  button:hover svg {
+    transform: translateX(1.2em) rotate(45deg) scale(1.1);
+  }
+  
+  button:hover span {
+    transform: translateX(5em);
+  }
+  
+  button:active {
+    transform: scale(0.95);
+  }
+  
+  @keyframes fly-1 {
+    from {
+      transform: translateY(0.1em);
+    }
+  
+    to {
+      transform: translateY(-0.1em);
+    }
+  }
+}
 /* Event image styling */
 .event-card-image {
     width: 100%;
@@ -79,22 +141,28 @@
 
 /* Event buttons style */
 .event-card-button {
-    padding: 8px;
+    padding: 5px;
     border: none;
-    border-radius: 8px;
-    background: rgba(27, 44, 87, 0.8);
-    color: white;
+    border-radius: 18px;
+    background: rgb(255, 255, 255);
+    color: rgb(0, 0, 0);
     font-size: 1rem;
     cursor: pointer;
     transition: background 0.3s, transform 0.2s;
     min-width: 120px; /* Ensures buttons have consistent width */
+    max-height: 65px;
     backdrop-filter: blur(5px);
 }
 
 /* Hover effect on buttons */
 .event-card-button:hover {
-    background: rgba(38, 24, 47, 0.8);
+    background: black;
+    color:white;
     transform: scale(1.05);
+}
+
+.event-card-button:hover .icon {
+    color: white !important;
 }
 
 /* For expanding description (See More / See Less) */
@@ -103,7 +171,7 @@
     font-size: 1rem;
     color: #eee;
     text-align: left;
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    border-top: 1px solid rgb(255, 255, 255);
     width: 100%;
     max-width: 600px; /* More room for description */
     margin-top: 10px;

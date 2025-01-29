@@ -11,6 +11,7 @@ import Events from './pages/Events';
 import About from './pages/About';  
 import Profile from './pages/Profile';  
 import { Footer } from './components/Footer/Footer';
+import {AssociationPage} from './components/Assos/AssociationPage';
 
 import { UserProvider } from './contexts/UserContext.js'; // Adjust path as needed
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
@@ -38,6 +39,7 @@ root.render(
             <Route path="/events" element={<Events />} />
             <Route path="/about" element={<About />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/assos/bdlc" element={<AssociationPage />} />
           </Routes>
           <Footer />
         </Router>

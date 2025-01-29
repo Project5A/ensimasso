@@ -12,7 +12,7 @@
     text-align: center; /* Centrer le titre */
     font-size: 2rem; /* Taille du texte */
     font-weight: bold; /* Texte en gras */
-    color: #efefef; /* Couleur du titre */
+    color: #000000; /* Couleur du titre */
     margin: 0; /* Supprimer la marge par défaut */
     padding-top: 20px; /* Espacement entre le haut de la page et le titre */
     position: absolute; /* Position absolue pour le placer tout en haut */
@@ -20,7 +20,66 @@
     left: 50%; /* Centrer horizontalement */
     transform: translateX(-50%); /* Centrer horizontalement */
     z-index: 2; /* S'assurer qu'il soit au-dessus des autres éléments */
+    color: #fff;
+    background: linear-gradient(to right, #9f9f9f 0, #fff 10%, #868686 20%);
+    background-position: 0;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 4s infinite linear;
+    animation-fill-mode: forwards;
+    -webkit-text-size-adjust: none;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    font-family: "Poppins", sans-serif;
 }
+
+@-moz-keyframes shine {
+  0% {
+    background-position: 0;
+  }
+  60% {
+    background-position: 180px;
+  }
+  100% {
+    background-position: 270px;
+  }
+}
+@-webkit-keyframes shine {
+  0% {
+    background-position: 0;
+  }
+  60% {
+    background-position: 180px;
+  }
+  100% {
+    background-position: 270px;
+  }
+}
+@-o-keyframes shine {
+  0% {
+    background-position: 0;
+  }
+  60% {
+    background-position: 180px;
+  }
+  100% {
+    background-position: 270px;
+  }
+}
+@keyframes shine {
+  0% {
+    background-position: 0;
+  }
+  60% {
+    background-position: 180px;
+  }
+  100% {
+    background-position: 270px;
+  }
+}
+
 
 
 /* Flèche vers le haut */
@@ -33,7 +92,7 @@
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-bottom: 20px solid rgba(27, 44, 87, 0.8); /* Couleur de la flèche */
+    border-bottom: 20px solid rgb(255, 255, 255); /* Couleur de la flèche */
     z-index: 1;
 }
 
@@ -42,7 +101,7 @@
 .timeline-line {
     position: absolute;
     width: 5px;
-    background: rgba(27, 44, 87, 0.8);
+    background: rgb(255, 255, 255);
     top: 90px;
     bottom: 80px;
     left: 50%;

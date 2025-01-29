@@ -4,6 +4,9 @@ import './Navbar.css';
 import { AccountButton } from '../AccountButton/AccountButton.jsx';
 import { Login } from '../Login/Login.jsx';
 
+
+
+
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -102,16 +105,16 @@ const Navbar = () => {
               >
                 <ul className="py-2 text-base text-white">
                   <li>
-                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">BDLC</Link>
+                  <Link to="/assos/bdlc" className="DropItem">BDLC</Link>
                   </li>
                   <li>
-                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">GALA</Link>
+                    <Link to="/association" className="DropItem">GALA</Link>
                   </li>
                   <li>
-                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">ENSIMersion</Link>
+                    <Link to="/association" className="DropItem">ENSIMersion</Link>
                   </li>
                   <li>
-                    <Link to="https://v0-ensim-asso-56vftcmrnf2-f5d0qfqp7-thatwasyahyas-projects.vercel.app/" className="DropItem">Kfet</Link>
+                    <Link to="/association" className="DropItem">Kfet</Link>
                   </li>
                 </ul>
               </div>
