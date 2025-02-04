@@ -115,6 +115,32 @@
     font-size: 0.9rem;
   }
   
+  .info-item a {
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    padding: 5px; /* Ajoute un peu de padding pour l'effet */
+    border-radius: 5px;
+  }
+  
+  .info-item a:hover {
+    color: #22d3ff; /* Changer la couleur lors du survol */
+    background-color: rgba(0, 183, 255, 0.1); /* Ajoute un fond doux pour attirer l'attention */
+    cursor: pointer; /* Curseur pointer */
+    transform: scale(1.05); /* Effet d'agrandissement au survol */
+  }
+  
+  .info-item a:focus {
+    outline: none; /* Enlever le contour sur focus */
+    box-shadow: 0 0 10px 2px rgb(15, 207, 221); /* Ajoute un effet de halo lumineux */
+  }
+  
+  .info-item a:active {
+    transform: scale(0.98); /* Réduit légèrement l'élément lorsque l'on clique dessus */
+  }
+  
+  
+
   .info-icon {
     color: #fff;
     font-size: 1rem;

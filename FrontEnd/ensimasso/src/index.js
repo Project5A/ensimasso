@@ -9,7 +9,7 @@ import Assos from './pages/Assos';
 import Forum from './pages/Forum';  
 import Events from './pages/Events';  
 import About from './pages/About';  
-import Profile from './pages/Profile';  
+import { Profile } from './pages/Profile';  
 import { Footer } from './components/Footer/Footer';
 import { AssociationPage } from './components/Assos/AssociationPage';
 

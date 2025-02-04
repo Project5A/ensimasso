@@ -1,7 +1,7 @@
 import React from 'react';
 import { useUser } from '../contexts/UserContext'; // Import the UserContext
 import { useNavigate } from 'react-router-dom'; // Adjust based on your routing library
-import Sidebar from '../components/Sidebar/Sidebar'; // Import the Sidebar component
+import {Sidebar} from '../components/Sidebar/Sidebar'; // Import the Sidebar component
 
 const Profile = () => {
   const { user, setUser } = useUser(); // Access the current user and setUser from context
@@ -13,7 +13,7 @@ const Profile = () => {
     localStorage.removeItem('token');
 
     // Navigate back to the main page
-    navigate('/');
+    navigate('/home');
   };
 
   if (!user) {
@@ -99,4 +99,4 @@ const styles = {
   },
 };
 
-export default Profile;
+export {Profile};
