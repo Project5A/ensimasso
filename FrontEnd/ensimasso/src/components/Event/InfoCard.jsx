@@ -1,4 +1,3 @@
-// InfoCard.jsx
 import React from 'react';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -10,6 +9,15 @@ import {
 import './InfoCard.css';
 
 const InfoCard = ({ organizerName, date, location, description }) => {
+  // Format the date to match Google Calendar's format (YYYYMMDDTHHMMSSZ)
+  const formattedDate = new Date(date).toISOString().replace(/-|:|\.\d+/g, "");
+
+  // Google Maps URL that uses the location string and will open directions from the user's current location
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`;
+
+  // Google Calendar event URL with pre-filled details
+  const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(organizerName)}&dates=${formattedDate}/${formattedDate}&location=${encodeURIComponent(location)}&details=${encodeURIComponent(description)}&sf=true&output=xml`;
+
   return (
     <div className="outer">
       <div className="dot"></div>
@@ -22,11 +30,17 @@ const InfoCard = ({ organizerName, date, location, description }) => {
         <div className="info-content">
           <div className="info-item">
             <FontAwesomeIcon icon={faCalendarAlt} className="info-icon" />
-            <span>{date}</span>
+            {/* Make the date clickable and direct to Google Calendar */}
+            <a href={googleCalendarUrl} target="_blank" rel="noopener noreferrer">
+              <span>{date}</span>
+            </a>
           </div>
           <div className="info-item">
             <FontAwesomeIcon icon={faMapMarkerAlt} className="info-icon" />
-            <span>{location}</span>
+            {/* Make the location clickable and direct to Google Maps */}
+            <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+              <span>{location}</span>
+            </a>
           </div>
           <div className="info-item description">
             <FontAwesomeIcon icon={faInfoCircle} className="info-icon" />

@@ -1,12 +1,30 @@
-// EventCard.jsx
-import React from "react";
+import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faCheckCircle,faBookmark,
-} from "@fortawesome/free-solid-svg-icons";
+import {faCheckCircle, faBookmark} from "@fortawesome/free-solid-svg-icons";  // Importing the required social media icons
+import { faFacebook, faTwitter, faWhatsapp } from "@fortawesome/free-brands-svg-icons";  // Importing the required social media icons
 import "./EventCard.css";
 
 const EventCard = ({ event }) => {
+  const [showShareOptions, setShowShareOptions] = useState(false); // To toggle the visibility of share options
+
+  // Function to share event on selected social media
+  const shareEvent = (platform) => {
+    const eventTitle = encodeURIComponent(event.title);
+    const eventDescription = encodeURIComponent(event.description);
+    const eventUrl = encodeURIComponent(window.location.href); // Current page URL (you can change this to a custom URL)
+
+    // Social media URLs with prefilled content
+    const socialMediaUrls = {
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${eventUrl}`,
+      twitter: `https://twitter.com/intent/tweet?text=${eventTitle}&url=${eventUrl}`,
+      whatsapp: `https://wa.me/?text=${eventTitle} - ${eventDescription} ${eventUrl}`,
+    };
+
+    // Open a new tab to share the event
+    window.open(socialMediaUrls[platform], '_blank');
+    setShowShareOptions(false);  // Hide share options after selection
+  };
+
   return (
     <div
       className="event-card"
@@ -28,8 +46,9 @@ const EventCard = ({ event }) => {
             <FontAwesomeIcon icon={faCheckCircle} className="icon" style={{ color: 'black' }} />
             Going
           </button>
+
           <div className="share">
-            <button>
+            <button onClick={() => setShowShareOptions(!showShareOptions)}>
               <div className="svg-wrapper-1">
                 <div className="svg-wrapper">
                   <svg
@@ -48,7 +67,35 @@ const EventCard = ({ event }) => {
               </div>
               <span>Send</span>
             </button>
+
+            {/* Conditional rendering for share options */}
+            {showShareOptions && (
+              <div className="social-share-options">
+                <div
+                  className="social-bubble facebook"
+                  onClick={() => shareEvent('facebook')}
+                  aria-label="Share on Facebook"
+                >
+                  <FontAwesomeIcon icon={faFacebook} size="2x" />
+                </div>
+                <div
+                  className="social-bubble twitter"
+                  onClick={() => shareEvent('twitter')}
+                  aria-label="Share on Twitter"
+                >
+                  <FontAwesomeIcon icon={faTwitter} size="2x" />
+                </div>
+                <div
+                  className="social-bubble whatsapp"
+                  onClick={() => shareEvent('whatsapp')}
+                  aria-label="Share on WhatsApp"
+                >
+                  <FontAwesomeIcon icon={faWhatsapp} size="2x" />
+                </div>
+              </div>
+            )}
           </div>
+
           <button
             className="event-card-button save-button"
             aria-label="Save event"
