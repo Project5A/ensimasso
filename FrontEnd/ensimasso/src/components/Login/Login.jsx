@@ -3,7 +3,7 @@ import { request } from '../axios_helper'; // Adjust the import path as needed
 import { useUser } from '../../contexts/UserContext'; // Import user context
 import './Login.css';
 
-const Login = ({onLoginSuccess, onClose}) => {
+const Login = ({ onClose }) => {
   const wrapperRef = useRef(null);
   const { setUser } = useUser(); // Access setUser to update user context
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -30,18 +30,29 @@ const Login = ({onLoginSuccess, onClose}) => {
       const response = await request('POST', '/api/auth/login', loginData);
       const { token, user } = response.data; // Assuming response contains token and user data
 
-      // Store the JWT token in localStorage
+      // Store the JWT token and user info in localStorage
+      console.log("Saving to localStorage:", JSON.stringify(user), token); // Debugging
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log("user saved :", localStorage.getItem("user"));
+      console.log("token saved :", localStorage.getItem("token"));
+
+      // Set a timeout to remove the user and token from localStorage after 10 minutes (600000 milliseconds)
+      setTimeout(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        console.log('Token and user removed from localStorage after 10 minutes');
+      }, 600000); // 10 minutes = 600000 milliseconds
 
       // Update the user context
-      setUser(user); 
+      setUser(user);
 
       setMessage({ type: 'success', content: 'Login successful!' });
       console.log('Login response:', response.data);
 
-      // Call onLoginSuccess prop to close the popup
-      if (onLoginSuccess) {
-        onLoginSuccess(); // This will close the popup
+      // Close the popup by calling onClose
+      if (onClose) {
+        onClose(); // Close the popup
       }
       
     } catch (error) {
@@ -52,7 +63,6 @@ const Login = ({onLoginSuccess, onClose}) => {
       console.error('Login error:', error.response?.data || error.message);
     }
   };
-
 
   const handleSignupSubmit = async (e) => {
     e.preventDefault();

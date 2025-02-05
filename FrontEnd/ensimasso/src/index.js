@@ -9,7 +9,7 @@ import Assos from './pages/Assos';
 import Forum from './pages/Forum';  
 import Events from './pages/Events';  
 import About from './pages/About';  
-import Profile from './pages/Profile';  
+import Dashboard from './pages/Dashboard';  
 import { Footer } from './components/Footer/Footer';
 import { AssociationPage } from './components/Assos/AssociationPage';
 
@@ -29,7 +29,7 @@ root.render(
           <Route path="/forum" element={<Forum/>} />
           <Route path="/events" element={<Events />} />
           <Route path="/about" element={<About />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/assos/bdlc" element={<AssociationPage />} />
         </Routes>
         <Footer />

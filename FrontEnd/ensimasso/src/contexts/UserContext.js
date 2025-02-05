@@ -1,49 +1,56 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 const UserContext = createContext();
 
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem('user')) || null
-  );
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    const storedToken = localStorage.getItem("token");
+
+    if (storedUser && storedToken) {
+      setUser(storedUser);
+    }
+
+    setLoading(false);
+  }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await response.json();
 
-      if (response.ok) {
-        setUser(data); // Update user state
-        localStorage.setItem('user', JSON.stringify(data));
+      const data = await response.json();
+      console.log("Login Response:", data); // Debugging
+
+      if (response.ok && data?.user && data?.token) {
+        console.log("Saving to localStorage:", JSON.stringify(data.user), data.token); // Debugging
+        localStorage.setItem("user", JSON.stringify(data.user)); // Store user info
+        localStorage.setItem("token", data.token); // Store token
+
+        setUser(data.user); // Update React state
       } else {
-        console.error('Login failed:', data.message || 'Unknown error');
+        console.error("Invalid login response:", data);
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
     }
   };
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
+    localStorage.removeItem("token"); // Remove token too
   }, []);
 
-  const validateUser = useCallback(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) {
-      setUser(storedUser);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    validateUser();
-  }, [validateUser]);
+  if (loading) return <p>Loading...</p>;
 
   return (
     <UserContext.Provider value={{ user, setUser, login, logout }}>
