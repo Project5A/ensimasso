@@ -14,7 +14,7 @@ import Dashboard from './pages/Dashboard';
 import { Footer } from './components/Footer/Footer';
 import { AssociationPage } from './components/Assos/AssociationPage';
 import { UserProvider } from './contexts/UserContext.js';
-import {Chatbot} from './components/chatbot/Chatbot.jsx'; // Adjust the path as needed
+import {Chatbot} from './components/chatbot/Chatbot.jsx'; 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -33,7 +33,7 @@ root.render(
           <Route path="/assos/bdlc" element={<AssociationPage />} />
         </Routes>
         <Footer />
-        <Chatbot /> {/* Include the Chatbot component */}
+        <Chatbot />
       </Router>
     </UserProvider>
   </React.StrictMode>
