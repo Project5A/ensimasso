@@ -11,54 +11,22 @@ import java.util.Optional;
 @Service
 public class EventService {
 
-    private final EventRepository eventRepository;
-
     @Autowired
-    public EventService(EventRepository eventRepository) {
-        this.eventRepository = eventRepository;
-    }
+    private EventRepository eventRepository;
 
-    // Create a new Event
-    public Event createEvent(Event event) {
-        return eventRepository.save(event);
-    }
-
-    // Get all Events
+    // Get all events
     public List<Event> getAllEvents() {
         return eventRepository.findAll();
     }
 
-    // Get Event by ID
-    public Optional<Event> getEventById(Long id) {
-        return eventRepository.findById(id);
+    // Get event by ID
+    public Event getEventById(Long id) {
+        Optional<Event> event = eventRepository.findById(id);
+        return event.orElse(null);
     }
 
-    // Update an existing Event
-    public Event updateEvent(Long id, Event updatedEvent) {
-        // Check if the Event exists
-        Optional<Event> existingEvent = eventRepository.findById(id);
-        if (existingEvent.isPresent()) {
-            Event event = existingEvent.get();
-            event.setTitle(updatedEvent.getTitle());
-            event.setDate(updatedEvent.getDate());
-            event.setLocation(updatedEvent.getLocation());
-            event.setDescription(updatedEvent.getDescription());
-            event.setAdhPrice(updatedEvent.getAdhPrice());
-            event.setNonAdhPrice(updatedEvent.getNonAdhPrice());
-            event.setEventImage(updatedEvent.getEventImage());
-            event.setOrganizerName(updatedEvent.getOrganizerName());
-            event.setOrganizerPhoto(updatedEvent.getOrganizerPhoto());
-            return eventRepository.save(event);
-        }
-        return null;  // If the event with the given id does not exist
-    }
-
-    // Delete an Event by ID
-    public boolean deleteEvent(Long id) {
-        if (eventRepository.existsById(id)) {
-            eventRepository.deleteById(id);
-            return true;
-        }
-        return false;  // Event not found
+    // Create a new event
+    public Event createEvent(Event event) {
+        return eventRepository.save(event);
     }
 }
