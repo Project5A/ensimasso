@@ -9,7 +9,7 @@ const About = () => {
     <div>
       <ShootingStars />
       <AboutSection />
-      <CreateAssociationForm />
+      {/* <CreateAssociationForm /> */}
     </div>
   );
 };

@@ -1,7 +1,8 @@
 package com.example.EnsimAsso.controller;
 
 import com.example.EnsimAsso.config.JwtUtil;
-import com.example.EnsimAsso.model.User;
+import com.example.EnsimAsso.model.User.Guest;
+import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.service.UserService;
 
 import java.util.HashMap;
@@ -71,7 +72,7 @@ public class AuthController {
     public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
         try {
             // Create user in the database
-            User newUser = new User();
+            User newUser = new Guest();
             newUser.setEmail(signupRequest.getEmail());
             newUser.setPassword(signupRequest.getPassword());
             newUser.setName(signupRequest.getName());
