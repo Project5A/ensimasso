@@ -1,30 +1,51 @@
 package com.example.EnsimAsso.controller;
 
 import com.example.EnsimAsso.model.Post;
-import com.example.EnsimAsso.repository.PostRepository;
+import com.example.EnsimAsso.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
-@CrossOrigin(origins = "http://localhost:3000") // Allow requests from your React app
+@CrossOrigin(origins = "*") // Autoriser le frontend à accéder à l'API
 public class PostController {
+
     @Autowired
-    private PostRepository postRepository;
-    // Get all posts
+    private PostService postService;
+
     @GetMapping
     public List<Post> getAllPosts() {
-        return postRepository.findAll();
+        return postService.getAllPosts();
     }
-    @GetMapping("/test")
-    public String testEndpoint() {
-        return "API is working!";
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Post> getPostById(@PathVariable Long id) {
+        return ResponseEntity.ok(postService.getPostById(id));
     }
-    // Add a new post
+
     @PostMapping
-    public Post createPost(@RequestBody Post post) {
-        return postRepository.save(post);
+    public ResponseEntity<Post> createPost(@RequestBody Post post) {
+        return ResponseEntity.ok(postService.createPost(post));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Post> updatePost(@PathVariable Long id, @RequestBody Post postDetails) {
+        return ResponseEntity.ok(postService.updatePost(id, postDetails));
+    }
+
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Void> likePost(@PathVariable Long id) {
+        postService.likePost(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/dislike")
+    public ResponseEntity<Void> dislikePost(@PathVariable Long id) {
+        postService.dislikePost(id);
+        return ResponseEntity.ok().build();
     }
 }
