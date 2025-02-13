@@ -1,8 +1,13 @@
 package com.example.EnsimAsso.controller;
 
 import com.example.EnsimAsso.config.JwtUtil;
-import com.example.EnsimAsso.model.User;
+import com.example.EnsimAsso.model.User.Guest;
+import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.service.UserService;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +36,25 @@ public class AuthController {
             // Generate JWT token
             String token = jwtUtil.generateToken(user.getEmail());
             System.out.println("Generated token: " + token);
+            
+            // Convert user to a simple JSON-like map (without returning a User object)
+            Map<String, Object> userJson = new HashMap<>();
+            userJson.put("email", user.getEmail());
+            userJson.put("name", user.getName());
+            userJson.put("password", user.getPassword());
+            userJson.put("id", user.getId());
+            // Add any other necessary fields
 
-            // Return success response
-            return ResponseEntity.ok(new LoginResponse(token, user));
+            // Prepare the response data with token and user as JSON object
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("token", token);
+            responseData.put("user", userJson);
+
+        // Return success response as JSON
+        return ResponseEntity.ok(responseData); // Return response as JSON
+
+        // // Return success response
+        // return ResponseEntity.ok(new LoginResponse(token, user));
         } catch (AuthenticationException e) {
             System.err.println("Authentication failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid credentials");
@@ -51,7 +72,7 @@ public class AuthController {
     public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
         try {
             // Create user in the database
-            User newUser = new User();
+            User newUser = new Guest();
             newUser.setEmail(signupRequest.getEmail());
             newUser.setPassword(signupRequest.getPassword());
             newUser.setName(signupRequest.getName());

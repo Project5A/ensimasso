@@ -1,6 +1,6 @@
 package com.example.EnsimAsso.controller;
 
-import com.example.EnsimAsso.model.User;
+import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

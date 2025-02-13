@@ -1,6 +1,6 @@
 package com.example.EnsimAsso.service;
 
-import com.example.EnsimAsso.model.User;
+import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -8,33 +8,28 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/events")
+@RequestMapping("/api/events")
+@CrossOrigin(origins = "http://localhost:3000")  // Allow requests from your React frontend
 public class EventController {
 
-    private final EventService eventService;
-
     @Autowired
-    public EventController(EventService eventService) {
-        this.eventService = eventService;
-    }
+    private EventService eventService;
 
-    // Initialize the events table
-    @PostMapping("/init")
-    public String createEventsTable() {
-        eventService.createEventsTable();
-        return "Table created or already exists";
-    }
-
-    // Add a new event
-    @PostMapping("/add")
-    public String addEvent(@RequestBody Event event) {
-        eventService.insertEvent(event);
-        return "Event added successfully!";
-    }
-
-    // Get all events
-    @GetMapping("/all")
+    // Endpoint to get all events
+    @GetMapping
     public List<Event> getAllEvents() {
         return eventService.getAllEvents();
+    }
+
+    // Endpoint to get an event by ID
+    @GetMapping("/{id}")
+    public Event getEventById(@PathVariable Long id) {
+        return eventService.getEventById(id);
+    }
+
+    // Endpoint to create a new event
+    @PostMapping
+    public Event createEvent(@RequestBody Event event) {
+        return eventService.createEvent(event);
     }
 }

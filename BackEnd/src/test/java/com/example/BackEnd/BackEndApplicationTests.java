@@ -1,7 +1,8 @@
 package com.example.BackEnd;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.SpringBootConfiguration;
+
+import org.springframework.boot.SpringBootConfiguration; // Added import for SpringBootConfiguration
+import org.testng.annotations.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootConfiguration
 @SpringBootTest
