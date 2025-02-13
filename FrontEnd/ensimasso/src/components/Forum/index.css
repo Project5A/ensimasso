@@ -438,6 +438,62 @@
   background: #155bb5;
 }
 
+/* Improved comments list */
+.comments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Each comment item is displayed as a flex container */
+.comment-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+/* Avatar styling */
+.comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+/* Comment content box */
+.comment-content {
+  background: #f7f7f7;
+  border-radius: 10px;
+  padding: 10px 15px;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Author name styling */
+.comment-author {
+  display: block;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+/* Comment text styling */
+.comment-text {
+  margin: 0 0 6px 0;
+  color: #555;
+  line-height: 1.4;
+}
+
+/* Comment date styling */
+.comment-date {
+  font-size: 0.8rem;
+  color: #aaa;
+  text-align: right;
+}
+
+
 /* Styles spécifiques pour le composant Reaction (si nécessaire) */
 .reaction-container {
   display: flex;

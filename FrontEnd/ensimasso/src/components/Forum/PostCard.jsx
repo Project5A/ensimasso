@@ -112,9 +112,6 @@ const PostCard = ({ post, onReact, onAddComment }) => {
                   <div className="comment-content">
                     <span className="comment-author">{c.user?.name || 'Anonymous'}</span>
                     <span className="comment-text">{c.content}</span>
-                    <span className="comment-date">
-                      {new Date(c.createdAt).toLocaleTimeString('fr-FR')}
-                    </span>
                   </div>
                 </li>              
               ))}
