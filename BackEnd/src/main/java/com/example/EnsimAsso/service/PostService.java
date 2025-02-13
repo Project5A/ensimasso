@@ -26,7 +26,13 @@ public class PostService {
                 .orElseThrow(() -> new RuntimeException("Post not found with ID: " + id));
     }
 
-    public Post createPost(Post post) {
+    public Post createPost(String title, String description, String author, String date, String image) {
+        Post post = new Post();
+        post.setTitle(title);
+        post.setDescription(description);
+        post.setAuthor(author);
+        post.setDate(date);
+        post.setImage(image);
         return postRepository.save(post);
     }
 
@@ -34,9 +40,14 @@ public class PostService {
         Post post = getPostById(id);
         post.setTitle(postDetails.getTitle());
         post.setDescription(postDetails.getDescription());
-        post.setauthor(postDetails.getauthor()); // Correction ici
+        post.setAuthor(postDetails.getAuthor());
+        post.setDate(postDetails.getDate());
+        post.setAvatar(postDetails.getAvatar());
+        post.setImage(postDetails.getImage());
+        // We leave reactions and comments unchanged here.
         return postRepository.save(post);
     }
+    
 
     public void deletePost(Long id) {
         Post post = getPostById(id);
@@ -44,20 +55,10 @@ public class PostService {
     }
 
     @Transactional
-    public void likePost(Long id) {
-        logger.info("Tentative de like pour le post avec ID: {}", id);
+    public Post reactToPost(Long id, String reactionType) {
+        logger.info("Adding reaction '{}' to post with ID: {}", reactionType, id);
         Post post = getPostById(id);
-        post.setLikes(post.getLikes() + 1);
-        postRepository.save(post);
-        logger.info("Like ajouté avec succès pour le post ID: {}", id);
-    }
-
-    @Transactional
-    public void dislikePost(Long id) {
-        logger.info("Tentative de dislike pour le post avec ID: {}", id);
-        Post post = getPostById(id);
-        post.setDislikes(post.getDislikes() + 1);
-        postRepository.save(post);
-        logger.info("Dislike ajouté avec succès pour le post ID: {}", id);
+        post.addReaction(reactionType);
+        return postRepository.save(post);
     }
 }

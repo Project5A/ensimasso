@@ -51,7 +51,7 @@ const Navbar = () => {
   return (
     <nav className={`navbar ${isHomePage ? 'absolute-position' : 'sticky-navbar'}`}>
       <div className="NavbarContainer ">
-        <Link to="/" className="Logo"><img src="https://i.postimg.cc/bJJCNmRc/Logo-transformed.png" className="w-64 sm:mx-auto" /></Link>
+        <Link to="/" className="Logo"><img src="https://i.postimg.cc/GtCrZDM9/Logo.png" className="w-64 sm:mx-auto" /></Link>
 
         {/* Mobile Menu Button */}
         {isMobile && (
