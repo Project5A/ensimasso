@@ -1,6 +1,7 @@
 package com.example.EnsimAsso.service;
 
 import com.example.EnsimAsso.model.Post;
+import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,13 +27,14 @@ public class PostService {
                 .orElseThrow(() -> new RuntimeException("Post not found with ID: " + id));
     }
 
-    public Post createPost(String title, String description, String author, String date, String image) {
+    // Updated createPost method
+    public Post createPost(String title, String description, User user, String date, String image) {
         Post post = new Post();
         post.setTitle(title);
         post.setDescription(description);
-        post.setAuthor(author);
         post.setDate(date);
         post.setImage(image);
+        post.setUser(user);
         return postRepository.save(post);
     }
 
@@ -40,15 +42,13 @@ public class PostService {
         Post post = getPostById(id);
         post.setTitle(postDetails.getTitle());
         post.setDescription(postDetails.getDescription());
-        post.setAuthor(postDetails.getAuthor());
+        // For update, you might decide whether to allow changing the author or not.
+        // Here we leave the user as-is.
         post.setDate(postDetails.getDate());
-        post.setAvatar(postDetails.getAvatar());
         post.setImage(postDetails.getImage());
-        // We leave reactions and comments unchanged here.
         return postRepository.save(post);
     }
     
-
     public void deletePost(Long id) {
         Post post = getPostById(id);
         postRepository.delete(post);

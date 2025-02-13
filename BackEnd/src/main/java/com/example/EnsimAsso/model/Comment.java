@@ -2,9 +2,7 @@ package com.example.EnsimAsso.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,38 +14,65 @@ public class Comment {
     private Long id;
     
     private String content;
-    private String author;
 
     @Column(name = "created_at")
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @ManyToOne(fetch = FetchType.EAGER) // Chargement immédiat de l'association
+    // Instead of storing the author's email or name as a string,
+    // we store a reference to the User entity.
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private com.example.EnsimAsso.model.User.User user;
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "post_id", nullable = false)
     @JsonBackReference
     private Post post;
 
     public Comment() {}
 
-    public Comment(String content, String author, Post post) {
+    public Comment(String content, com.example.EnsimAsso.model.User.User user, Post post) {
         this.content = content;
-        this.author = author;
+        this.user = user;
         this.post = post;
     }
 
     // Getters and setters
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getAuthor() { return author; }
-    public void setAuthor(String author) { this.author = author; }
+    public String getContent() {
+        return content;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setContent(String content) {
+        this.content = content;
+    }
 
-    public Post getPost() { return post; }
-    public void setPost(Post post) { this.post = post; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public com.example.EnsimAsso.model.User.User getUser() {
+        return user;
+    }
+
+    public void setUser(com.example.EnsimAsso.model.User.User user) {
+        this.user = user;
+    }
+
+    public Post getPost() {
+        return post;
+    }
+
+    public void setPost(Post post) {
+        this.post = post;
+    }
 }

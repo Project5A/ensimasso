@@ -28,7 +28,7 @@ public class CommentController {
     @Autowired
     private CommentRepository commentRepository;
     
-    // Inject SimpMessagingTemplate to broadcast messages
+    // Inject messaging template if you want to broadcast updates
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
@@ -37,7 +37,7 @@ public class CommentController {
     public Post addComment(@PathVariable Long postId, 
                            @RequestBody Map<String, String> commentData, 
                            Principal principal) {
-        // Find the user based on the JWT (or principal)
+        // Retrieve the user using the email from the Principal
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
@@ -45,18 +45,18 @@ public class CommentController {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        // Create and save the comment
+        // Create and save the comment with the connected user
         Comment comment = new Comment();
         comment.setContent(commentData.get("content"));
-        comment.setAuthor(user.getEmail());
+        comment.setUser(user);
         comment.setPost(post);
         commentRepository.save(comment);
         
-        // Add the comment to the post and update the post
+        // Add the comment to the post and update it
         post.addComment(comment);
         Post updatedPost = postRepository.save(post);
         
-        // Broadcast the updated post on the "/topic/posts" channel
+        // Optionally broadcast the updated post to live subscribers
         messagingTemplate.convertAndSend("/topic/posts", updatedPost);
         
         return updatedPost;

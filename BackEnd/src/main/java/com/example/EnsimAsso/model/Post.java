@@ -2,9 +2,7 @@ package com.example.EnsimAsso.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -21,17 +19,24 @@ public class Post {
 
     private String title;
     private String description;
-    private String author;
+    
+    // Remove these old fields:
+    // private String author;
+    // private String avatar;
+    
+    // Instead, reference the User entity (the post’s author)
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private com.example.EnsimAsso.model.User.User user;
 
-    // Optional fields for display
-    private String avatar;   // URL or file path to the avatar image
-    private String image;    // URL or file path to the post's image
+    // Optional post image (or video)
+    private String image;
 
     @Column(name = "created_at")
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    // Instead of separate fields for like/dislike, we use a map for reaction counts.
+    // Instead of separate like/dislike fields, we use a map for reaction counts.
     @ElementCollection
     @CollectionTable(name="post_reactions", joinColumns=@JoinColumn(name="post_id"))
     @MapKeyColumn(name="reaction_type")
@@ -44,10 +49,10 @@ public class Post {
 
     public Post() {}
 
-    public Post(String title, String description, String author) {
+    public Post(String title, String description, com.example.EnsimAsso.model.User.User user) {
         this.title = title;
         this.description = description;
-        this.author = author;
+        this.user = user;
     }
 
     // Getters and setters
@@ -64,11 +69,8 @@ public class Post {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public String getAuthor() { return author; }
-    public void setAuthor(String author) { this.author = author; }
-
-    public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
+    public com.example.EnsimAsso.model.User.User getUser() { return user; }
+    public void setUser(com.example.EnsimAsso.model.User.User user) { this.user = user; }
 
     public String getImage() { return image; }
     public void setImage(String image) { this.image = image; }

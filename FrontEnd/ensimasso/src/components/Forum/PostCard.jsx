@@ -33,11 +33,7 @@ const PostCard = ({ post, onReact, onAddComment }) => {
     <div className="post-card">
       {/* En-tête du post */}
       <div className="post-header">
-        <img
-          src={post.user?.photo || 'assets/profile-circle.svg'}
-          alt="Avatar"
-          className="avatar"
-        />
+      <img src={post.user?.photo || 'assets/profile-circle.svg'} alt="Avatar" className="avatar" />
         <div className="post-header-info">
           <h3 className="author">{post.user?.name || 'Anonymous'}</h3>
           <span className="post-date">
@@ -120,7 +116,7 @@ const PostCard = ({ post, onReact, onAddComment }) => {
                       {new Date(c.createdAt).toLocaleTimeString('fr-FR')}
                     </span>
                   </div>
-                </li>
+                </li>              
               ))}
             </ul>
           ) : (
