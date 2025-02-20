@@ -13,6 +13,8 @@ Modal.setAppElement('#root');
 const Forum = () => {
   const { user } = useUser();
   const [posts, setPosts] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [topUsers, setTopUsers] = useState([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [newPost, setNewPost] = useState({
     title: '',
@@ -20,20 +22,77 @@ const Forum = () => {
     image: null,
   });
 
-  // Fetch posts when the component mounts.
+  // Fonction pour extraire les mots les plus fréquents
+  const extractTags = (posts) => {
+    const stopWords = new Set(['le', 'la', 'les', 'un', 'une', 'et', 'de', 'des', 'du', 'à', 'pour', 'en', 'avec', 'est', 'au', 'sur', 'dans']);
+    const wordCount = {};
+
+    posts.forEach((post) => {
+      const text = `${post.title} ${post.description} ${post.comments}`.toLowerCase();
+      const words = text.match(/\b[a-zA-ZÀ-ÿ0-9']+\b/g);
+      
+      if (words) {
+        words.forEach((word) => {
+          if (!stopWords.has(word) && word.length > 2) {
+            wordCount[word] = (wordCount[word] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    const sortedTags = Object.entries(wordCount)
+      .sort((a, b) => b[1] - a[1]) // Trier par fréquence
+      .slice(0, 5) // Prendre les 5 mots les plus fréquents
+      .map(([word]) => `#${word}`);
+
+    setTags(sortedTags);
+  };
+
+  const extractTopUsers = (posts) => {
+    const userActivity = {};
+  
+    posts.forEach((post) => {
+      // Vérifie si l'utilisateur existe et a un nom
+      const author = post.user?.name || 'Anonyme';
+      userActivity[author] = (userActivity[author] || 0) + 1;
+  
+      // Compter les commentaires par utilisateur
+      if (post.comments) {
+        post.comments.forEach((comment) => {
+          const commentAuthor = comment.user?.name || 'Anonyme';
+          userActivity[commentAuthor] = (userActivity[commentAuthor] || 0) + 1;
+        });
+      }
+    });
+  
+    // Trier les utilisateurs par activité (nombre de posts + commentaires)
+    const sortedUsers = Object.entries(userActivity)
+      .sort((a, b) => b[1] - a[1]) // Trier par activité décroissante
+      .slice(0, 5) // Prendre les 5 plus actifs
+      .map(([username, count]) => ({ username, count }));
+  
+    setTopUsers(sortedUsers);
+  };
+  
+  
+
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const response = await axios.get('/api/posts');
-        setPosts(Array.isArray(response.data) ? response.data : [response.data]);
+        const fetchedPosts = Array.isArray(response.data) ? response.data.reverse() : [response.data];
+        setPosts(fetchedPosts);
+        extractTags(fetchedPosts);  // Met à jour les tags
+        extractTopUsers(fetchedPosts); // Met à jour les utilisateurs actifs
       } catch (error) {
         console.error('Error fetching posts:', error);
       }
     };
     fetchPosts();
   }, []);
-
-  // Setup WebSocket connection for live updates.
+  
+  
+  // WebSocket pour mises à jour en temps réel
   useEffect(() => {
     const socket = new SockJS('http://localhost:8080/ws');
     const stompClient = new Client({
@@ -44,19 +103,20 @@ const Forum = () => {
           const updatedPost = JSON.parse(message.body);
           setPosts((prevPosts) => {
             const index = prevPosts.findIndex((p) => p.id === updatedPost.id);
+            let newPosts;
             if (index !== -1) {
-              const newPosts = [...prevPosts];
+              newPosts = [...prevPosts];
               newPosts[index] = updatedPost;
-              return newPosts;
             } else {
-              return [...prevPosts, updatedPost];
+              newPosts = [updatedPost, ...prevPosts];
             }
+            extractTags(newPosts); // Mettre à jour les tags dynamiquement
+            return newPosts;
           });
         });
       },
     });
     stompClient.activate();
-
     return () => stompClient.deactivate();
   }, []);
 
@@ -96,7 +156,7 @@ const Forum = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
       });
-      setPosts((prevPosts) => [...prevPosts, response.data]);
+      setPosts((prevPosts) => [response.data, ...prevPosts]); // Ajoute en haut
       setModalIsOpen(false);
       setNewPost({ title: '', description: '', image: null });
     } catch (error) {
@@ -114,7 +174,6 @@ const Forum = () => {
       
       const response = await axios.post(`/api/posts/${postId}/response`, payload);
       
-      // Update the post with the new comment data.
       setPosts(prevPosts => prevPosts.map(post => 
         post.id === postId ? { ...response.data, comments: response.data.comments } : post
       ));
@@ -142,17 +201,9 @@ const Forum = () => {
       {/* Left Sidebar */}
       <div className="left-sidebar mt-32">
         <div className="sidebar-section">
-          <h3>Latest Posts</h3>
-          <p>Check out recent updates.</p>
-        </div>
-        <div className="tags-section">
-          <h3>Popular Tags</h3>
+          <h3>Top Tags</h3>
           <ul>
-            <li>#javascript</li>
-            <li>#react</li>
-            <li>#design</li>
-            <li>#innovation</li>
-            <li>#tutorial</li>
+            {tags.length > 0 ? tags.map((tag, index) => <li key={index}>{tag}</li>) : <li>Aucun tag</li>}
           </ul>
         </div>
       </div>
@@ -211,12 +262,18 @@ const Forum = () => {
       {/* Right Sidebar */}
       <div className="right-sidebar mt-32">
         <div className="meetups-section">
-          <h3>Meetups</h3>
-          <p>Upcoming events.</p>
-        </div>
-        <div className="podcasts-section">
-          <h3>Podcasts</h3>
-          <p>Check out our shows.</p>
+          <h3>Top Users</h3>
+          <ul>
+            {topUsers.length > 0 ? (
+              topUsers.map((user, index) => (
+                <li key={index}>
+                  {user.username} {user.count} 
+                </li>
+              ))
+            ) : (
+              <li>Aucun utilisateur actif</li>
+            )}
+          </ul>
         </div>
       </div>
     </div>
