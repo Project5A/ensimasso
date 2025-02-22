@@ -13,6 +13,11 @@ import jakarta.persistence.ManyToMany;
 @Entity
 @DiscriminatorValue("ASSO")
 public class Asso extends User {
+
+    @Override
+    public String getRole() {
+        return "ASSO";
+    }
     private String bgPhoto; // Store file path or URL
     private String description;
 

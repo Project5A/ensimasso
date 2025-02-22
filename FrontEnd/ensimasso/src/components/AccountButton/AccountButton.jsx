@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom'; // For navigation
 import './AccountButton.css';
 import { useUser } from '../../contexts/UserContext';
-import { color } from 'framer-motion';
 
 const AccountButton = ({ onLoginClick }) => {
   const { user, logout } = useUser(); // Access the user and logout function from context
@@ -19,8 +18,7 @@ const AccountButton = ({ onLoginClick }) => {
   return (
     <div className="AccountButton">
       {user ? (
-        <img
-          src="assets/profile-circle.svg"
+        <img src={user?.photo || 'assets/profile-circle.svg'}
           alt="Profile"
           className="ProfilePicture"
           onClick={handleProfileClick} // Navigate to profile page on click

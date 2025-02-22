@@ -9,6 +9,11 @@ import jakarta.persistence.ManyToMany;
 @Entity
 @DiscriminatorValue("GUEST")
 public class Guest extends User {
+
+    @Override
+    public String getRole() {
+        return "GUEST";
+    }
     private String promo;
 
     @ManyToMany(mappedBy = "teamMembers")

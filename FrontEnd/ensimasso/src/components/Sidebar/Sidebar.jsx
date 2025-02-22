@@ -90,7 +90,7 @@ const Sidebar = ({ setActiveComponent }) => {
                             </ul>
                             <div className="py-4 px-4 border-t">
                                 <div className="flex items-center gap-x-4">
-                                    <img src="assets/profile-circle.svg" className="w-12 h-12 rounded-full" />
+                                <img src={user?.photo || 'assets/profile-circle.svg'} alt="Profile-Picture" className="w-12 h-12 rounded-full" />
                                     <div>
                                         <span className="block text-gray-700 text-sm font-semibold">{user.name}</span>
                                         <button onClick={() => setActiveComponent("profile")}

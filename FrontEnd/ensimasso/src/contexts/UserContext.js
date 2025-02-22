@@ -8,17 +8,6 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    const storedToken = localStorage.getItem("token");
-
-    if (storedUser && storedToken) {
-      setUser(storedUser);
-    }
-
-    setLoading(false);
-  }, []);
-
   const login = async (email, password) => {
     try {
       const response = await fetch("/api/auth/login", {
@@ -50,7 +39,36 @@ export const UserProvider = ({ children }) => {
     localStorage.removeItem("token"); // Remove token too
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch("/api/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error("Fetch user error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  if (loading) {
+    return <div style={{ textAlign: "center", padding: "2rem" }}>Chargement...</div>;
+  }
 
   return (
     <UserContext.Provider value={{ user, setUser, login, logout }}>
