@@ -17,14 +17,12 @@ export const UserProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log("Login Response:", data); // Debugging
+      console.log("Login Response:", data);
 
       if (response.ok && data?.user && data?.token) {
-        console.log("Saving to localStorage:", JSON.stringify(data.user), data.token); // Debugging
-        localStorage.setItem("user", JSON.stringify(data.user)); // Store user info
-        localStorage.setItem("token", data.token); // Store token
-
-        setUser(data.user); // Update React state
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+        setUser(data.user);
       } else {
         console.error("Invalid login response:", data);
       }
@@ -36,7 +34,7 @@ export const UserProvider = ({ children }) => {
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem("user");
-    localStorage.removeItem("token"); // Remove token too
+    localStorage.removeItem("token");
   }, []);
 
   useEffect(() => {
@@ -71,7 +69,7 @@ export const UserProvider = ({ children }) => {
   }
 
   return (
-    <UserContext.Provider value={{ user, setUser, login, logout }}>
+    <UserContext.Provider value={{ user, setUser, login, logout, loading }}>
       {children}
     </UserContext.Provider>
   );

@@ -48,7 +48,7 @@ export default Dashboard;
 const styles = {
   pageContainer: {
     display: 'flex',
-    height: '100vh',
+    height: '140vh',
     backgroundColor: '#1a1a1a', // Darker background
     color: '#f0f0f0', // Light text for contrast
     },

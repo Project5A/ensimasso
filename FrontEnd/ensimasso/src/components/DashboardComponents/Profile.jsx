@@ -1,10 +1,12 @@
 import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../../contexts/UserContext';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const { user, setUser } = useUser();
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -25,8 +27,15 @@ const Profile = () => {
     fetchUserData();
   }, [setUser]);
 
-  if (loading) return <div style={styles.loading}>Chargement...</div>;
-  if (!user) return <div style={styles.error}>Veuillez vous connecter</div>;
+  useEffect(() => {
+    // Si le chargement est terminé et qu'aucun utilisateur n'est défini, redirige vers /login
+    if (!loading && !user) {
+      navigate('/login');
+    }
+  }, [loading, user, navigate]);
+
+  if (loading || !user) return <div style={styles.loading}>Chargement...</div>;
+
 
   return (
     <div style={styles.container}>
@@ -47,7 +56,7 @@ const Profile = () => {
 const GuestProfile = ({ user, setUser }) => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    name: user.name || '',
+    name: user?.name || '',
     age: user.age || '',
     email: user.email || '',
     promo: user.promo || '',
@@ -83,7 +92,7 @@ const GuestProfile = ({ user, setUser }) => {
       {editMode ? (
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
-            <label>Nom complet</label>
+            <label style={styles.label}>Nom complet</label>
             <input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -93,7 +102,7 @@ const GuestProfile = ({ user, setUser }) => {
 
           <div style={styles.formRow}>
             <div style={styles.formGroup}>
-              <label>Âge</label>
+              <label style={styles.label}>Âge</label>
               <input
                 type="number"
                 value={formData.age}
@@ -103,7 +112,7 @@ const GuestProfile = ({ user, setUser }) => {
             </div>
 
             <div style={styles.formGroup}>
-              <label>Promotion</label>
+              <label style={styles.label}>Promotion</label>
               <input
                 value={formData.promo}
                 onChange={(e) => setFormData({ ...formData, promo: e.target.value })}
@@ -113,7 +122,7 @@ const GuestProfile = ({ user, setUser }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label>Photo de profil (URL)</label>
+            <label style={styles.label}>Photo de profil (URL)</label>
             <input
               value={formData.photo}
               onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
@@ -135,19 +144,19 @@ const GuestProfile = ({ user, setUser }) => {
       ) : (
         <>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Nom:</span>
+            <span style={styles.infoLabel}>Nom :</span>
             <span style={styles.infoValue}>{user.name}</span>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Âge:</span>
+            <span style={styles.infoLabel}>Âge :</span>
             <span style={styles.infoValue}>{user.age}</span>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Email:</span>
+            <span style={styles.infoLabel}>Email :</span>
             <span style={styles.infoValue}>{user.email}</span>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Promotion:</span>
+            <span style={styles.infoLabel}>Promotion :</span>
             <span style={styles.infoValue}>{user.promo}</span>
           </div>
           
@@ -221,7 +230,7 @@ const AssoProfile = ({ user, setUser }) => {
       {editMode ? (
         <form onSubmit={handleSubmit} style={styles.assoForm}>
           <div style={styles.formGroup}>
-            <label>Nom de l'association</label>
+            <label style={styles.label}>Nom de l'association</label>
             <input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -231,7 +240,7 @@ const AssoProfile = ({ user, setUser }) => {
 
           <div style={styles.formRow}>
             <div style={styles.formGroup}>
-              <label>Logo (URL)</label>
+              <label style={styles.label}>Logo (URL)</label>
               <input
                 value={formData.photo}
                 onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
@@ -240,7 +249,7 @@ const AssoProfile = ({ user, setUser }) => {
             </div>
             
             <div style={styles.formGroup}>
-              <label>Bannière (URL)</label>
+              <label style={styles.label}>Bannière (URL)</label>
               <input
                 value={formData.bgPhoto}
                 onChange={(e) => setFormData({ ...formData, bgPhoto: e.target.value })}
@@ -250,7 +259,7 @@ const AssoProfile = ({ user, setUser }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label>Prix d'adhésion (€)</label>
+            <label style={styles.label}>Prix d'adhésion (€)</label>
             <input
               type="number"
               value={formData.adhesionPrice}
@@ -260,7 +269,7 @@ const AssoProfile = ({ user, setUser }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label>Description</label>
+            <label style={styles.label}>Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -286,17 +295,17 @@ const AssoProfile = ({ user, setUser }) => {
           
           <div style={styles.infoSection}>
             <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Prix d'adhésion:</span>
+              <span style={styles.infoLabel}>Prix d'adhésion :</span>
               <span style={styles.infoValue}>{user.adhesionPrice} €</span>
             </div>
             
             <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>RIB:</span>
+              <span style={styles.infoLabel}>RIB :</span>
               <span style={styles.infoValue}>{user.rib}</span>
             </div>
             
             <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Réseaux sociaux:</span>
+              <span style={styles.infoLabel}>Réseaux sociaux :</span>
               <span style={styles.infoValue}>{user.socialMedia}</span>
             </div>
           </div>
@@ -321,17 +330,23 @@ const AssoProfile = ({ user, setUser }) => {
 // Styles communs
 const styles = {
   container: {
+    marginTop: '6rem',
+    borderRadius: '15px',
+    marginBottom : '2rem',
     maxWidth: '1200px',
     margin: '0 auto',
     padding: '2rem',
-    backgroundColor: '#f8f9fa',
-    minHeight: '100vh'
+    background: 'linear-gradient(to bottom, #f8f9fa, #e9ecef)',
+    minHeight: '100vh',
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
   },
   header: {
-    fontSize: '2.2rem',
+    fontSize: '2.4rem',
     color: '#2c3e50',
     marginBottom: '2rem',
-    textAlign: 'center'
+    textAlign: 'center',
+    borderBottom: '2px solid #3498db',
+    paddingBottom: '0.5rem'
   },
   loading: {
     textAlign: 'center',
@@ -347,12 +362,13 @@ const styles = {
   },
   // Styles pour Étudiant
   profileCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: '15px',
     padding: '2rem',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     maxWidth: '700px',
-    margin: '0 auto'
+    marginBottom: '2rem',
+    margin: '1rem auto'
   },
   avatarSection: {
     textAlign: 'center',
@@ -365,18 +381,109 @@ const styles = {
     objectFit: 'cover',
     border: '3px solid #3498db'
   },
+  form: {
+    marginTop: '1rem'
+  },
   formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    display: 'flex',
     gap: '1.5rem',
     marginBottom: '1.5rem'
   },
+  formGroup: {
+    marginBottom: '1.5rem',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  label: {
+    marginBottom: '0.5rem',
+    color: '#34495e',
+    fontWeight: '600'
+  },
+  input: {
+    padding: '0.8rem',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    outline: 'none',
+    transition: 'border 0.2s'
+  },
+  textarea: {
+    padding: '0.8rem',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    outline: 'none',
+    transition: 'border 0.2s',
+    resize: 'vertical'
+  },
+  buttonContainer: {
+    display: 'flex',
+    gap: '1rem',
+    marginTop: '2rem'
+  },
+  primaryButton: {
+    backgroundColor: '#3498db',
+    color: 'white',
+    padding: '0.8rem 1.5rem',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
+  secondaryButton: {
+    backgroundColor: '#95a5a6',
+    color: 'white',
+    padding: '0.8rem 1.5rem',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
+  infoItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1rem 0',
+    borderBottom: '1px solid #eee'
+  },
+  infoLabel: {
+    fontWeight: '600',
+    color: '#2c3e50',
+    minWidth: '120px'
+  },
+  infoValue: {
+    color: '#7f8c8d',
+    textAlign: 'right'
+  },
+  socialLinks: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '1rem',
+    margin: '1rem 0'
+  },
+  socialIcon: {
+    width: '30px',
+    height: '30px'
+  },
+  editButton: {
+    width: '100%',
+    marginTop: '1.5rem',
+    backgroundColor: '#27ae60',
+    color: 'white',
+    padding: '1rem',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
   // Styles pour Association
   assoContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     borderRadius: '15px',
     overflow: 'hidden',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    margin: '1rem auto'
   },
   assoHeader: {
     height: '250px',
@@ -392,92 +499,34 @@ const styles = {
     bottom: '-60px',
     left: '2rem',
     border: '3px solid white',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
   },
   assoContent: {
     padding: '2rem',
     marginTop: '80px'
   },
-  // Styles communs
-  formGroup: {
+  assoName: {
+    fontSize: '2rem',
+    color: '#2c3e50',
+    marginBottom: '1rem'
+  },
+  infoSection: {
+    margin: '1.5rem 0'
+  },
+  descriptionBox: {
+    backgroundColor: '#ecf0f1',
+    padding: '1.5rem',
+    borderRadius: '10px',
     marginBottom: '1.5rem'
   },
-  input: {
-    width: '100%',
-    padding: '0.8rem',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    fontSize: '1rem'
+  sectionTitle: {
+    fontSize: '1.5rem',
+    marginBottom: '0.5rem',
+    color: '#2c3e50'
   },
-  textarea: {
-    width: '100%',
-    padding: '0.8rem',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    minHeight: '100px'
-  },
-  buttonContainer: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '2rem'
-  },
-  primaryButton: {
-    backgroundColor: '#3498db',
-    color: 'white',
-    padding: '0.8rem 1.5rem',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    transition: 'background-color 0.2s',
-    '&:hover': {
-      backgroundColor: '#2980b9'
-    }
-  },
-  secondaryButton: {
-    backgroundColor: '#95a5a6',
-    color: 'white',
-    padding: '0.8rem 1.5rem',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    transition: 'background-color 0.2s',
-    '&:hover': {
-      backgroundColor: '#7f8c8d'
-    }
-  },
-  infoItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 0',
-    borderBottom: '1px solid #eee'
-  },
-  infoLabel: {
-    fontWeight: '600',
-    color: '#0000',
-    minWidth: '120px'
-  },
-  infoValue: {
+  descriptionText: {
     color: '#7f8c8d',
-    textAlign: 'right'
-  },
-  editButton: {
-    width: '100%',
-    marginTop: '1.5rem',
-    backgroundColor: '#27ae60',
-    color: 'white',
-    padding: '1rem',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    transition: 'background-color 0.2s',
-    '&:hover': {
-      backgroundColor: '#219a52'
-    }
+    lineHeight: '1.6'
   }
 };
 
