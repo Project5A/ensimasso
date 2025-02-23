@@ -1,75 +1,292 @@
-import { useUser } from '../../contexts/UserContext'; // Import the UserContext
+import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { useUser } from '../../contexts/UserContext';
 
+const EventsDashboard = () => {
+  const { user } = useUser();
+  const [events, setEvents] = useState([]);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(true);
 
-const Events =  () => {
-    const { user } = useUser(); // Access the current user and setUser from context
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get('/api/events');
+        // Filtrer les événements proposés par l'association connectée
+        const userEvents = response.data.filter(
+          (event) => event.organizerName === user.name
+        );
+        setEvents(userEvents);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des événements :", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchEvents();
+  }, [user]);
+  
 
-    return (
-        <div style={styles.content}>
-            <h1 style={styles.title}>Welcome events, {user.name}!</h1>
-            <div style={styles.infoBox}>
-            <p style={styles.text}>
-                <strong>Name:</strong> {user.name}
-            </p>
-            <p style={styles.text}>
-                <strong>Email:</strong> {user.email}
-            </p>
-            {/* Add more user details here if available */}
+  const handleEdit = (event) => {
+    setEditingEventId(event.id);
+    setFormData({
+      title: event.title,
+      date: event.date,
+      location: event.location,
+      description: event.description,
+      adhPrice: event.adhPrice,
+      nonAdhPrice: event.nonAdhPrice,
+      eventImage: event.eventImage || ''
+    });
+  };
+
+  const handleCancel = () => {
+    setEditingEventId(null);
+    setFormData({});
+  };
+
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async (eventId) => {
+    try {
+      const response = await axios.put(`/api/events/${eventId}`, formData);
+      setEvents(prevEvents =>
+        prevEvents.map((event) => (event.id === eventId ? response.data : event))
+      );
+      setEditingEventId(null);
+      setFormData({});
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de l'événement :", error);
+    }
+  };
+
+  const handleDelete = async (eventId) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer cet événement ?")) return;
+    try {
+      await axios.delete(`/api/events/${eventId}`);
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+    } catch (error) {
+      console.error("Erreur lors de la suppression de l'événement :", error);
+    }
+  };
+
+  if (loading) return <div style={styles.loading}>Chargement des événements...</div>;
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.content}>
+        <h1 style={styles.title}>Mes Événements</h1>
+        {events.length === 0 ? (
+          <p style={styles.text}>Aucun événement à afficher.</p>
+        ) : (
+          events.map(event => (
+            <div key={event.id} style={styles.eventCard}>
+              {editingEventId === event.id ? (
+                <div>
+                  <input
+                    type="text"
+                    name="title"
+                    placeholder="Titre"
+                    value={formData.title}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <input
+                    type="date"
+                    name="date"
+                    placeholder="Date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <input
+                    type="text"
+                    name="location"
+                    placeholder="Lieu"
+                    value={formData.location}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <textarea
+                    name="description"
+                    placeholder="Description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    style={styles.textarea}
+                  />
+                  <input
+                    type="number"
+                    name="adhPrice"
+                    placeholder="Prix adhésion"
+                    value={formData.adhPrice}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <input
+                    type="number"
+                    name="nonAdhPrice"
+                    placeholder="Prix non adhésion"
+                    value={formData.nonAdhPrice}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <input
+                    type="text"
+                    name="eventImage"
+                    placeholder="URL de l'image"
+                    value={formData.eventImage}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                  <div style={styles.buttonContainer}>
+                    <button onClick={() => handleSave(event.id)} style={styles.primaryButton}>
+                      Sauvegarder
+                    </button>
+                    <button onClick={handleCancel} style={styles.secondaryButton}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h2 style={styles.eventTitle}>{event.title}</h2>
+                  <p style={styles.eventDate}>Date : {event.date}</p>
+                  <p style={styles.eventLocation}>Lieu : {event.location}</p>
+                  <p style={styles.eventDescription}>{event.description}</p>
+                  <p style={styles.eventPrice}>
+                    Adhésion : {event.adhPrice}€ - Non adhésion : {event.nonAdhPrice}€
+                  </p>
+                  {event.eventImage && (
+                    <img src={event.eventImage} alt="Événement" style={styles.eventImage} />
+                  )}
+                  <div style={styles.buttonContainer}>
+                    <button onClick={() => handleEdit(event)} style={styles.primaryButton}>
+                      Modifier
+                    </button>
+                    <button onClick={() => handleDelete(event.id)} style={styles.secondaryButton}>
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-        </div>
-    );
-}
-
-// Inline styles
-const styles = {
-    pageContainer: {
-    display: 'flex',
-    height: '100vh',
-    backgroundColor: '#1a1a1a', // Darker background
-    color: '#f0f0f0', // Light text for contrast
-    },
-    sidebar: {
-    flex: '0 0 250px', // Fixed width for the sidebar
-    backgroundColor: '#2a2a2a', // Slightly lighter than the page background
-    height: '100%', // Full height of the page
-    },
-    content: {
-    flex: 1, // Remaining space for the main content
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '2rem',
-    },
-    title: {
-    fontSize: '3rem', // Larger title
-    marginBottom: '2rem',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    },
-    infoBox: {
-    border: '1px solid #444', // Subtle border
-    borderRadius: '12px',
-    padding: '2rem',
-    backgroundColor: '#2a2a2a', // Slightly lighter than the background
-    boxShadow: '0 6px 12px rgba(0, 0, 0, 0.3)',
-    marginBottom: '2rem',
-    width: '800px',
-    },
-    text: {
-    fontSize: '1.5rem', // Larger text for details
-    margin: '0.5rem 0', // Add spacing between lines
-    },
-    button: {
-    padding: '1rem 2rem', // Larger button
-    fontSize: '1.2rem', // Bigger text on the button
-    color: '#fff',
-    backgroundColor: '#ff5722', // Brighter button color
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-    },
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
-export default Events;
+const styles = {
+  container: {
+    padding: '2rem',
+    backgroundColor: '#f0f2f5',
+    minHeight: '100vh',
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+  },
+  content: {
+    flex: 1 // Permet au contenu de s'étendre et pousse le footer vers le bas
+  },
+
+  title: {
+    fontSize: '2.5rem',
+    textAlign: 'center',
+    marginBottom: '2rem',
+    color: '#333'
+  },
+  loading: {
+    textAlign: 'center',
+    padding: '2rem',
+    fontSize: '1.2rem',
+    color: '#666'
+  },
+  text: {
+    textAlign: 'center',
+    fontSize: '1.2rem',
+    color: '#666'
+  },
+  eventCard: {
+    backgroundColor: '#fff',
+    borderRadius: '10px',
+    padding: '1.5rem',
+    marginBottom: '1rem',
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)'
+  },
+  eventTitle: {
+    fontSize: '1.8rem',
+    marginBottom: '0.5rem',
+    color: '#333'
+  },
+  eventDate: {
+    fontSize: '1rem',
+    color: '#888',
+    marginBottom: '0.5rem'
+  },
+  eventLocation: {
+    fontSize: '1.2rem',
+    color: '#555',
+    marginBottom: '0.5rem'
+  },
+  eventDescription: {
+    fontSize: '1.2rem',
+    color: '#555',
+    marginBottom: '0.5rem'
+  },
+  eventPrice: {
+    fontSize: '1rem',
+    color: '#888',
+    marginBottom: '1rem'
+  },
+  eventImage: {
+    width: '100%',
+    borderRadius: '8px',
+    marginBottom: '1rem'
+  },
+  input: {
+    width: '100%',
+    padding: '0.8rem',
+    marginBottom: '1rem',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    fontSize: '1rem'
+  },
+  textarea: {
+    width: '100%',
+    padding: '0.8rem',
+    marginBottom: '1rem',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    minHeight: '100px'
+  },
+  buttonContainer: {
+    display: 'flex',
+    gap: '1rem'
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#3498db',
+    color: '#fff',
+    border: 'none',
+    padding: '0.8rem',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#e74c3c',
+    color: '#fff',
+    border: 'none',
+    padding: '0.8rem',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '1rem'
+  }
+};
+
+export default EventsDashboard;

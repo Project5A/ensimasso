@@ -17,7 +17,7 @@ const Dashboard = () => {
     console.log("going home !!");
     setTimeout(() => {
       navigate('/'); // Redirect to home or login
-    }, 1000);
+    }, 3000);
   }
 
   const renderComponent = () => {
@@ -36,9 +36,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <Sidebar style={styles.sidebar} setActiveComponent={setActiveComponent} /> {/* Pass the setActiveComponent to Sidebar */}
-      {renderComponent()} {/* Render the active component */} 
+    <div className="main-content"> {/* Ajout de la classe main-content */}
+      <div style={styles.pageContainer}>
+        <Sidebar style={styles.sidebar} setActiveComponent={setActiveComponent} /> {/* Pass the setActiveComponent to Sidebar */}
+        {renderComponent()} {/* Render the active component */} 
+      </div>
     </div>
   );
 };
@@ -48,7 +50,7 @@ export default Dashboard;
 const styles = {
   pageContainer: {
     display: 'flex',
-    height: '140vh',
+    height: '100vh',
     backgroundColor: '#1a1a1a', // Darker background
     color: '#f0f0f0', // Light text for contrast
     },

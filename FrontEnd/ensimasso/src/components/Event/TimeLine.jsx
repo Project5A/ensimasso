@@ -39,7 +39,7 @@ function TimeLine() {
 
                     <div className="timeline-marker">
                         <img 
-                            src={event.eventImage} 
+                            src={event.organizerPhoto} 
                             className="event-logo" 
                             alt={event.organizerName}
                         />
