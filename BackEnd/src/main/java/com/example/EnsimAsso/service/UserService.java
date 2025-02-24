@@ -96,4 +96,9 @@ public class UserService {
         }
         return user.get();
     }
+
+    public void saveUser(User user) {
+        userRepository.save(user);
+    }
+    
 }

@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
 
 const Profile = () => {
   const { user, setUser } = useUser();
@@ -28,7 +29,6 @@ const Profile = () => {
   }, [setUser]);
 
   useEffect(() => {
-    // Si le chargement est terminé et qu'aucun utilisateur n'est défini, redirige vers /login
     if (!loading && !user) {
       navigate('/login');
     }
@@ -36,13 +36,11 @@ const Profile = () => {
 
   if (loading || !user) return <div style={styles.loading}>Chargement...</div>;
 
-
   return (
     <div style={styles.container}>
       <h1 style={styles.header}>
         {user.role === 'ASSO' ? 'Profil Association' : 'Profil Étudiant'}
       </h1>
-
       {user.role === 'ASSO' ? (
         <AssoProfile user={user} setUser={setUser} />
       ) : (
@@ -52,17 +50,54 @@ const Profile = () => {
   );
 };
 
-// Profil Étudiant
+// Composant pour gérer le téléversement par drag & drop
+const PhotoUpload = ({ userId, onUploadSuccess }) => {
+  const [uploading, setUploading] = useState(false);
+
+  const onDrop = async (acceptedFiles) => {
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      const file = acceptedFiles[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      setUploading(true);
+      try {
+        const response = await axios.post(`/api/users/${userId}/photo`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        onUploadSuccess(response.data);
+      } catch (err) {
+        console.error('Erreur de téléversement :', err);
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  return (
+    <div {...getRootProps()} style={dropzoneStyles.container}>
+      <input {...getInputProps()} />
+      {isDragActive ? (
+        <p>Déposez la photo ici ...</p>
+      ) : (
+        <p>Glissez-déposez votre photo ici, ou cliquez pour sélectionner un fichier</p>
+      )}
+      {uploading && <p>Téléversement en cours...</p>}
+    </div>
+  );
+};
+
 const GuestProfile = ({ user, setUser }) => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    age: user.age || '',
-    email: user.email || '',
-    promo: user.promo || '',
-    photo: user.photo || '',
-    instagram: user.instagram || '',
-    linkedin: user.linkedin || ''
+    age: user?.age || '',
+    email: user?.email || '',
+    promo: user?.promo || '',
+    photo: user?.photo || '',
+    instagram: user?.instagram || '',
+    linkedin: user?.linkedin || ''
   });
 
   const handleSubmit = async (e) => {
@@ -79,6 +114,33 @@ const GuestProfile = ({ user, setUser }) => {
     }
   };
 
+  const handlePhotoUpload = (updatedUser) => {
+    console.log("Photo mise à jour:", updatedUser.photo); // Debug
+    setUser(updatedUser);
+    setFormData(prev => ({ ...prev, photo: updatedUser.photo })); // Met à jour la photo dans le formulaire
+  };
+  
+
+  const handleFileUpload = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const response = await axios.post(`/api/users/${user.id}/photo`, formData, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+                "Content-Type": "multipart/form-data",
+            },
+        });
+
+        // Mise à jour du state avec la nouvelle URL de l'image
+        setUser(response.data);
+    } catch (error) {
+        console.error("Erreur lors de l'upload de l'image", error);
+    }
+  };
+
+
   return (
     <div style={styles.profileCard}>
       <div style={styles.avatarSection}>
@@ -91,6 +153,7 @@ const GuestProfile = ({ user, setUser }) => {
 
       {editMode ? (
         <form onSubmit={handleSubmit} style={styles.form}>
+          <PhotoUpload userId={user.id} onUploadSuccess={handlePhotoUpload} />
           <div style={styles.formGroup}>
             <label style={styles.label}>Nom complet</label>
             <input
@@ -110,7 +173,6 @@ const GuestProfile = ({ user, setUser }) => {
                 style={styles.input}
               />
             </div>
-
             <div style={styles.formGroup}>
               <label style={styles.label}>Promotion</label>
               <input
@@ -119,15 +181,6 @@ const GuestProfile = ({ user, setUser }) => {
                 style={styles.input}
               />
             </div>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Photo de profil (URL)</label>
-            <input
-              value={formData.photo}
-              onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
-              style={styles.input}
-            />
           </div>
 
           <div style={styles.buttonContainer}>
@@ -185,17 +238,16 @@ const GuestProfile = ({ user, setUser }) => {
   );
 };
 
-// Profil Association
 const AssoProfile = ({ user, setUser }) => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    name: user.name || '',
-    photo: user.photo || '',
-    bgPhoto: user.bgPhoto || '',
-    adhesionPrice: user.adhesionPrice || 0,
-    description: user.description || '',
-    socialMedia: user.socialMedia || '',
-    rib: user.rib || ''
+    name: user?.name || '',
+    photo: user?.photo || '',
+    bgPhoto: user?.bgPhoto || '',
+    adhesionPrice: user?.adhesionPrice || 0,
+    description: user?.description || '',
+    socialMedia: user?.socialMedia || '',
+    rib: user?.rib || ''
   });
 
   const handleSubmit = async (e) => {
@@ -247,7 +299,6 @@ const AssoProfile = ({ user, setUser }) => {
                 style={styles.input}
               />
             </div>
-            
             <div style={styles.formGroup}>
               <label style={styles.label}>Bannière (URL)</label>
               <input
@@ -298,12 +349,10 @@ const AssoProfile = ({ user, setUser }) => {
               <span style={styles.infoLabel}>Prix d'adhésion :</span>
               <span style={styles.infoValue}>{user.adhesionPrice} €</span>
             </div>
-            
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>RIB :</span>
               <span style={styles.infoValue}>{user.rib}</span>
             </div>
-            
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Réseaux sociaux :</span>
               <span style={styles.infoValue}>{user.socialMedia}</span>
@@ -367,7 +416,6 @@ const styles = {
     padding: '2rem',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     maxWidth: '700px',
-    marginBottom: '2rem',
     margin: '1rem auto'
   },
   avatarSection: {
@@ -527,6 +575,18 @@ const styles = {
   descriptionText: {
     color: '#7f8c8d',
     lineHeight: '1.6'
+  }
+};
+
+// Styles spécifiques pour le dropzone
+const dropzoneStyles = {
+  container: {
+    border: '2px dashed #ccc',
+    padding: '20px',
+    textAlign: 'center',
+    borderRadius: '8px',
+    marginTop: '1rem',
+    cursor: 'pointer'
   }
 };
 
