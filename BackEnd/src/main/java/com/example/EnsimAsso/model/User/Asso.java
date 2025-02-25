@@ -1,14 +1,15 @@
 package com.example.EnsimAsso.model.User;
 
 import java.util.List;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
 @DiscriminatorValue("ASSO")
@@ -18,30 +19,36 @@ public class Asso extends User {
     public String getRole() {
         return "ASSO";
     }
-    private String bgPhoto; // Store file path or URL
+    
+    private String bgPhoto;
     private String description;
 
     @ElementCollection
-    private List<String> gallery; // List of image URLs or file paths
+    private List<String> gallery;
 
-    private String rib; // Bank details
+    private String rib;
 
-    @ManyToMany
+    // Côté propriétaire de la relation
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "asso_guest",
         joinColumns = @JoinColumn(name = "asso_id"),
         inverseJoinColumns = @JoinColumn(name = "guest_id")
     )
+    @JsonManagedReference // Permet la sérialisation du côté asso
     private List<Guest> teamMembers;
 
     @Column(columnDefinition = "TEXT")
-    private String socialMedia; // JSON string storing social media links
+    private String socialMedia; // Exemple de JSON: {"instagram": "...", "facebook": "...", "linkedin": "..."}
 
     private double adhesionPrice;
 
-    public Asso() {}
+    public Asso() {
+        super();
+    }
 
     public Asso(String bgPhoto, String description, List<String> gallery, String rib, List<Guest> teamMembers, String socialMedia, double adhesionPrice) {
+        super();
         this.bgPhoto = bgPhoto;
         this.description = description;
         this.gallery = gallery;
@@ -51,10 +58,11 @@ public class Asso extends User {
         this.adhesionPrice = adhesionPrice;
     }
 
+    // Getters et setters
+
     public String getBgPhoto() {
         return bgPhoto;
     }
-
     public void setBgPhoto(String bgPhoto) {
         this.bgPhoto = bgPhoto;
     }
@@ -62,7 +70,6 @@ public class Asso extends User {
     public String getDescription() {
         return description;
     }
-
     public void setDescription(String description) {
         this.description = description;
     }
@@ -70,7 +77,6 @@ public class Asso extends User {
     public List<String> getGallery() {
         return gallery;
     }
-
     public void setGallery(List<String> gallery) {
         this.gallery = gallery;
     }
@@ -78,7 +84,6 @@ public class Asso extends User {
     public String getRib() {
         return rib;
     }
-
     public void setRib(String rib) {
         this.rib = rib;
     }
@@ -86,7 +91,6 @@ public class Asso extends User {
     public List<Guest> getTeamMembers() {
         return teamMembers;
     }
-
     public void setTeamMembers(List<Guest> teamMembers) {
         this.teamMembers = teamMembers;
     }
@@ -94,7 +98,6 @@ public class Asso extends User {
     public String getSocialMedia() {
         return socialMedia;
     }
-
     public void setSocialMedia(String socialMedia) {
         this.socialMedia = socialMedia;
     }
@@ -102,7 +105,6 @@ public class Asso extends User {
     public double getAdhesionPrice() {
         return adhesionPrice;
     }
-
     public void setAdhesionPrice(double adhesionPrice) {
         this.adhesionPrice = adhesionPrice;
     }

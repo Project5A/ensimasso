@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.UUID;
 
 @Service
@@ -61,6 +62,30 @@ public class BlobStorageService {
             return null;
         }
     }
-    
+
+    // BlobStorageService.java (ajout d'une méthode deleteFile)
+    public boolean deleteFile(String fileUrlWithSas) {
+        try {
+            // Extraire le nom du blob à partir de l'URL
+            // Par exemple, si l'URL est de la forme "https://<account>.blob.core.windows.net/<container>/<blob>?<sas-token>"
+            // On peut extraire le nom du blob en supprimant la partie avant le nom du container.
+            URI uri = new URI(fileUrlWithSas);
+            String path = uri.getPath(); // /container/blobName
+            String[] segments = path.split("/");
+            if (segments.length < 3) {
+                return false;
+            }
+            // Le blob name se trouve après le container name
+            String blobName = path.substring(path.indexOf(segments[2]));
+            BlobClient blobClient = blobContainerClient.getBlobClient(blobName);
+            blobClient.delete();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+        
     
 }

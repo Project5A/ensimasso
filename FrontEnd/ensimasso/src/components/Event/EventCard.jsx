@@ -2,12 +2,19 @@ import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { faFacebook, faTwitter, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import { useUser } from "../../contexts/UserContext";
+import Modal from "react-modal";
+import PaymentForm from "../Payment/PaymentForm"; 
 import "./EventCard.css";
 
-const EventCard = ({ event }) => {
-  const [showShareOptions, setShowShareOptions] = useState(false);
+Modal.setAppElement('#root');
 
-  // Function to share event on selected social media
+const EventCard = ({ event }) => {
+  const { user } = useUser();
+  const [showShareOptions, setShowShareOptions] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentPrice, setPaymentPrice] = useState(0);
+
   const shareEvent = (platform) => {
     const eventTitle = encodeURIComponent(event.title);
     const eventDescription = encodeURIComponent(event.description);
@@ -19,22 +26,45 @@ const EventCard = ({ event }) => {
       whatsapp: `https://wa.me/?text=${eventTitle} - ${eventDescription} ${eventUrl}`,
     };
 
-    window.open(socialMediaUrls[platform], '_blank');
+    window.open(socialMediaUrls[platform], "_blank");
     setShowShareOptions(false);
+  };
+
+  const handleGoingClick = () => {
+    let priceToUse = event.nonAdhPrice;
+    if (
+      user &&
+      user.role === "GUEST" &&
+      event.organizer &&
+      event.organizer.teamMembers
+    ) {
+      const isMember = event.organizer.teamMembers.some(
+        (member) => member.id === user.id
+      );
+      if (isMember) {
+        priceToUse = event.adhPrice;
+      }
+    }
+    setPaymentPrice(priceToUse);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = (paymentIntent) => {
+    console.log("Paiement réussi pour l'événement", event.id, paymentIntent);
+    // Ici, vous pouvez enregistrer l'état "going" dans votre base ou notifier l'utilisateur
   };
 
   return (
     <div className="event-card" role="article" aria-label={`Event card for ${event.title}`}>
-      {/* Use event.eventImage instead of event.image */}
-      <img
-        src={event.eventImage}
-        alt={`${event.title}`}
-        className="event-card-image"
-      />
+      <img src={event.eventImage} alt={event.title} className="event-card-image" />
       <div className="event-card-content">
         <h2 className="event-card-title">{event.title}</h2>
         <div className="event-card-buttons">
-          <button className="event-card-button primary-button" aria-label="Mark as going">
+          <button
+            className="event-card-button primary-button"
+            aria-label="Mark as going"
+            onClick={handleGoingClick}
+          >
             <FontAwesomeIcon icon={faCheckCircle} className="icon" style={{ color: 'black' }} />
             Going
           </button>
@@ -50,17 +80,15 @@ const EventCard = ({ event }) => {
               </div>
               <span>Send</span>
             </button>
-
-            {/* Conditional rendering for share options */}
             {showShareOptions && (
               <div className="social-share-options">
-                <div className="social-bubble facebook" onClick={() => shareEvent('facebook')} aria-label="Share on Facebook">
+                <div className="social-bubble facebook" onClick={() => shareEvent("facebook")} aria-label="Share on Facebook">
                   <FontAwesomeIcon icon={faFacebook} size="2x" />
                 </div>
-                <div className="social-bubble twitter" onClick={() => shareEvent('twitter')} aria-label="Share on Twitter">
+                <div className="social-bubble twitter" onClick={() => shareEvent("twitter")} aria-label="Share on Twitter">
                   <FontAwesomeIcon icon={faTwitter} size="2x" />
                 </div>
-                <div className="social-bubble whatsapp" onClick={() => shareEvent('whatsapp')} aria-label="Share on WhatsApp">
+                <div className="social-bubble whatsapp" onClick={() => shareEvent("whatsapp")} aria-label="Share on WhatsApp">
                   <FontAwesomeIcon icon={faWhatsapp} size="2x" />
                 </div>
               </div>
@@ -72,6 +100,18 @@ const EventCard = ({ event }) => {
           </button>
         </div>
       </div>
+      <Modal
+        isOpen={showPaymentModal}
+        onRequestClose={() => setShowPaymentModal(false)}
+        className="payment-modal"
+        overlayClassName="payment-overlay"
+      >
+        <PaymentForm
+          amount={paymentPrice * 100} // montant en centimes
+          onPaymentSuccess={handlePaymentSuccess}
+          onCancel={() => setShowPaymentModal(false)}
+        />
+      </Modal>
     </div>
   );
 };

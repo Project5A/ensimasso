@@ -1,5 +1,7 @@
 package com.example.EnsimAsso.service;
 
+import com.example.EnsimAsso.model.User.Asso;
+import com.example.EnsimAsso.model.User.Guest;
 import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,41 +45,40 @@ public class UserService {
         }
         User user = optionalUser.get();
         
-        // Update common fields
+        // Mise à jour des champs communs
         user.setName(updatedUser.getName());
         user.setEmail(updatedUser.getEmail());
         if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         }
         user.setPhoto(updatedUser.getPhoto());
+        user.setDateNaissance(updatedUser.getDateNaissance());
         
-        // If the user is a Guest, update Guest-specific fields
-        if (user instanceof com.example.EnsimAsso.model.User.Guest && 
-            updatedUser instanceof com.example.EnsimAsso.model.User.Guest) {
-            com.example.EnsimAsso.model.User.Guest guest = (com.example.EnsimAsso.model.User.Guest) user;
-            com.example.EnsimAsso.model.User.Guest updatedGuest = (com.example.EnsimAsso.model.User.Guest) updatedUser;
+        // Mise à jour pour Guest
+        if (user instanceof Guest && updatedUser instanceof Guest) {
+            Guest guest = (Guest) user;
+            Guest updatedGuest = (Guest) updatedUser;
             guest.setPromo(updatedGuest.getPromo());
-            //Update age
-            guest.setAge(updatedGuest.getAge());
-            // Update any other guest-specific fields here if needed
+            guest.setStatut(updatedGuest.getStatut());
+            // Mettez à jour le champ socialMedia pour Guest
+            guest.setSocialMedia(updatedGuest.getSocialMedia());
         }
         
-        // If the user is an Asso, update Asso-specific fields
-        if (user instanceof com.example.EnsimAsso.model.User.Asso && 
-            updatedUser instanceof com.example.EnsimAsso.model.User.Asso) {
-            com.example.EnsimAsso.model.User.Asso asso = (com.example.EnsimAsso.model.User.Asso) user;
-            com.example.EnsimAsso.model.User.Asso updatedAsso = (com.example.EnsimAsso.model.User.Asso) updatedUser;
+        // Mise à jour pour Asso
+        if (user instanceof Asso && updatedUser instanceof Asso) {
+            Asso asso = (Asso) user;
+            Asso updatedAsso = (Asso) updatedUser;
             asso.setBgPhoto(updatedAsso.getBgPhoto());
             asso.setDescription(updatedAsso.getDescription());
             asso.setGallery(updatedAsso.getGallery());
             asso.setRib(updatedAsso.getRib());
             asso.setSocialMedia(updatedAsso.getSocialMedia());
             asso.setAdhesionPrice(updatedAsso.getAdhesionPrice());
-            // Update any other asso-specific fields here if needed
         }
         
         return userRepository.save(user);
-    }
+    }    
+
 
     // UserService.java
     public User getUserById(Long id) throws Exception {

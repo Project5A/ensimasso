@@ -1,3 +1,4 @@
+// AssoService.java
 package com.example.EnsimAsso.service;
 
 import com.example.EnsimAsso.model.User.Asso;
@@ -14,14 +15,19 @@ public class AssoService {
     @Autowired
     private AssoRepository assoRepository;
 
-    // Get all Asso users
+    // Récupère tous les utilisateurs asso
     public List<Asso> getAllAssoUsers() {
         return assoRepository.findAll();
     }
 
-    // Get Asso user by ID
+    // Récupère un asso par son ID
     public Asso getAssoById(Integer id) {
         Optional<Asso> asso = assoRepository.findById(id);
         return asso.orElse(null);
+    }
+
+    // Sauvegarde (mise à jour) d'un asso
+    public Asso saveAsso(Asso asso) {
+        return assoRepository.save(asso);
     }
 }

@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext'; 
 import { useNavigate } from 'react-router-dom'; 
@@ -5,18 +6,19 @@ import Sidebar from '../components/Sidebar/Sidebar';
 import Profile from '../components/DashboardComponents/Profile'; 
 import Posts from '../components/DashboardComponents/Posts'; 
 import Events from '../components/DashboardComponents/Events'; 
-import Historique from '../components/DashboardComponents/Historique'; 
+import Historique from '../components/DashboardComponents/Historique';
+import Adhesion from '../components/DashboardComponents/Adhesion'; // Import du nouveau composant
 
 const Dashboard = () => {
   const { user } = useUser(); 
   const navigate = useNavigate(); 
 
-  const [activeComponent, setActiveComponent] = useState('profile'); // Default to 'profile' component
+  const [activeComponent, setActiveComponent] = useState('profile'); // Composant par défaut
 
   if (!user) {
     console.log("going home !!");
     setTimeout(() => {
-      navigate('/'); // Redirect to home or login
+      navigate('/'); // Redirection si l'utilisateur n'est pas connecté
     }, 3000);
   }
 
@@ -29,34 +31,37 @@ const Dashboard = () => {
       case 'events':
         return <Events />;
       case 'historique':
+      case 'gallery':
         return <Historique />;
+      case 'adhesion':
+        return <Adhesion />;
       default:
-        return <Profile />; // Default component if none is selected
+        return <Profile />;
     }
   };
 
   return (
-    <div className="main-content"> {/* Ajout de la classe main-content */}
+    <div className="main-content">
       <div style={styles.pageContainer}>
-        <Sidebar style={styles.sidebar} setActiveComponent={setActiveComponent} /> {/* Pass the setActiveComponent to Sidebar */}
-        {renderComponent()} {/* Render the active component */} 
+        <Sidebar setActiveComponent={setActiveComponent} />
+        {renderComponent()}
       </div>
     </div>
   );
 };
 
 export default Dashboard;
-// Inline styles
+
 const styles = {
   pageContainer: {
     display: 'flex',
     height: '100vh',
-    backgroundColor: '#1a1a1a', // Darker background
-    color: '#f0f0f0', // Light text for contrast
-    },
+    backgroundColor: '#1a1a1a',
+    color: '#f0f0f0',
+  },
   sidebar: {
-    flex: '0 0 250px', // Fixed width for the sidebar
-    backgroundColor: '#2a2a2a', // Slightly lighter than the page background
-    height: '100%', // Full height of the page
+    flex: '0 0 250px',
+    backgroundColor: '#2a2a2a',
+    height: '100%',
   }
 };

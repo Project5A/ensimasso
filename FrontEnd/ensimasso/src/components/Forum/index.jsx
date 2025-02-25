@@ -120,14 +120,30 @@ const Forum = () => {
     return () => stompClient.deactivate();
   }, []);
 
-  // Handle file input change.
-  const handleMediaChange = (e) => {
+  // Handle file input change and perform immediate upload to get the URL
+  const handleMediaChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
-      setNewPost({ ...newPost, image: e.target.files[0] });
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const response = await axios.post('/api/posts/uploadImage', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+        });
+        // La réponse doit contenir l'URL de l'image uploadée
+        const imageUrl = response.data;
+        // Met à jour le state newPost pour qu'il contienne l'URL de l'image
+        setNewPost(prev => ({ ...prev, image: imageUrl }));
+      } catch (error) {
+        console.error('Erreur lors de l\'upload de l\'image', error);
+      }
     }
   };
 
-  // Handle new post submission.
+
   const handleSubmit = async () => {
     if (!newPost.title || !newPost.description) {
       console.error('All fields must be filled');
@@ -137,18 +153,15 @@ const Forum = () => {
       console.error('You must be logged in to create a post');
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('title', newPost.title);
     formData.append('description', newPost.description);
     formData.append('author', user.username || 'Anonymous');
     formData.append('date', new Date().toISOString().split('T')[0]);
-    if (newPost.image) {
-      formData.append('image', newPost.image);
-    } else {
-      formData.append('image', 'https://example.com/default-image.jpg');
-    }
-
+    // Ici newPost.image est l'URL obtenue, et non un fichier
+    formData.append('image', newPost.image || 'https://example.com/default-image.jpg');
+  
     try {
       const response = await axios.post('/api/posts', formData, {
         headers: { 
@@ -163,6 +176,7 @@ const Forum = () => {
       console.error('Error creating post:', error);
     }
   };
+  
 
   // Handle adding a comment.
   const handleAddComment = async (postId, commentText) => {
