@@ -6,6 +6,7 @@ import com.example.EnsimAsso.model.User.User;
 import com.example.EnsimAsso.repository.CommentRepository;
 import com.example.EnsimAsso.repository.PostRepository;
 import com.example.EnsimAsso.repository.UserRepository;
+import com.example.EnsimAsso.service.BlobStorageService;
 import com.example.EnsimAsso.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
@@ -122,4 +124,21 @@ public class PostController {
         List<Comment> comments = commentRepository.findByPostId(postId);
         return ResponseEntity.ok(comments);
     }
+
+    @Autowired
+    private BlobStorageService blobStorageService;
+
+    @PostMapping(value = "/uploadImage", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadPostImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = blobStorageService.uploadFile(file);
+            if (imageUrl == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'upload de l'image.");
+            }
+            return ResponseEntity.ok(imageUrl);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
 }

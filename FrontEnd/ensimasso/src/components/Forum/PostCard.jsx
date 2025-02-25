@@ -54,19 +54,24 @@ const PostCard = ({ post, onReact, onAddComment }) => {
         <p>{post.description}</p>
         {post.image && (
           <div className="media-container">
-            {post.image.match(/\.(jpeg|jpg|gif|png)$/) ? (
-              <img
-                src={post.image}
-                alt="Contenu du post"
-                className="post-media"
-                onError={(e) => e.target.style.display = 'none'}
-              />
-            ) : (
-              <video controls className="post-media">
-                <source src={post.image} type="video/mp4" />
-                Votre navigateur ne supporte pas les vidéos.
-              </video>
-            )}
+            {post.image && (
+            <div className="media-container">
+              {post.image.match(/\.(jpeg|jpg|gif|png)(\?.*)?$/i) ? (
+                <img
+                  src={post.image}
+                  alt="Contenu du post"
+                  className="post-media"
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+              ) : (
+                <video controls className="post-media">
+                  <source src={post.image} type="video/mp4" />
+                  Votre navigateur ne supporte pas les vidéos.
+                </video>
+              )}
+            </div>
+          )}
+
           </div>
         )}
       </div>
