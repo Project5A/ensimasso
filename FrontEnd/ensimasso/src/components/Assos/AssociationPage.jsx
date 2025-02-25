@@ -175,42 +175,42 @@ const TeamSection = () => {
         name: "Martiana dialan",
         title: "Product designer",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
     {
         avatar: "https://api.uifaces.co/our-content/donated/xZ4wg2Xj.jpg",
         name: "Micheal colorand",
         title: "Software engineer",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
     {
         avatar: "https://randomuser.me/api/portraits/women/79.jpg",
         name: "Brown Luis",
         title: "Full stack engineer",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
     {
         avatar: "https://randomuser.me/api/portraits/women/63.jpg",
         name: "Lysa sandiago",
         title: "Head of designers",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
     {
         avatar: "https://randomuser.me/api/portraits/men/86.jpg",
         name: "Daniel martin",
         title: "Product designer",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
     {
         avatar: "https://randomuser.me/api/portraits/men/46.jpg",
         name: "Vicky tanson",
         title: "Product manager",
         linkedin: "javascript:void(0)",
-        twitter: "javascript:void(0)",
+        instagram: "javascript:void(0)",
     },
   ]
   return (
@@ -241,12 +241,14 @@ const TeamSection = () => {
                                       <h4 className="text-white font-semibold sm:text-lg">{item.name}</h4>
                                       <p className="text-white">{item.title}</p>
                                       <div className="mt-3 flex gap-4 text-white">
-                                          <a href={item.twitter}>
-                                              <svg className="w-5 h-5 duration-150 hover:text-gray-500" fill="currentColor" viewBox="0 0 48 48"><g clip-path="url(#clip0_17_80)"><path fill="currentColor" d="M15.1 43.5c18.11 0 28.017-15.006 28.017-28.016 0-.422-.01-.853-.029-1.275A19.998 19.998 0 0048 9.11c-1.795.798-3.7 1.32-5.652 1.546a9.9 9.9 0 004.33-5.445 19.794 19.794 0 01-6.251 2.39 9.86 9.86 0 00-16.788 8.979A27.97 27.97 0 013.346 6.299 9.859 9.859 0 006.393 19.44a9.86 9.86 0 01-4.462-1.228v.122a9.844 9.844 0 007.901 9.656 9.788 9.788 0 01-4.442.169 9.867 9.867 0 009.195 6.843A19.75 19.75 0 010 39.078 27.937 27.937 0 0015.1 43.5z" /></g><defs><clipPath id="clip0_17_80"><path fill="currentColor" d="M0 0h48v48H0z" /></clipPath></defs></svg>
-                                          </a>
-                                          <a href={item.linkedin}>
-                                              <svg className="w-5 h-5 duration-150 hover:text-gray-500" fill="none" viewBox="0 0 48 48"><g clip-path="url(#clip0_17_68)"><path fill="currentColor" d="M44.447 0H3.544C1.584 0 0 1.547 0 3.46V44.53C0 46.444 1.584 48 3.544 48h40.903C46.407 48 48 46.444 48 44.54V3.46C48 1.546 46.406 0 44.447 0zM14.24 40.903H7.116V17.991h7.125v22.912zM10.678 14.87a4.127 4.127 0 01-4.134-4.125 4.127 4.127 0 014.134-4.125 4.125 4.125 0 010 8.25zm30.225 26.034h-7.115V29.766c0-2.653-.047-6.075-3.704-6.075-3.703 0-4.265 2.896-4.265 5.887v11.325h-7.107V17.991h6.826v3.13h.093c.947-1.8 3.272-3.702 6.731-3.702 7.21 0 8.541 4.744 8.541 10.912v12.572z" /></g><defs><clipPath id="clip0_17_68"><path fill="currentColor" d="M0 0h48v48H0z" /></clipPath></defs></svg>
-                                          </a>
+                                        <a href={item.instagram}>
+                                            <svg className="w-5 h-5 duration-150 hover:text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M12 2.2c3.2 0 3.584.012 4.85.07 1.173.055 1.98.247 2.68.527a5.38 5.38 0 011.918 1.254 5.38 5.38 0 011.254 1.918c.28.7.472 1.507.527 2.68.058 1.266.07 1.65.07 4.85s-.012 3.584-.07 4.85c-.055 1.173-.247 1.98-.527 2.68a5.38 5.38 0 01-1.254 1.918 5.38 5.38 0 01-1.918 1.254c-.7.28-1.507.472-2.68.527-1.266.058-1.65.07-4.85.07s-3.584-.012-4.85-.07c-1.173-.055-1.98-.247-2.68-.527a5.38 5.38 0 01-1.918-1.254 5.38 5.38 0 01-1.254-1.918c-.28-.7-.472-1.507-.527-2.68C2.212 15.584 2.2 15.2 2.2 12s.012-3.584.07-4.85c.055-1.173.247-1.98.527-2.68a5.38 5.38 0 011.254-1.918 5.38 5.38 0 011.918-1.254c.7-.28 1.507-.472 2.68-.527C8.416 2.212 8.8 2.2 12 2.2zm0 1.8c-3.142 0-3.522.012-4.77.07-.979.045-1.51.21-1.865.35-.47.181-.805.4-1.157.752-.352.352-.57.687-.752 1.157-.14.355-.305.886-.35 1.865-.058 1.248-.07 1.628-.07 4.77s.012 3.522.07 4.77c.045.979.21 1.51.35 1.865.181.47.4.805.752 1.157.352.352.687.57 1.157.752.355.14.886.305 1.865.35 1.248.058 1.628.07 4.77.07s3.522-.012 4.77-.07c.979-.045 1.51-.21 1.865-.35.47-.181.805-.4 1.157-.752.352-.352.57-.687.752-1.157.14-.355.305-.886.35-1.865.058-1.248.07-1.628.07-4.77s-.012-3.522-.07-4.77c-.045-.979-.21-1.51-.35-1.865-.181-.47-.4-.805-.752-1.157-.352-.352-.687-.57-1.157-.752-.355-.14-.886-.305-1.865-.35-1.248-.058-1.628-.07-4.77-.07zm0 3.3a6.5 6.5 0 110 13 6.5 6.5 0 010-13zm0 1.8a4.7 4.7 0 100 9.4 4.7 4.7 0 000-9.4zm6.5-2.9a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
+                                            </svg>
+                                        </a>
+                                        <a href={item.linkedin}>
+                                            <svg className="w-5 h-5 duration-150 hover:text-gray-500" fill="none" viewBox="0 0 48 48"><g clip-path="url(#clip0_17_68)"><path fill="currentColor" d="M44.447 0H3.544C1.584 0 0 1.547 0 3.46V44.53C0 46.444 1.584 48 3.544 48h40.903C46.407 48 48 46.444 48 44.54V3.46C48 1.546 46.406 0 44.447 0zM14.24 40.903H7.116V17.991h7.125v22.912zM10.678 14.87a4.127 4.127 0 01-4.134-4.125 4.127 4.127 0 014.134-4.125 4.125 4.125 0 010 8.25zm30.225 26.034h-7.115V29.766c0-2.653-.047-6.075-3.704-6.075-3.703 0-4.265 2.896-4.265 5.887v11.325h-7.107V17.991h6.826v3.13h.093c.947-1.8 3.272-3.702 6.731-3.702 7.21 0 8.541 4.744 8.541 10.912v12.572z" /></g><defs><clipPath id="clip0_17_68"><path fill="currentColor" d="M0 0h48v48H0z" /></clipPath></defs></svg>
+                                        </a>
                                       </div>
                                   </div>
                               </li>

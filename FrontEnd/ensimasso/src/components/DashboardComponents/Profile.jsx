@@ -50,7 +50,7 @@ const Profile = () => {
   );
 };
 
-// Composant pour gérer le téléversement par drag & drop
+// Composant de téléversement de photo (drag & drop)
 const PhotoUpload = ({ userId, onUploadSuccess }) => {
   const [uploading, setUploading] = useState(false);
 
@@ -88,24 +88,59 @@ const PhotoUpload = ({ userId, onUploadSuccess }) => {
   );
 };
 
+// Composant pour le profil Guest
 const GuestProfile = ({ user, setUser }) => {
+  // Parser le champ socialMedia en objet JSON
+  let social = { instagram: '', facebook: '', linkedin: '' };
+  try {
+    if (user.socialMedia) {
+      social = JSON.parse(user.socialMedia);
+    }
+  } catch (error) {
+    console.error("Erreur parsing socialMedia:", error);
+  }
+
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    age: user?.age || '',
-    email: user?.email || '',
-    promo: user?.promo || '',
-    photo: user?.photo || '',
-    instagram: user?.instagram || '',
-    linkedin: user?.linkedin || ''
+    name: user.name || '',
+    email: user.email || '',
+    dateNaissance: user.dateNaissance || '',
+    statut: user.statut || 'invité',
+    promo: user.promo || '',
+    photo: user.photo || '',
+    instagram: social.instagram || '',
+    facebook: social.facebook || '',
+    linkedin: social.linkedin || '',
   });
+
+  // Fonction pour calculer l'âge à partir de la date de naissance
+  const calculateAge = (birthDateStr) => {
+    if (!birthDateStr) return '';
+    const birthDate = new Date(birthDateStr);
+    const diffMs = Date.now() - birthDate.getTime();
+    const ageDt = new Date(diffMs);
+    return Math.abs(ageDt.getUTCFullYear() - 1970);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(`/api/users/${user.id}`, {
+      // Si le statut n'est pas "étudiant", on définit promo comme étant le statut
+      const promoValue = formData.statut === 'étudiant' ? formData.promo : formData.statut;
+      // Recomposer socialMedia en JSON
+      const socialMediaJson = JSON.stringify({
+        instagram: formData.instagram,
+        facebook: formData.facebook,
+        linkedin: formData.linkedin,
+      });
+      const payload = {
         ...formData,
+        promo: promoValue,
+        socialMedia: socialMediaJson,
         role: 'GUEST'
+      };
+      const response = await axios.put(`/api/users/${user.id}`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUser(response.data);
       setEditMode(false);
@@ -115,45 +150,20 @@ const GuestProfile = ({ user, setUser }) => {
   };
 
   const handlePhotoUpload = (updatedUser) => {
-    console.log("Photo mise à jour:", updatedUser.photo); // Debug
+    console.log("Photo mise à jour:", updatedUser.photo);
     setUser(updatedUser);
-    setFormData(prev => ({ ...prev, photo: updatedUser.photo })); // Met à jour la photo dans le formulaire
+    setFormData(prev => ({ ...prev, photo: updatedUser.photo }));
   };
-  
-
-  const handleFileUpload = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-        const response = await axios.post(`/api/users/${user.id}/photo`, formData, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-                "Content-Type": "multipart/form-data",
-            },
-        });
-
-        // Mise à jour du state avec la nouvelle URL de l'image
-        setUser(response.data);
-    } catch (error) {
-        console.error("Erreur lors de l'upload de l'image", error);
-    }
-  };
-
 
   return (
     <div style={styles.profileCard}>
       <div style={styles.avatarSection}>
-        <img 
-          src={user.photo || '/default-avatar.png'} 
-          alt="Profil" 
-          style={styles.avatar}
-        />
+        <img src={user.photo || '/default-avatar.png'} alt="Profil" style={styles.avatar} />
+        <PhotoUpload userId={user.id} onUploadSuccess={handlePhotoUpload} />
       </div>
 
       {editMode ? (
         <form onSubmit={handleSubmit} style={styles.form}>
-          <PhotoUpload userId={user.id} onUploadSuccess={handlePhotoUpload} />
           <div style={styles.formGroup}>
             <label style={styles.label}>Nom complet</label>
             <input
@@ -162,36 +172,84 @@ const GuestProfile = ({ user, setUser }) => {
               style={styles.input}
             />
           </div>
-
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Email</label>
+            <input
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              style={styles.input}
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Date de naissance</label>
+            <input
+              type="date"
+              value={formData.dateNaissance}
+              onChange={(e) => setFormData({ ...formData, dateNaissance: e.target.value })}
+              style={styles.input}
+            />
+          </div>
           <div style={styles.formRow}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Âge</label>
+              <label style={styles.label}>Statut</label>
+              <select
+                value={formData.statut}
+                onChange={(e) => setFormData({ ...formData, statut: e.target.value })}
+                style={styles.input}
+              >
+                <option value="étudiant">Étudiant</option>
+                <option value="prof">Prof</option>
+                <option value="invité">Invité</option>
+                <option value="asso">Asso</option>
+              </select>
+            </div>
+            {formData.statut === 'étudiant' && (
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Promo</label>
+                <select
+                  value={formData.promo}
+                  onChange={(e) => setFormData({ ...formData, promo: e.target.value })}
+                  style={styles.input}
+                >
+                  <option value="1A">1A</option>
+                  <option value="2A">2A</option>
+                  <option value="3A">3A</option>
+                  <option value="4A">4A</option>
+                  <option value="5A">5A</option>
+                  <option value="ancien">Ancien</option>
+                </select>
+              </div>
+            )}
+          </div>
+          <div style={styles.formRow}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Instagram</label>
               <input
-                type="number"
-                value={formData.age}
-                onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                value={formData.instagram}
+                onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
                 style={styles.input}
               />
             </div>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Promotion</label>
+              <label style={styles.label}>Facebook</label>
               <input
-                value={formData.promo}
-                onChange={(e) => setFormData({ ...formData, promo: e.target.value })}
+                value={formData.facebook}
+                onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>LinkedIn</label>
+              <input
+                value={formData.linkedin}
+                onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
                 style={styles.input}
               />
             </div>
           </div>
-
           <div style={styles.buttonContainer}>
             <button type="submit" style={styles.primaryButton}>Enregistrer</button>
-            <button 
-              type="button" 
-              onClick={() => setEditMode(false)} 
-              style={styles.secondaryButton}
-            >
-              Annuler
-            </button>
+            <button type="button" onClick={() => setEditMode(false)} style={styles.secondaryButton}>Annuler</button>
           </div>
         </form>
       ) : (
@@ -201,35 +259,40 @@ const GuestProfile = ({ user, setUser }) => {
             <span style={styles.infoValue}>{user.name}</span>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Âge :</span>
-            <span style={styles.infoValue}>{user.age}</span>
-          </div>
-          <div style={styles.infoItem}>
             <span style={styles.infoLabel}>Email :</span>
             <span style={styles.infoValue}>{user.email}</span>
           </div>
           <div style={styles.infoItem}>
-            <span style={styles.infoLabel}>Promotion :</span>
+            <span style={styles.infoLabel}>Âge :</span>
+            <span style={styles.infoValue}>{calculateAge(user.dateNaissance)} ans</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Statut :</span>
+            <span style={styles.infoValue}>{user.statut}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Promo :</span>
             <span style={styles.infoValue}>{user.promo}</span>
           </div>
-          
-          <div style={styles.socialLinks}>
-            {user.instagram && (
-              <a href={user.instagram} target="_blank" rel="noopener noreferrer">
-                <img src="/instagram-icon.png" alt="Instagram" style={styles.socialIcon} />
-              </a>
-            )}
-            {user.linkedin && (
-              <a href={user.linkedin} target="_blank" rel="noopener noreferrer">
-                <img src="/linkedin-icon.png" alt="LinkedIn" style={styles.socialIcon} />
-              </a>
-            )}
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Instagram :</span>
+            <span style={styles.infoValue}>
+              {user.socialMedia ? JSON.parse(user.socialMedia).instagram : ''}
+            </span>
           </div>
-
-          <button 
-            onClick={() => setEditMode(true)}
-            style={styles.editButton}
-          >
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Facebook :</span>
+            <span style={styles.infoValue}>
+              {user.socialMedia ? JSON.parse(user.socialMedia).facebook : ''}
+            </span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>LinkedIn :</span>
+            <span style={styles.infoValue}>
+              {user.socialMedia ? JSON.parse(user.socialMedia).linkedin : ''}
+            </span>
+          </div>
+          <button onClick={() => setEditMode(true)} style={styles.editButton}>
             Modifier le profil
           </button>
         </>
@@ -238,24 +301,45 @@ const GuestProfile = ({ user, setUser }) => {
   );
 };
 
+// AssoProfile pour les associations
 const AssoProfile = ({ user, setUser }) => {
+  let social = { instagram: '', facebook: '', linkedin: '' };
+  try {
+    if (user.socialMedia) {
+      social = JSON.parse(user.socialMedia);
+    }
+  } catch (error) {
+    console.error("Erreur parsing socialMedia:", error);
+  }
+
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    photo: user?.photo || '',
-    bgPhoto: user?.bgPhoto || '',
-    adhesionPrice: user?.adhesionPrice || 0,
-    description: user?.description || '',
-    socialMedia: user?.socialMedia || '',
-    rib: user?.rib || ''
+    name: user.name || '',
+    photo: user.photo || '',
+    bgPhoto: user.bgPhoto || '',
+    adhesionPrice: user.adhesionPrice || 0,
+    description: user.description || '',
+    rib: user.rib || '',
+    instagram: social.instagram || '',
+    facebook: social.facebook || '',
+    linkedin: social.linkedin || '',
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(`/api/users/${user.id}`, {
+      const socialMediaJson = JSON.stringify({
+        instagram: formData.instagram,
+        facebook: formData.facebook,
+        linkedin: formData.linkedin,
+      });
+      const payload = {
         ...formData,
+        socialMedia: socialMediaJson,
         role: 'ASSO'
+      };
+      const response = await axios.put(`/api/users/${user.id}`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUser(response.data);
       setEditMode(false);
@@ -266,19 +350,9 @@ const AssoProfile = ({ user, setUser }) => {
 
   return (
     <div style={styles.assoContainer}>
-      <div 
-        style={{ 
-          ...styles.assoHeader,
-          backgroundImage: `url(${user.bgPhoto || '/default-banner.jpg'})`
-        }}
-      >
-        <img
-          src={user.photo || '/default-logo.png'}
-          alt="Logo"
-          style={styles.assoLogo}
-        />
+      <div style={{ ...styles.assoHeader, backgroundImage: `url(${user.bgPhoto || '/default-banner.jpg'})` }}>
+        <img src={user.photo || '/default-logo.png'} alt="Logo" style={styles.assoLogo} />
       </div>
-
       {editMode ? (
         <form onSubmit={handleSubmit} style={styles.assoForm}>
           <div style={styles.formGroup}>
@@ -289,7 +363,6 @@ const AssoProfile = ({ user, setUser }) => {
               style={styles.input}
             />
           </div>
-
           <div style={styles.formRow}>
             <div style={styles.formGroup}>
               <label style={styles.label}>Logo (URL)</label>
@@ -308,7 +381,6 @@ const AssoProfile = ({ user, setUser }) => {
               />
             </div>
           </div>
-
           <div style={styles.formGroup}>
             <label style={styles.label}>Prix d'adhésion (€)</label>
             <input
@@ -318,7 +390,6 @@ const AssoProfile = ({ user, setUser }) => {
               style={styles.input}
             />
           </div>
-
           <div style={styles.formGroup}>
             <label style={styles.label}>Description</label>
             <textarea
@@ -328,48 +399,73 @@ const AssoProfile = ({ user, setUser }) => {
               rows="4"
             />
           </div>
-
+          <div style={styles.formGroup}>
+            <label style={styles.label}>RIB</label>
+            <input
+              value={formData.rib}
+              onChange={(e) => setFormData({ ...formData, rib: e.target.value })}
+              style={styles.input}
+            />
+          </div>
+          <div style={styles.formRow}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Instagram</label>
+              <input
+                value={formData.instagram}
+                onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Facebook</label>
+              <input
+                value={formData.facebook}
+                onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>LinkedIn</label>
+              <input
+                value={formData.linkedin}
+                onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+          </div>
           <div style={styles.buttonContainer}>
             <button type="submit" style={styles.primaryButton}>Enregistrer</button>
-            <button 
-              type="button" 
-              onClick={() => setEditMode(false)} 
-              style={styles.secondaryButton}
-            >
-              Annuler
-            </button>
+            <button type="button" onClick={() => setEditMode(false)} style={styles.secondaryButton}>Annuler</button>
           </div>
         </form>
       ) : (
         <div style={styles.assoContent}>
           <h2 style={styles.assoName}>{user.name}</h2>
-          
-          <div style={styles.infoSection}>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Prix d'adhésion :</span>
-              <span style={styles.infoValue}>{user.adhesionPrice} €</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>RIB :</span>
-              <span style={styles.infoValue}>{user.rib}</span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Réseaux sociaux :</span>
-              <span style={styles.infoValue}>{user.socialMedia}</span>
-            </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Prix d'adhésion :</span>
+            <span style={styles.infoValue}>{user.adhesionPrice} €</span>
           </div>
-
-          <div style={styles.descriptionBox}>
-            <h3 style={styles.sectionTitle}>Description</h3>
-            <p style={styles.descriptionText}>{user.description}</p>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>RIB :</span>
+            <span style={styles.infoValue}>{user.rib}</span>
           </div>
-
-          <button 
-            onClick={() => setEditMode(true)}
-            style={styles.editButton}
-          >
-            Modifier le profil
-          </button>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Description :</span>
+            <span style={styles.infoValue}>{user.description}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Instagram :</span>
+            <span style={styles.infoValue}>{user.socialMedia ? JSON.parse(user.socialMedia).instagram : ''}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>Facebook :</span>
+            <span style={styles.infoValue}>{user.socialMedia ? JSON.parse(user.socialMedia).facebook : ''}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>LinkedIn :</span>
+            <span style={styles.infoValue}>{user.socialMedia ? JSON.parse(user.socialMedia).linkedin : ''}</span>
+          </div>
+          <button onClick={() => setEditMode(true)} style={styles.editButton}>Modifier le profil</button>
         </div>
       )}
     </div>
@@ -381,7 +477,7 @@ const styles = {
   container: {
     marginTop: '6rem',
     borderRadius: '15px',
-    marginBottom : '2rem',
+    marginBottom: '2rem',
     maxWidth: '1200px',
     margin: '0 auto',
     padding: '2rem',
@@ -403,13 +499,6 @@ const styles = {
     padding: '3rem',
     color: '#666'
   },
-  error: {
-    textAlign: 'center',
-    color: '#e74c3c',
-    padding: '3rem',
-    fontSize: '1.2rem'
-  },
-  // Styles pour Étudiant
   profileCard: {
     backgroundColor: '#fff',
     borderRadius: '15px',
