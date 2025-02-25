@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
+import { useUser } from '../../contexts/UserContext';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
 import { motion } from 'framer-motion';
@@ -936,13 +937,39 @@ const CreditCard3D = () => {
 };
 
 
-
-// Adhesion Section
-const AdhesionSection = () => {
+const AdhesionSection = ({ assoId }) => {
+  const { user } = useUser(); // L'utilisateur connecté (doit être un guest)
+  
   const handlePayment = async () => {
-    // Add your payment gateway integration here (Stripe, PayPal, etc.)
+    if (!user) {
+      console.error("User is not logged in");
+      return;
+    }
     console.log("Initiating payment for 10€ adhesion");
-    // Example: await processPayment({ amount: 1000, currency: 'EUR' });
+    
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/assos/5/adhesion`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ guestId: user.id.toString() })
+        });
+        if (response.ok) {
+          console.log("Membership successful!");
+        } else {
+          console.error("Membership failed!");
+        }
+      } catch (error) {
+        console.error("Error during membership:", error);
+      }
+    }, 1500); // délai de simulation
+  };
+  
+
+  // Exemple de variant pour l'animation (vous pouvez adapter ou supprimer)
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
   };
 
   return (
@@ -987,9 +1014,9 @@ const AdhesionSection = () => {
               <button 
                 onClick={handlePayment}
                 className="w-full bg-gray-900 text-white px-8 py-4 rounded-lg font-bold
-                         hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200
-                         transition-all duration-300 shadow-lg hover:shadow-xl
-                         flex items-center justify-center gap-2"
+                           hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200
+                           transition-all duration-300 shadow-lg hover:shadow-xl
+                           flex items-center justify-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -1005,6 +1032,7 @@ const AdhesionSection = () => {
 
           <div className="relative group">
             <div className="relative">
+              {/* Exemple d'un composant 3D de carte de crédit, à remplacer par le vôtre */}
               <CreditCard3D theme="monochrome" />
             </div>
           </div>
@@ -1013,6 +1041,8 @@ const AdhesionSection = () => {
     </motion.section>
   );
 };
+
+export default AdhesionSection;
 
 // Contact Section
 const ContactSection = () => {

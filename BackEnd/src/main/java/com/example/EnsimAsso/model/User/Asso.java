@@ -5,9 +5,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
 @DiscriminatorValue("ASSO")
@@ -26,16 +28,18 @@ public class Asso extends User {
 
     private String rib;
 
-    @ManyToMany
+    // Côté propriétaire de la relation
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "asso_guest",
         joinColumns = @JoinColumn(name = "asso_id"),
         inverseJoinColumns = @JoinColumn(name = "guest_id")
     )
+    @JsonManagedReference // Permet la sérialisation du côté asso
     private List<Guest> teamMembers;
 
     @Column(columnDefinition = "TEXT")
-    private String socialMedia; // Par exemple, un JSON: {"instagram": "...", "facebook": "...", "linkedin": "..."}
+    private String socialMedia; // Exemple de JSON: {"instagram": "...", "facebook": "...", "linkedin": "..."}
 
     private double adhesionPrice;
 
@@ -53,6 +57,8 @@ public class Asso extends User {
         this.socialMedia = socialMedia;
         this.adhesionPrice = adhesionPrice;
     }
+
+    // Getters et setters
 
     public String getBgPhoto() {
         return bgPhoto;

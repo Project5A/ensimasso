@@ -1,7 +1,11 @@
 package com.example.EnsimAsso.model.User;
 
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToMany;
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Entity
 @DiscriminatorValue("GUEST")
@@ -14,8 +18,12 @@ public class Guest extends User {
     
     private String promo;
     private String statut;
-    // Nouveau champ pour stocker les réseaux sociaux sous forme de JSON
-    private String socialMedia;
+    private String socialMedia; // Stocke le JSON pour les réseaux sociaux
+
+    // Côté inverse de la relation ManyToMany
+    @ManyToMany(mappedBy = "teamMembers", fetch = FetchType.EAGER)
+    @JsonBackReference // Empêche la récursivité lors de la sérialisation
+    private List<Asso> memberships;
 
     public Guest() {
         super();
@@ -27,6 +35,8 @@ public class Guest extends User {
         this.statut = statut;
         this.socialMedia = socialMedia;
     }
+
+    // Getters et setters
 
     public String getPromo() {
         return promo;
@@ -47,5 +57,12 @@ public class Guest extends User {
     }
     public void setSocialMedia(String socialMedia) {
         this.socialMedia = socialMedia;
+    }
+
+    public List<Asso> getMemberships() {
+        return memberships;
+    }
+    public void setMemberships(List<Asso> memberships) {
+        this.memberships = memberships;
     }
 }

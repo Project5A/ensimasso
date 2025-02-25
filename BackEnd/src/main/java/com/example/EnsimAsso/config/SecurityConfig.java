@@ -36,6 +36,9 @@ public class SecurityConfig {
                     "/ws/**",
                     "/api/users/**",
                     "/api/assos/**",
+                    "/api/guests/**",
+                    "/api/guests/*/adhesions",
+                    "/api/assos/*/adhesion",
                     "/api/assos/*/gallery",
                     "/api/users/*/photo",
                     "/topic/**"
