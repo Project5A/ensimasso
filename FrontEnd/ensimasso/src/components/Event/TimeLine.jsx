@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import EventCard from './EventCard';
+import { Elements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../Payment/stripePromise';
 import InfoCard from './InfoCard';
 import './TimeLine.css';
 
@@ -25,7 +27,9 @@ function TimeLine() {
                     className={`timeline-event ${index % 2 === 0 ? 'left' : 'right'}`}
                 >
                     <div className="event-card-section">
-                        <EventCard event={event} />
+                        <Elements stripe={stripePromise}>
+                            <EventCard event={event} />
+                        </Elements>
                     </div>
                     
                     <div className="organizer-section">
