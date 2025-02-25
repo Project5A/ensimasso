@@ -35,6 +35,8 @@ public class SecurityConfig {
                     "/api/events/**",
                     "/ws/**",
                     "/api/users/**",
+                    "/api/assos/**",
+                    "/api/assos/*/gallery",
                     "/api/users/*/photo",
                     "/topic/**"
                 ).permitAll()

@@ -29,6 +29,7 @@ const Dashboard = () => {
       case 'events':
         return <Events />;
       case 'historique':
+      case 'gallery':
         return <Historique />;
       default:
         return <Profile />; // Default component if none is selected
