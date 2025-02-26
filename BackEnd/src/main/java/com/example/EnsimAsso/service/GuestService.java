@@ -16,4 +16,11 @@ public class GuestService {
        Optional<Guest> guest = guestRepository.findById(id);
        return guest.orElse(null);
     }
+    
+    public void saveGuest(Guest guest) {
+        guestRepository.save(guest);
+    }
+
+
 }
+

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faBookmark } from "@fortawesome/free-solid-svg-icons";
 import { faFacebook, faTwitter, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
@@ -13,7 +13,28 @@ const EventCard = ({ event }) => {
   const { user } = useUser();
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentPrice, setPaymentPrice] = useState(0);
+  const [paymentPrice, setPaymentPrice] = useState(event.nonAdhPrice);
+
+  useEffect(() => {
+    const checkMembership = async () => {
+      if (user && user.role === "GUEST" && event.organizerId) {
+        try {
+          const response = await fetch(`http://localhost:8080/api/guests/${user.id}/adhesions`);
+          const memberships = await response.json();
+          const isMember = memberships.some(
+            (asso) => asso && asso.id && Number(asso.id) === Number(event.organizerId)
+          );
+          if (isMember) {
+            setPaymentPrice(event.adhPrice);
+          }
+        } catch (err) {
+          console.error("Erreur lors de la vérification des adhésions :", err);
+        }
+      }
+    };
+
+    checkMembership();
+  }, [user, event.organizerId, event.adhPrice, event.nonAdhPrice]);
 
   const shareEvent = (platform) => {
     const eventTitle = encodeURIComponent(event.title);
@@ -31,31 +52,21 @@ const EventCard = ({ event }) => {
   };
 
   const handleGoingClick = () => {
-    let priceToUse = event.nonAdhPrice;
-    if (
-      user &&
-      user.role === "GUEST" &&
-      event.organizer &&
-      event.organizer.teamMembers
-    ) {
-      const isMember = event.organizer.teamMembers.some(
-        (member) => member.id === user.id
-      );
-      if (isMember) {
-        priceToUse = event.adhPrice;
-      }
+    if (paymentPrice === 0) {
+      handlePaymentSuccess("free"); // Simuler un paiement réussi
+    } else {
+      setShowPaymentModal(true);
     }
-    setPaymentPrice(priceToUse);
-    setShowPaymentModal(true);
   };
-
+  
   const handlePaymentSuccess = (paymentIntent) => {
     console.log("Paiement réussi pour l'événement", event.id, paymentIntent);
-    // Ici, vous pouvez enregistrer l'état "going" dans votre base ou notifier l'utilisateur
+    alert("Votre participation a été validée avec succès !");
+    setShowPaymentModal(false);
   };
 
   return (
-    <div className="event-card" role="article" aria-label={`Event card for ${event.title}`}>
+    <div className="event-card">
       <img src={event.eventImage} alt={event.title} className="event-card-image" />
       <div className="event-card-content">
         <h2 className="event-card-title">{event.title}</h2>
@@ -107,7 +118,7 @@ const EventCard = ({ event }) => {
         overlayClassName="payment-overlay"
       >
         <PaymentForm
-          amount={paymentPrice * 100} // montant en centimes
+          amount={paymentPrice * 100}
           onPaymentSuccess={handlePaymentSuccess}
           onCancel={() => setShowPaymentModal(false)}
         />

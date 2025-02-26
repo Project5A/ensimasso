@@ -41,7 +41,8 @@ public class SecurityConfig {
                     "/api/assos/*/adhesion",
                     "/api/assos/*/gallery",
                     "/api/users/*/photo",
-                    "/topic/**"
+                    "/topic/**",
+                    "/api/payment/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

@@ -13,7 +13,6 @@ const PaymentForm = ({ amount, onPaymentSuccess, onCancel }) => {
     setLoading(true);
     setError(null);
 
-    // Créez un PaymentIntent côté serveur
     try {
       const { data } = await axios.post('http://localhost:8080/api/payment/create-payment-intent', {
         amount: amount, // montant en centimes
@@ -21,7 +20,6 @@ const PaymentForm = ({ amount, onPaymentSuccess, onCancel }) => {
       });
       const clientSecret = data.clientSecret;
 
-      // Confirmez le paiement
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -42,10 +40,16 @@ const PaymentForm = ({ amount, onPaymentSuccess, onCancel }) => {
 
   return (
     <form onSubmit={handleSubmit} className="p-4 bg-white rounded shadow-md">
+      {/* Affichage du montant à payer */}
+      <p className="text-xl font-bold mb-4">
+        Montant à payer : {(amount / 100).toFixed(2)} €
+      </p>
       <CardElement options={{ hidePostalCode: true }} />
       {error && <div className="text-red-500 mt-2">{error}</div>}
       <div className="mt-4 flex justify-between">
-        <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-300 rounded">Annuler</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-300 rounded">
+          Annuler
+        </button>
         <button type="submit" disabled={!stripe || loading} className="px-4 py-2 bg-blue-500 text-white rounded">
           {loading ? "Paiement..." : "Payer"}
         </button>

@@ -113,7 +113,6 @@ public class AssoController {
             Integer guestId = Integer.parseInt(guestIdStr);
             
             // Simulation du paiement de 10€
-            // Dans une implémentation réelle, vous intégreriez ici votre solution de paiement (ex : Stripe, PayPal)
             System.out.println("Paiement de 10€ validé pour l'adhésion");
             
             Asso asso = assoService.getAssoById(assoId);
@@ -126,6 +125,7 @@ public class AssoController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Guest non trouvé");
             }
             
+            // MàJ côté Asso
             List<Guest> members = asso.getTeamMembers();
             if (members == null) {
                 members = new ArrayList<>();
@@ -137,12 +137,22 @@ public class AssoController {
             asso.setTeamMembers(members);
             assoService.saveAsso(asso);
             
+            // MàJ côté Guest
+            List<Asso> guestMemberships = guest.getMemberships();
+            if (guestMemberships == null) {
+                guestMemberships = new ArrayList<>();
+            }
+            guestMemberships.add(asso);
+            guest.setMemberships(guestMemberships);
+            guestService.saveGuest(guest); // Assurez-vous d'avoir cette méthode dans GuestService
+            
             return ResponseEntity.ok("Adhésion réussie");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                  .body("Erreur : " + e.getMessage());
         }
     }
+    
 
     @GetMapping("/{id}/adhesions")
     public ResponseEntity<?> getAdhesionsForAsso(@PathVariable Integer id) {

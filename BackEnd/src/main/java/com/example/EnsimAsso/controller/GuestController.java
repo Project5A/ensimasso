@@ -29,4 +29,16 @@ public class GuestController {
         return ResponseEntity.ok(memberships);
     }
 
+    @GetMapping("/{guestId}/adhesions/{assoId}")
+    public ResponseEntity<?> checkMembership(@PathVariable Integer guestId, @PathVariable Integer assoId) {
+        Guest guest = guestService.getGuestById(guestId);
+        if (guest == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Guest non trouvé");
+        }
+        boolean isMember = guest.getMemberships() != null &&
+                        guest.getMemberships().stream().anyMatch(asso -> asso.getId().equals(assoId));
+        return ResponseEntity.ok(isMember);
+    }
+
+
 }

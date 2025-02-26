@@ -1,5 +1,6 @@
 package com.example.EnsimAsso.model.User;
 
+import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
@@ -29,14 +30,17 @@ public class Asso extends User {
     private String rib;
 
     // Côté propriétaire de la relation
+    // Dans Asso.java
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "asso_guest",
         joinColumns = @JoinColumn(name = "asso_id"),
         inverseJoinColumns = @JoinColumn(name = "guest_id")
     )
-    @JsonManagedReference // Permet la sérialisation du côté asso
-    private List<Guest> teamMembers;
+    @JsonManagedReference
+    private List<Guest> teamMembers = new ArrayList<>();
+
+
 
     @Column(columnDefinition = "TEXT")
     private String socialMedia; // Exemple de JSON: {"instagram": "...", "facebook": "...", "linkedin": "..."}

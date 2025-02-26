@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class EventService {
@@ -14,15 +13,14 @@ public class EventService {
     @Autowired
     private EventRepository eventRepository;
 
-    // Get all events
     public List<Event> getAllEvents() {
-        return eventRepository.findAll();
+        return eventRepository.findAllWithOrganizerAndMembers();
     }
 
-    // Get event by ID
     public Event getEventById(Long id) {
-        Optional<Event> event = eventRepository.findById(id);
-        return event.orElse(null);
+        // Vous pouvez aussi ajouter une méthode findByIdWithOrganizerAndMembers pour un seul event
+        return eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Event not found with ID: " + id));
     }
 
     // Create a new event

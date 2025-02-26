@@ -6,6 +6,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import java.sql.Date;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.example.EnsimAsso.model.User.Asso;
 
@@ -95,6 +96,12 @@ public class Event {
         return organizer != null ? organizer.getName() : null;
     }
 
+
+    @JsonProperty("organizerId")
+    public Integer getOrganizerId() {
+        return organizer != null ? organizer.getId() : null;
+    }
+    
     //set organizer name
     public void setOrganizerName(String organizerName) {
         if (organizer == null) {

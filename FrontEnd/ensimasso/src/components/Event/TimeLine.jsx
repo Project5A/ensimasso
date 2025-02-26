@@ -26,7 +26,7 @@ function TimeLine() {
                     key={event.id} 
                     className={`timeline-event ${index % 2 === 0 ? 'left' : 'right'}`}
                 >
-                    <div className="event-card-section">
+                    <div className="event-card-section">                     
                         <Elements stripe={stripePromise}>
                             <EventCard event={event} />
                         </Elements>
@@ -45,7 +45,7 @@ function TimeLine() {
                         <img 
                             src={event.organizerPhoto} 
                             className="event-logo" 
-                            alt={event.organizerName}
+                                alt={event.organizerName}
                         />
                     </div>
                 </div>
