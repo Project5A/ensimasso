@@ -13,9 +13,6 @@ public class EventService {
     @Autowired
     private EventRepository eventRepository;
 
-    public List<Event> getAllEvents() {
-        return eventRepository.findAllWithOrganizerAndMembers();
-    }
 
     public Event getEventById(Long id) {
         // Vous pouvez aussi ajouter une méthode findByIdWithOrganizerAndMembers pour un seul event
@@ -26,5 +23,9 @@ public class EventService {
     // Create a new event
     public Event createEvent(Event event) {
         return eventRepository.save(event);
+    }
+
+    public List<Event> getAllEvents() {
+        return eventRepository.findAllWithParticipants();
     }
 }

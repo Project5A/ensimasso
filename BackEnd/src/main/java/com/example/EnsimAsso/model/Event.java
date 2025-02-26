@@ -4,11 +4,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import java.sql.Date;
+import java.util.Set;
+
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
+
+import java.util.HashSet;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.example.EnsimAsso.model.User.Asso;
+import com.example.EnsimAsso.model.User.Guest;
 
 @Entity
 public class Event {
@@ -26,6 +37,31 @@ public class Event {
 
     @ManyToOne
     private Asso organizer;  // Association with the User entity (Organizer)
+
+    // Change participants to a Set to avoid multiple bag fetch issue
+    @ManyToMany
+    @JoinTable(
+       name = "event_participants",
+       joinColumns = @JoinColumn(name = "event_id"),
+       inverseJoinColumns = @JoinColumn(name = "guest_id")
+    )
+    @Fetch(FetchMode.SUBSELECT)
+    private Set<Guest> participants = new HashSet<>();
+
+    // Getters and setters...
+    public Set<Guest> getParticipants() {
+        return participants;
+    }
+
+    public void setParticipants(Set<Guest> participants) {
+        this.participants = participants;
+    }
+
+    // Helper method
+    public void addParticipant(Guest guest) {
+        this.participants.add(guest);
+    }
+
 
     // Getters and Setters
     public Long getId() {
