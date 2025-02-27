@@ -37,6 +37,7 @@
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     text-align: center;
+    text-justify: auto;
     flex: 1 1 calc(33.33% - 20px);
     max-width: 250px;
 }
@@ -54,4 +55,25 @@
         width: 50%;
         aspect-ratio: auto 950 / 950;
         height: 80%;
+        border-radius: 20px;
+}
+
+/* Custom animations */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+.float-animation {
+    animation: float 4s ease-in-out infinite;
+}
+
+/* Custom hover effects */
+.hover-scale {
+    transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
 }
