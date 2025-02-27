@@ -5,20 +5,20 @@ const AboutSection = () => {
 
     const team = [
         {
-            avatar: "https://images.unsplash.com/photo-1557862921-37829c790f19?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+            avatar: "https://media.licdn.com/dms/image/v2/D5603AQG3x6V7Kf1eZw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1732217225309?e=1746057600&v=beta&t=Q-7zXoJbXTDHLe1SZ3eJI15WZbOPUEdeEColwqvHiqE",
             name: "ELYACOUBI YAHYA",
 
-            title: "Product designer"
+            title: "Développeur full stack"
         },
         {
-            avatar: "https://images.unsplash.com/photo-1623605931891-d5b95ee98459?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=640&q=80",
+            avatar: "https://achrafwe.github.io/Portfo/assets/me.png",
             name: "EL KALCHY ACHRAF",
-            title: "Software engineer"
+            title: "Développeur full stack"
         },
         {
-            avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1170&q=80",
+            avatar: "https://tahabouiber.github.io/portfolio/profile.png",
             name: "BOUIBER TAHA",
-            title: "Full stack engineer"
+            title: "Développeur full stack"
         },
     ]
 
@@ -27,10 +27,10 @@ const AboutSection = () => {
             <div className="max-w-screen-xl mx-auto px-4 md:px-8">
                 <div className="max-w-xl mx-auto sm:text-center">
                     <h3 className="text-white text-3xl font-semibold sm:text-4xl">
-                        Our team
+                    Notre équipe
                     </h3>
                     <p className="text-white mt-3">
-                        Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown.
+                    Notre équipe de développement a conçu un site web innovant pour les associations de notre école, offrant une plateforme intuitive et dynamique qui facilite la communication, l’organisation et la mise en avant de leurs activités.
                     </p>
                 </div>
                 <div className="mt-12">
@@ -41,7 +41,7 @@ const AboutSection = () => {
                                     <div className="w-full h-60 sm:h-52 md:h-56">
                                         <img
                                             src={item.avatar}
-                                            className="w-full h-full object-cover object-center shadow-md rounded-xl"
+                                            className="image"
                                             alt=""
                                         />
                                     </div>

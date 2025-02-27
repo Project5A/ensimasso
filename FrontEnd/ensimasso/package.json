@@ -41,6 +41,7 @@
     "react-scripts": "^5.0.1",
     "reactjs-popup": "^2.0.6",
     "sockjs-client": "^1.6.1",
+    "stripe": "^17.7.0",
     "styled-components": "^6.1.13",
     "swiper": "^11.2.1",
     "tailwind-merge": "^2.5.4",

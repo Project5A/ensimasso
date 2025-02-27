@@ -50,3 +50,8 @@
     font-size: 0.9rem;
     color: #555;
 }
+.image{
+        width: 50%;
+        aspect-ratio: auto 950 / 950;
+        height: 80%;
+}
