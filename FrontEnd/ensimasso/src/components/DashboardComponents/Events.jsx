@@ -39,8 +39,94 @@ const EventsDashboard = () => {
     fetchEvents();
   }, [user]);  
   
-  // Les fonctions handleEdit, handleCancel, handleChange, handleSave, handleDelete restent inchangées.
-  // ...
+  const handleEdit = (event) => {
+
+    setEditingEventId(event.id);
+
+    setFormData({
+
+      title: event.title,
+
+      date: event.date,
+
+      location: event.location,
+
+      description: event.description,
+
+      adhPrice: event.adhPrice,
+
+      nonAdhPrice: event.nonAdhPrice,
+
+      eventImage: event.eventImage || ''
+
+    });
+
+  };
+
+
+
+  const handleCancel = () => {
+
+    setEditingEventId(null);
+
+    setFormData({});
+
+  };
+
+
+
+  const handleChange = (e) => {
+
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+  };
+
+
+
+  const handleSave = async (eventId) => {
+
+    try {
+
+      const response = await axios.put(`/api/events/${eventId}`, formData);
+
+      setEvents(prevEvents =>
+
+        prevEvents.map((event) => (event.id === eventId ? response.data : event))
+
+      );
+
+      setEditingEventId(null);
+
+      setFormData({});
+
+    } catch (error) {
+
+      console.error("Erreur lors de la mise à jour de l'événement :", error);
+
+    }
+
+  };
+
+
+
+  const handleDelete = async (eventId) => {
+
+    if (!window.confirm("Voulez-vous vraiment supprimer cet événement ?")) return;
+
+    try {
+
+      await axios.delete(`/api/events/${eventId}`);
+
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+
+    } catch (error) {
+
+      console.error("Erreur lors de la suppression de l'événement :", error);
+
+    }
+
+  };
+
   
   if (loading) return <div style={styles.loading}>Chargement des événements...</div>;
 
