@@ -19,7 +19,7 @@ const EventCard = ({ event }) => {
     const checkMembership = async () => {
       if (user && user.role === "GUEST" && event.organizerId) {
         try {
-          const response = await fetch(`http://localhost:8080/api/guests/${user.id}/adhesions`);
+          const response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/guests/${user.id}/adhesions`);
           const memberships = await response.json();
           const isMember = memberships.some(
             (asso) => asso && asso.id && Number(asso.id) === Number(event.organizerId)

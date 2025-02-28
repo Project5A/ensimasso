@@ -19,7 +19,7 @@ const Historique = () => {
       formData.append('file', file);
 
       // Appel à votre API pour uploader la photo
-      const response = await fetch(`http://localhost:8080/api/assos/${user.id}/gallery`, {
+      const response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/assos/${user.id}/gallery`, {
         method: 'POST',
         body: formData,
       });
@@ -42,7 +42,7 @@ const Historique = () => {
   const handleDeletePhoto = async (photoUrl) => {
     try {
       // Appel à l'API pour supprimer la photo
-      const response = await fetch(`http://localhost:8080/api/assos/${user.id}/gallery`, {
+      const response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/assos/${user.id}/gallery`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ photoUrl }),

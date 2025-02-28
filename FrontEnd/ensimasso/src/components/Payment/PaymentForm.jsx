@@ -14,7 +14,7 @@ const PaymentForm = ({ amount, onPaymentSuccess, onCancel }) => {
     setError(null);
 
     try {
-      const { data } = await axios.post('http://localhost:8080/api/payment/create-payment-intent', {
+      const { data } = await axios.post('https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/payment/create-payment-intent', {
         amount: amount, // montant en centimes
         currency: 'eur'
       });

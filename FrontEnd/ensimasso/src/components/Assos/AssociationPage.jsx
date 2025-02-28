@@ -949,7 +949,7 @@ const AdhesionSection = ({ assoId }) => {
     
     setTimeout(async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/assos/5/adhesion`, {
+        const response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/assos/5/adhesion`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ guestId: user.id.toString() })

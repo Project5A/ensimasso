@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Set default base URL
-axios.defaults.baseURL = 'http://localhost:8080/';
+axios.defaults.baseURL = 'https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/';
 axios.defaults.headers.post["Content-type"] = 'application/json';
 
 // Add a request interceptor to include the token in the Authorization header

@@ -13,9 +13,9 @@ const Adhesion = () => {
       try {
         let response;
         if (user.role === 'GUEST') {
-          response = await fetch(`http://localhost:8080/api/guests/${user.id}/adhesions`);
+          response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/guests/${user.id}/adhesions`);
         } else if (user.role === 'ASSO') {
-          response = await fetch(`http://localhost:8080/api/assos/${user.id}/adhesions`);
+          response = await fetch(`https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/assos/${user.id}/adhesions`);
         }
   
         if (!response.ok) {

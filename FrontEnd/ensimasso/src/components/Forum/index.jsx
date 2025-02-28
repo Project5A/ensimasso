@@ -94,7 +94,8 @@ const Forum = () => {
   
   // WebSocket pour mises à jour en temps réel
   useEffect(() => {
-    const socket = new SockJS('http://localhost:8080/ws');
+    // const socket = new SockJS('https://localhost:8080/ws');
+    const socket = new SockJS('https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/ws');
     const stompClient = new Client({
       webSocketFactory: () => socket,
       debug: (str) => console.log(str),

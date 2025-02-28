@@ -10,7 +10,7 @@ function TimeLine() {
 
     useEffect(() => {
         // Corrected backend URL with port 8080
-        fetch('http://localhost:8080/api/events')
+        fetch('https://ensimasso-back-fdaddxedbhcehpa8.francecentral-01.azurewebsites.net/api/events')
             .then(response => response.json())
             .then(data => setEvents(data))
             .catch(error => console.error("Error fetching events:", error));
