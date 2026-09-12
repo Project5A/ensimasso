@@ -77,6 +77,34 @@ jobs:
           path: v2/backend/target/*-reports/
           retention-days: 7
 
+  # Ce que rencontre quelqu'un qui clone le dépôt, dans l'ordre où il le
+  # rencontre. Les autres jobs appellent les outils directement et passeraient
+  # sans rien remarquer si le Makefile était cassé — ce qui est arrivé : une
+  # enveloppe Maven absente rendait toutes les cibles inutilisables, chaîne
+  # verte comprise.
+  demarrage:
+    name: Parcours d'un nouveau contributeur
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+
+      - name: make init
+        working-directory: v2
+        run: make init && test -f .env
+
+      # Sans cache, sans préinstallation : exactement un clone neuf.
+      - name: make test
+        working-directory: v2
+        run: make test
+
+      - name: make front-test
+        working-directory: v2
+        run: make front-test
+
   frontend:
     name: Portail public
     runs-on: ubuntu-latest

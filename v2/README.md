@@ -20,6 +20,13 @@ make front     # le portail public sur http://localhost:5173
 
 `make` sans argument liste les cibles disponibles.
 
+Le parcours sans Docker — `make init`, `make test`, `make front-test` — est
+rejoué en intégration continue **depuis un clone neuf, sans cache**. Ce n'est
+pas de la ceinture-bretelles : les autres jobs appellent les outils directement
+et sont passés au vert pendant que le Makefile était cassé, une enveloppe Maven
+absente rendant toutes les cibles inutilisables. Le parcours qui compte est
+celui que suivent les gens, donc c'est celui qu'il faut exécuter.
+
 | Service | URL | Identifiants |
 |---|---|---|
 | API | http://localhost:8080 | jeton Keycloak |
