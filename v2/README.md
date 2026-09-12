@@ -170,11 +170,19 @@ make test      # unitaires + architecture — aucun Docker requis
 make verify    # + intégration Testcontainers — Docker requis
 ```
 
-84 tests unitaires et d'architecture, dont la table de vérité complète des
+143 tests unitaires et d'architecture, dont la table de vérité complète des
 permissions, le cycle de vie des mandats, l'idempotence de l'activation des
-adhésions, le refus d'une URL comme clé d'objet et le rejet des webhooks
-illisibles. Les tests d'intégration
-(`*IT.java`) exigent un démon Docker et tournent en CI.
+adhésions, le refus d'une URL comme clé d'objet, le rejet des webhooks
+illisibles et la reconnaissance d'un SVG déposé sous `image/png`. Les tests
+d'intégration (`*IT.java`) exigent un démon Docker et tournent en CI.
+
+`ContratApiTest` confronte le client d'API du front aux routes réellement
+déclarées par les contrôleurs. C'est un défaut constaté dans la v1, pas une
+précaution théorique : le tableau de bord appelait `PUT /api/events/{id}`,
+`DELETE /api/events/{id}` et `DELETE /api/posts/{id}`, dont aucun n'était
+implémenté — le bouton existait, le clic produisait un 405, et rien dans la
+chaîne de construction ne le disait. Le test a été vérifié à l'envers : en
+réintroduisant l'un de ces trois appels, il échoue en le nommant.
 
 ---
 
