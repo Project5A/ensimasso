@@ -1,0 +1,142 @@
+/* Une seule feuille, pilotée par les variables du thème du mandat.
+   La v1 mélangeait Tailwind, 14 fichiers CSS, styled-components, des styles
+   en ligne, MUI, flowbite et radix — dont la plupart déclarés et jamais
+   importés. Ici : un système, et les couleurs viennent des données. */
+
+:root {
+  --accent: #1f4e79;
+  --accent-contraste: #fff;
+  --encre: #101820;
+  --fond: #f6f7f9;
+  --rayon: 8px;
+  --police: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --muted: color-mix(in srgb, var(--encre) 58%, var(--fond));
+  --trait: color-mix(in srgb, var(--encre) 12%, var(--fond));
+  --surface: #fff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--police);
+  color: var(--encre);
+  background: var(--fond);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); }
+
+.page { max-width: 68rem; margin: 0 auto; padding: 0 1.25rem; padding-block: 3rem 4rem; }
+.page--centree { max-width: 52rem; }
+
+h1 { font-size: clamp(1.9rem, 4.5vw, 2.8rem); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 0.5rem; text-wrap: balance; }
+h2 { font-size: clamp(1.25rem, 2.5vw, 1.55rem); letter-spacing: -0.01em; margin: 0 0 1rem; text-wrap: balance; }
+
+.erreur { color: #a8201a; }
+.vide { color: var(--muted); font-style: italic; }
+
+/* ---------------------------------------------------------- annuaire */
+.annuaire__entete { margin-bottom: 2rem; }
+.annuaire__entete p { color: var(--muted); margin: 0; }
+
+.annuaire { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px;
+  background: var(--trait); border: 1px solid var(--trait); border-radius: var(--rayon); overflow: hidden; }
+.annuaire a { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  padding: 1.1rem 1.25rem; background: var(--surface); text-decoration: none; color: inherit; }
+.annuaire a:hover, .annuaire a:focus-visible { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.annuaire__nom { font-weight: 600; }
+.annuaire__type { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ------------------------------------------------------- page asso */
+.asso { background: var(--fond); min-height: 100vh; }
+.asso__entete { max-width: 68rem; margin: 0 auto; padding: 1.25rem; display: flex;
+  flex-wrap: wrap; gap: 0.75rem 2rem; align-items: baseline; justify-content: space-between; }
+.asso__fil { font-size: 0.85rem; color: var(--muted); }
+.asso__fil a { color: var(--muted); }
+.asso__menu { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.asso__menu a { text-decoration: none; font-weight: 500; padding-bottom: 2px; }
+.asso__menu a[aria-current='page'] { border-bottom: 2px solid var(--accent); }
+
+.bandeau-archive { max-width: 68rem; margin: 0 auto 1rem; padding: 0.75rem 1.25rem;
+  background: color-mix(in srgb, var(--accent) 12%, var(--fond));
+  border-left: 3px solid var(--accent); font-size: 0.92rem; }
+
+.asso main > section { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.25rem; }
+
+/* -------------------------------------------------------------- hero */
+.hero { position: relative; overflow: hidden; color: var(--accent-contraste);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000)); }
+.asso main > .hero { max-width: none; padding: 0; }
+.hero__fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.35; }
+.hero__contenu { position: relative; max-width: 68rem; margin: 0 auto; padding: 4rem 1.25rem; }
+.hero--compacte .hero__contenu { padding-block: 2.5rem; }
+.hero--pleine .hero__contenu { padding-block: 6rem; }
+.hero h1 { color: inherit; }
+.hero__sous-titre { font-size: clamp(1rem, 2vw, 1.2rem); opacity: 0.92; max-width: 44ch; margin: 0; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.75rem; }
+
+.bouton { display: inline-block; padding: 0.65rem 1.3rem; border-radius: var(--rayon);
+  background: var(--accent-contraste); color: var(--accent); font-weight: 600; text-decoration: none; }
+.hero .bouton--secondaire { background: transparent; color: var(--accent-contraste);
+  box-shadow: inset 0 0 0 1.5px currentColor; }
+.cta .bouton { background: var(--accent); color: var(--accent-contraste); }
+
+/* ------------------------------------------------------------- prose */
+.prose { max-width: 42rem !important; }
+.prose--large { max-width: 60rem !important; }
+.prose p { margin: 0 0 1rem; }
+
+/* ------------------------------------------------------------- stats */
+/* Le fond est celui des cellules, pas celui des séparateurs : quand le nombre
+   de tuiles ne remplit pas la dernière rangée (3 chiffres sur 2 colonnes en
+   mobile), la case vide se fond dans la surface au lieu d'apparaître comme un
+   bloc gris. */
+.stats dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1px; margin: 0; background: var(--surface); border: 1px solid var(--trait);
+  border-radius: var(--rayon); overflow: hidden; }
+.stat + .stat { box-shadow: -1px 0 0 var(--trait), 0 -1px 0 var(--trait); }
+.stat { background: var(--surface); padding: 1.4rem 1.25rem; }
+.stat dd { margin: 0 0 0.2rem; font-size: 1.9rem; font-weight: 600; line-height: 1;
+  color: var(--accent); font-variant-numeric: tabular-nums; }
+.stat dt { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+
+/* ------------------------------------------------------------ équipe */
+.equipe__grille { list-style: none; padding: 0; margin: 0; display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1.25rem; }
+.membre { text-align: center; }
+.membre img, .membre__initiale { width: 100%; max-width: 8rem; aspect-ratio: 1;
+  margin: 0 auto 0.6rem; border-radius: 50%; object-fit: cover; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent);
+  font-size: 2rem; font-weight: 600; }
+.membre__poste { margin: 0; font-size: 0.9rem; color: var(--muted); }
+
+/* --------------------------------------------------------------- faq */
+.faq details { border-bottom: 1px solid var(--trait); padding: 0.85rem 0; }
+.faq summary { cursor: pointer; font-weight: 500; }
+.faq summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.faq details p { margin: 0.6rem 0 0; color: var(--muted); max-width: 60ch; }
+
+/* --------------------------------------------------------------- cta */
+.cta { text-align: center; }
+.cta p { max-width: 46ch; margin: 0 auto 1.3rem; color: var(--muted); }
+.cta__note { font-size: 0.82rem; margin-top: 1rem !important; }
+
+/* ----------------------------------------------------------- galerie */
+.galerie ul { list-style: none; padding: 0; margin: 0; display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.6rem; }
+.galerie img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--rayon); }
+
+/* -------------------------------------------------------------- pied */
+.asso__pied { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem;
+  border-top: 1px solid var(--trait); color: var(--muted); font-size: 0.88rem; }
+.asso__pied h2 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.asso__pied ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 1rem; }
+.asso__mention { margin-top: 1.5rem; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

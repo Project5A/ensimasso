@@ -15,6 +15,7 @@ chaque année, et tout ce qu'il possède change avec lui.**
 make up        # infrastructure : Postgres, PgBouncer, Keycloak, Valkey, MinIO, Redpanda, Meilisearch, Mailpit
 make run       # l'API sur http://localhost:8080
 make seed      # trois associations réelles réparties sur deux années
+make front     # le portail public sur http://localhost:5173
 ```
 
 `make` sans argument liste les cibles disponibles.
@@ -100,6 +101,7 @@ gouvernance   associations, années, mandats, bureaux, permissions   ← ne dép
 contenu       pages, versions, blocs, thèmes, registre              ← dépend de gouvernance
 adhesion      campagnes, tarifs, adhésions                          ← dépend de gouvernance
 media         dépôt présigné, métadonnées, résolution d'URL         ← dépend de gouvernance
+portail       rendu public : compose contenu + bureau + médias        ← orchestration
 tresorerie    commandes, paiements, journal comptable               ← dépend de gouvernance + adhesion
 passation     orchestration du transfert annuel                     ← dépend de gouvernance + contenu
 shared        sécurité, erreurs, configuration (module ouvert)
@@ -169,7 +171,8 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [x] ~~**Module `media`**~~ — MinIO, dépôt présigné, clés jamais d'URL
 - [ ] **`media-worker`** — variantes WebP/AVIF, EXIF, magic bytes, ClamAV
 - [x] ~~**Module `tresorerie`**~~ — Stripe, prix serveur, webhook signé, journal
-- [ ] **Frontend** — Next.js, constructeur de pages, rendu public
+- [x] ~~**Portail public**~~ — Vite + TS, registre de blocs, thème par mandat, archives
+- [ ] **Tableau de bord** — constructeur de pages, connexion Keycloak
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
 - [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir

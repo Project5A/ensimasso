@@ -60,6 +60,36 @@ jobs:
           path: v2/backend/target/*-reports/
           retention-days: 7
 
+  frontend:
+    name: Portail public
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: v2/frontend/package-lock.json
+
+      - name: Installer
+        working-directory: v2/frontend
+        run: npm ci
+
+      # TypeScript strict : appeler une route qui n'existe pas doit devenir
+      # une erreur de compilation, pas un 405 découvert en production comme
+      # dans la v1 (trois endpoints appelés et jamais implémentés).
+      - name: Typage
+        working-directory: v2/frontend
+        run: npm run typecheck
+
+      - name: Tests
+        working-directory: v2/frontend
+        run: npm test
+
+      - name: Build
+        working-directory: v2/frontend
+        run: npm run build
+
   analyse:
     name: Analyse statique
     runs-on: ubuntu-latest
@@ -79,7 +109,7 @@ jobs:
 
   image:
     name: Image conteneur
-    needs: [build, secrets]
+    needs: [build, secrets, frontend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

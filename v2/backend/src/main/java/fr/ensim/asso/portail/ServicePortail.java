@@ -1,0 +1,229 @@
+package fr.ensim.asso.portail;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.ensim.asso.contenu.app.ServiceContenu;
+import fr.ensim.asso.contenu.domain.*;
+import fr.ensim.asso.gouvernance.domain.*;
+import fr.ensim.asso.media.app.ServiceMedia;
+import fr.ensim.asso.shared.error.Erreurs;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.*;
+
+/**
+ * Le rendu public d'une page d'association.
+ *
+ * <p>Deux décisions structurent tout ce service, et toutes deux viennent de
+ * la revue d'architecture :
+ *
+ * <p><strong>1. Un bloc est résolu contre le mandat DE SA PAGE.</strong> Jamais
+ * contre le mandat courant. Un bloc trombinoscope sur la page 2023-2024 affiche
+ * le bureau de 2023-2024, définitivement. La revue avait relevé qu'une
+ * conception où la référence est « le mandat courant » réécrit silencieusement
+ * ses propres archives au premier redéploiement du moteur de rendu — et qu'aucun
+ * test ne l'attrape, parce qu'en développement « courant » et « le mandat de la
+ * page » sont la même chose.
+ *
+ * <p><strong>2. Les URL de médias sont fabriquées ici, à la lecture.</strong>
+ * Le stockage ne rend que des clés. C'est la correction de STOR-01 en action :
+ * une page d'archive de 2023 affiche encore ses images en 2029, parce que rien
+ * de périssable n'a jamais été écrit en base.
+ */
+@Service
+public class ServicePortail {
+
+    private final AssociationRepository associations;
+    private final MandatRepository mandats;
+    private final MembreBureauRepository membres;
+    private final PageRepository pages;
+    private final PageVersionRepository versions;
+    private final ThemeVersionRepository themes;
+    private final ServiceContenu contenu;
+    private final ServiceMedia medias;
+    private final AnneeUniversitaireRepository annees;
+    private final ObjectMapper mapper;
+    private final java.time.Clock horloge;
+
+    public ServicePortail(AssociationRepository associations, MandatRepository mandats,
+                          MembreBureauRepository membres, PageRepository pages,
+                          PageVersionRepository versions, ThemeVersionRepository themes,
+                          ServiceContenu contenu, ServiceMedia medias,
+                          AnneeUniversitaireRepository annees, ObjectMapper mapper,
+                          java.time.Clock horloge) {
+        this.associations = associations;
+        this.mandats = mandats;
+        this.membres = membres;
+        this.pages = pages;
+        this.versions = versions;
+        this.themes = themes;
+        this.contenu = contenu;
+        this.medias = medias;
+        this.annees = annees;
+        this.mapper = mapper;
+        this.horloge = horloge;
+    }
+
+    /** L'annuaire public : une association par ligne, avec son mandat en cours. */
+    @Transactional(readOnly = true)
+    public List<PageRendue.AssociationVue> annuaire() {
+        return associations.findAll().stream()
+                .sorted(Comparator.comparing(Association::getSlug))
+                .map(a -> new PageRendue.AssociationVue(
+                        a.getSlug(), a.getNom(), a.getTypeAsso().name()))
+                .toList();
+    }
+
+    /** La page publiée d'une association, pour son mandat en fonction. */
+    @Transactional(readOnly = true)
+    public PageRendue page(String slugAsso, String slugPage) {
+        Association asso = association(slugAsso);
+        Mandat mandat = mandats.mandatEnFonction(asso.getId()).orElseThrow(() ->
+                new Erreurs.Introuvable("mandat en fonction pour", slugAsso));
+        return rendre(asso, mandat, slugPage, true);
+    }
+
+    /**
+     * La page d'une année passée. C'est l'archive, et elle ne coûte aucun code
+     * particulier : une autre année est simplement un autre mandat.
+     */
+    @Transactional(readOnly = true)
+    public PageRendue pageArchivee(String slugAsso, String anneeCode, String slugPage) {
+        Association asso = association(slugAsso);
+        Mandat mandat = mandats.findByAssociationIdAndAnneeCode(asso.getId(), anneeCode)
+                .orElseThrow(() -> new Erreurs.Introuvable(
+                        "mandat " + anneeCode + " pour", slugAsso));
+        if (mandat.getStatut() == StatutMandat.PREPARATION) {
+            // Un mandat en préparation est invisible : le bureau entrant
+            // travaille ses brouillons, le public ne doit rien en voir.
+            throw new Erreurs.Introuvable("mandat publié " + anneeCode + " pour", slugAsso);
+        }
+        return rendre(asso, mandat, slugPage, false);
+    }
+
+    // ------------------------------------------------------------- interne
+
+    private PageRendue rendre(Association asso, Mandat mandat, String slugPage, boolean estCourant) {
+        Page page = pages.findByMandatIdAndSlug(mandat.getId(), slugPage)
+                .orElseThrow(() -> new Erreurs.Introuvable("page", slugPage));
+
+        PageVersion publiee = versions.versionPubliee(page.getId()).orElseThrow(() ->
+                new Erreurs.Introuvable("version publiée de la page", slugPage));
+
+        List<Bloc> blocs = contenu.blocsDe(publiee.getId()).stream()
+                .filter(Bloc::isVisible)
+                .toList();
+
+        // Le bureau DU MANDAT DE LA PAGE. Résolu une fois, réutilisé par tous
+        // les blocs qui en ont besoin.
+        List<PageRendue.MembreVue> equipe = equipeDe(mandat.getId());
+
+        List<PageRendue.BlocRendu> rendus = blocs.stream()
+                .map(b -> rendreBloc(b, equipe))
+                .toList();
+
+        List<PageRendue.PageLien> menu = pages.findByMandatIdOrderByOrdreMenuAsc(mandat.getId())
+                .stream()
+                .filter(p -> versions.versionPubliee(p.getId()).isPresent())
+                .map(p -> new PageRendue.PageLien(p.getSlug(), p.getTitre(), p.getOrdreMenu()))
+                .toList();
+
+        Map<String, Object> theme = themes.versionPubliee(mandat.getId())
+                .map(t -> lireJson(t.getTokens()))
+                .orElseGet(Map::of);
+
+        List<String> anneesPubliees = mandats.findByAssociationIdOrderByDebutLeDesc(asso.getId())
+                .stream()
+                .filter(m -> m.getStatut() != StatutMandat.PREPARATION)
+                .map(Mandat::getAnneeCode)
+                .toList();
+
+        return new PageRendue(
+                new PageRendue.AssociationVue(asso.getSlug(), asso.getNom(), asso.getTypeAsso().name()),
+                new PageRendue.MandatVue(mandat.getAnneeCode(), mandat.getStatut().name(), estCourant),
+                page.getSlug(), page.getTitre(), publiee.getNumero(), publiee.getPublieLe(),
+                theme, rendus, menu, anneesPubliees);
+    }
+
+    private PageRendue.BlocRendu rendreBloc(Bloc bloc, List<PageRendue.MembreVue> equipe) {
+        Map<String, Object> payload = lireJson(bloc.getPayload());
+
+        // Les clés de médias sont résolues MAINTENANT. Rien de périssable
+        // n'est jamais écrit en base : c'est toute la correction de STOR-01.
+        Set<String> cles = new LinkedHashSet<>();
+        collecterCles(payload, cles);
+        Map<String, String> urls = cles.isEmpty() ? Map.of() : medias.urlsDe(cles);
+
+        // Seul un bloc trombinoscope reçoit l'équipe : inutile de la répéter.
+        List<PageRendue.MembreVue> equipeDuBloc =
+                "TEAM_GRID".equals(bloc.getType()) ? equipe : List.of();
+
+        return new PageRendue.BlocRendu(bloc.getId(), bloc.getType(), bloc.getSchemaVersion(),
+                payload, urls, equipeDuBloc);
+    }
+
+    private List<PageRendue.MembreVue> equipeDe(UUID mandatId) {
+        List<MembreBureau> actifs = membres.membresActifs(mandatId).stream()
+                .filter(MembreBureau::isVisiblePublic)
+                .toList();
+
+        Set<String> clesPhotos = actifs.stream()
+                .map(MembreBureau::getPhotoMediaKey)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Map<String, String> urls = clesPhotos.isEmpty() ? Map.of() : medias.urlsDe(clesPhotos);
+
+        return actifs.stream()
+                .map(m -> new PageRendue.MembreVue(
+                        m.getPoste().name(),
+                        m.getTitreAffiche() != null ? m.getTitreAffiche() : libelle(m.getPoste()),
+                        m.getOrdre(),
+                        m.getPhotoMediaKey() == null ? null : urls.get(m.getPhotoMediaKey())))
+                .toList();
+    }
+
+    /** Libellé français par défaut d'un poste, quand l'asso n'en impose pas. */
+    private String libelle(Poste poste) {
+        return switch (poste) {
+            case PRESIDENT -> "Président·e";
+            case VICE_PRESIDENT -> "Vice-président·e";
+            case TRESORIER -> "Trésorier·ère";
+            case SECRETAIRE -> "Secrétaire";
+            case RESP_COM -> "Responsable communication";
+            case RESP_EVENEMENTS -> "Responsable évènements";
+            case MEMBRE_BUREAU -> "Membre du bureau";
+        };
+    }
+
+    private Association association(String slug) {
+        return associations.findBySlug(slug)
+                .orElseThrow(() -> new Erreurs.Introuvable("association", slug));
+    }
+
+    private Map<String, Object> lireJson(String json) {
+        try {
+            return mapper.readValue(json, new TypeReference<Map<String, Object>>() { });
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void collecterCles(Object noeud, Set<String> sortie) {
+        if (noeud instanceof Map<?, ?> map) {
+            map.forEach((k, v) -> {
+                if (("mediaKey".equals(k) || "photoMediaKey".equals(k)) && v instanceof String s) {
+                    sortie.add(s);
+                } else if ("mediaKeys".equals(k) && v instanceof List<?> l) {
+                    l.forEach(e -> { if (e instanceof String s) sortie.add(s); });
+                } else {
+                    collecterCles(v, sortie);
+                }
+            });
+        } else if (noeud instanceof List<?> list) {
+            list.forEach(e -> collecterCles(e, sortie));
+        }
+    }
+}

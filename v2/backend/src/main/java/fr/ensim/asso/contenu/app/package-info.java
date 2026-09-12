@@ -1,6 +1,6 @@
 /**
- * Services applicatifs de contenu exposés au module de passation
- * ({@code ClonageContenu}), pour que le clonage reste dans la transaction.
+ * Services applicatifs de contenu exposés aux modules d'orchestration
+ * ({@code passation} pour le clonage, {@code portail} pour la lecture).
  */
 @org.springframework.modulith.NamedInterface("app")
 package fr.ensim.asso.contenu.app;

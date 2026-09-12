@@ -60,6 +60,14 @@ seed: ## Charge un jeu de données réaliste (3 assos, 2 années)
 		-v ON_ERROR_STOP=1 -f infra/postgres/seed-dev.sql
 	@echo "→ jeu de données chargé"
 
+.PHONY: front
+front: ## Lance le portail public (proxy vers l'API locale)
+	cd frontend && npm install --silent && VITE_API_PROXY=http://localhost:8080 npm run dev
+
+.PHONY: front-test
+front-test: ## Typage, tests et build du portail
+	cd frontend && npm run typecheck && npm test && npm run build
+
 .PHONY: verif-contraintes
 verif-contraintes: ## Prouve que les garanties sont bien portées par la base
 	@echo "Chaque « doit etre REFUSE » doit produire une ERREUR : c'est le résultat attendu."
