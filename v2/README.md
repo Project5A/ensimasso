@@ -224,6 +224,8 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [x] ~~**Agenda et partenaires**~~ — rattachés au mandat, blocs `EVENT_LIST`,
       `PARTNERS`, `COUNTDOWN` et `EMBED` rendus, gérés depuis le tableau de bord
 - [x] ~~**Tableau de bord**~~ — mandats, pages, éditeur de blocs, publication, OIDC
+- [x] ~~**Aperçu d'un brouillon**~~ — le même composant de rendu que le site
+      public, pour qu'un aperçu ne puisse pas diverger de ce qui sera publié
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
 - [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir

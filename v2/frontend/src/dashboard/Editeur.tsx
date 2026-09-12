@@ -106,6 +106,12 @@ export default function Editeur() {
             Le site public ne change pas tant que vous n'avez pas publié.
           </p>
         </div>
+        <div className="editeur__actions">
+        {/* L'aperçu avant la publication, et dans cet ordre : c'est celui dans
+            lequel on veut qu'ils soient utilisés. */}
+        <Link className="bouton bouton--secondaire" to={`/tableau/apercu/${version.id}`}>
+          Aperçu
+        </Link>
         <button
           className="bouton"
           disabled={occupe || blocs.length === 0}
@@ -118,6 +124,7 @@ export default function Editeur() {
         >
           Publier
         </button>
+        </div>
       </header>
 
       {erreur && <p role="alert" className="erreur">{erreur}</p>}

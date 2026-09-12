@@ -183,6 +183,10 @@ export const apiDashboard = {
   publier: (j: string | null, versionId: string) =>
     authed<VersionVue>(`/api/contenu/versions/${versionId}/publier`, j, { method: 'POST' }),
 
+  /** L'aperçu d'un brouillon : même rendu que la page publique, hors /api/public. */
+  apercu: (j: string | null, versionId: string) =>
+    authed<PageRendue>(`/api/apercu/versions/${versionId}`, j),
+
   // ------------------------------------------------------------- agenda
 
   evenements: (j: string | null, mandatId: string) =>

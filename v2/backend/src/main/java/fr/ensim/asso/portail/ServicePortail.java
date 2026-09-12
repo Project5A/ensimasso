@@ -6,6 +6,7 @@ import fr.ensim.asso.agenda.app.ServiceAgenda;
 import fr.ensim.asso.agenda.domain.Evenement;
 import fr.ensim.asso.contenu.app.ServiceContenu;
 import fr.ensim.asso.contenu.domain.*;
+import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.*;
 import fr.ensim.asso.media.app.ServiceMedia;
 import fr.ensim.asso.partenariat.app.ServicePartenariat;
@@ -49,6 +50,7 @@ public class ServicePortail {
     private final ServiceMedia medias;
     private final ServiceAgenda agenda;
     private final ServicePartenariat partenariats;
+    private final PolitiqueAcces politique;
     private final AnneeUniversitaireRepository annees;
     private final ObjectMapper mapper;
     private final java.time.Clock horloge;
@@ -58,8 +60,8 @@ public class ServicePortail {
                           PageVersionRepository versions, ThemeVersionRepository themes,
                           ServiceContenu contenu, ServiceMedia medias,
                           ServiceAgenda agenda, ServicePartenariat partenariats,
-                          AnneeUniversitaireRepository annees, ObjectMapper mapper,
-                          java.time.Clock horloge) {
+                          AnneeUniversitaireRepository annees, PolitiqueAcces politique,
+                          ObjectMapper mapper, java.time.Clock horloge) {
         this.associations = associations;
         this.mandats = mandats;
         this.membres = membres;
@@ -70,6 +72,7 @@ public class ServicePortail {
         this.medias = medias;
         this.agenda = agenda;
         this.partenariats = partenariats;
+        this.politique = politique;
         this.annees = annees;
         this.mapper = mapper;
         this.horloge = horloge;
@@ -114,6 +117,35 @@ public class ServicePortail {
 
     // ------------------------------------------------------------- interne
 
+    /**
+     * L'aperçu d'un brouillon.
+     *
+     * <p>Il emprunte exactement le même chemin de rendu que la page publique —
+     * mêmes blocs résolus, même thème, même agenda du mandat de la page. C'est
+     * la seule façon qu'un aperçu dise la vérité : un rendu parallèle diverge,
+     * et il diverge silencieusement.
+     *
+     * <p>La seule différence est l'autorisation. Un brouillon n'est pas public :
+     * le voir exige le droit d'éditer les pages de ce mandat, vérifié ici et
+     * non par un motif d'URL.
+     */
+    @Transactional(readOnly = true)
+    public PageRendue apercu(UUID demandeur, UUID versionId) {
+        PageVersion version = versions.findById(versionId)
+                .orElseThrow(() -> new Erreurs.Introuvable("version", versionId));
+        Page page = pages.findById(version.getPageId())
+                .orElseThrow(() -> new Erreurs.Introuvable("page de la version", versionId));
+        Mandat mandat = mandats.findById(page.getMandatId())
+                .orElseThrow(() -> new Erreurs.Introuvable("mandat de la page", page.getId()));
+
+        politique.exigerSurMandat(demandeur, Permission.PAGE_EDITER, mandat.getId());
+
+        Association asso = associations.findById(mandat.getAssociationId())
+                .orElseThrow(() -> new Erreurs.Introuvable("association", mandat.getAssociationId()));
+
+        return rendre(asso, mandat, page, version, mandat.getStatut() == StatutMandat.EN_FONCTION);
+    }
+
     private PageRendue rendre(Association asso, Mandat mandat, String slugPage, boolean estCourant) {
         Page page = pages.findByMandatIdAndSlug(mandat.getId(), slugPage)
                 .orElseThrow(() -> new Erreurs.Introuvable("page", slugPage));
@@ -121,6 +153,11 @@ public class ServicePortail {
         PageVersion publiee = versions.versionPubliee(page.getId()).orElseThrow(() ->
                 new Erreurs.Introuvable("version publiée de la page", slugPage));
 
+        return rendre(asso, mandat, page, publiee, estCourant);
+    }
+
+    private PageRendue rendre(Association asso, Mandat mandat, Page page,
+                              PageVersion publiee, boolean estCourant) {
         List<Bloc> blocs = contenu.blocsDe(publiee.getId()).stream()
                 .filter(Bloc::isVisible)
                 .toList();

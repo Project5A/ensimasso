@@ -253,6 +253,19 @@ input[type='datetime-local'], select, textarea {
   background: var(--surface); border: 1px solid var(--rule, #c9d2d2); border-radius: 6px; }
 textarea { resize: vertical; }
 
+/* ------------------------------------------------------------ aperçu */
+/* Collante et voyante : confondre un aperçu avec le site en ligne conduit à
+   croire qu'on a publié alors qu'on n'a rien publié. */
+.bandeau-apercu { position: sticky; top: 0; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.25rem; background: #4a3a00; color: #fff; font-size: 0.9rem; }
+.bandeau-apercu .lien { color: #ffd97a; }
+
+.editeur__actions { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.editeur__actions .bouton--secondaire { background: transparent; color: var(--accent);
+  border: 1px solid var(--accent); }
+
 /* ------------------------------------------- onglets d'un mandat */
 .onglets { display: flex; gap: 0.25rem; flex-wrap: wrap; margin: 0 0 1.75rem;
   border-bottom: 1px solid var(--trait); }

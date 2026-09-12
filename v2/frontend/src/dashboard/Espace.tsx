@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import { FournisseurAuth } from '../auth/AuthContext'
 import { Protege } from '../auth/Protege'
 import Agenda from './Agenda'
+import Apercu from './Apercu'
 import Editeur from './Editeur'
 import Partenaires from './Partenaires'
 import Pages from './Pages'
@@ -27,6 +28,7 @@ export default function Espace() {
         <Route path="mandats/:mandatId/agenda" element={<Protege><Agenda /></Protege>} />
         <Route path="mandats/:mandatId/partenaires" element={<Protege><Partenaires /></Protege>} />
         <Route path="pages/:pageId" element={<Protege><Editeur /></Protege>} />
+        <Route path="apercu/:versionId" element={<Protege><Apercu /></Protege>} />
       </Routes>
     </FournisseurAuth>
   )
