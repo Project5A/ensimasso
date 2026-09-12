@@ -75,6 +75,7 @@ futur développeur pressé, une contrainte ne l'est pas.
 | On ne dépublie pas | trigger de transition de statut |
 | Un bloc archivé reste revalidable | `PK(type, schema_version)` + FK |
 | Une adhésion par personne, asso et année | contrainte d'unicité |
+| Une référence de paiement n'active qu'une adhésion | index unique partiel |
 
 `ContraintesTemporellesIT` et `ImmuabiliteContenuIT` vérifient chacune de ces
 lignes contre un vrai PostgreSQL.
@@ -87,7 +88,7 @@ lignes contre un vrai PostgreSQL.
 gouvernance   associations, années, mandats, bureaux, permissions   ← ne dépend de rien
 contenu       pages, versions, blocs, thèmes, registre              ← dépend de gouvernance
 adhesion      campagnes, tarifs, adhésions                          ← dépend de gouvernance
-passation     orchestration du transfert annuel                     ← dépend des deux
+passation     orchestration du transfert annuel                     ← dépend de gouvernance + contenu
 shared        sécurité, erreurs, configuration (module ouvert)
 ```
 
@@ -126,8 +127,9 @@ make test      # unitaires + architecture — aucun Docker requis
 make verify    # + intégration Testcontainers — Docker requis
 ```
 
-51 tests unitaires et d'architecture, dont la table de vérité complète des
-permissions et le cycle de vie des mandats. Les tests d'intégration
+61 tests unitaires et d'architecture, dont la table de vérité complète des
+permissions, le cycle de vie des mandats et l'idempotence de l'activation des
+adhésions. Les tests d'intégration
 (`*IT.java`) exigent un démon Docker et tournent en CI.
 
 ---
@@ -137,7 +139,7 @@ permissions et le cycle de vie des mandats. Les tests d'intégration
 Honnêtement, pour que ce fichier ne devienne pas le README de la v1 — qui
 documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 
-- [ ] **Module `adhesion`** — le schéma existe, le code Java non
+- [x] ~~**Module `adhesion`**~~ — campagnes, tarifs, adhésions ; prix côté serveur
 - [ ] **Module `media`** — MinIO, URL présignées, `media-worker` séparé
 - [ ] **Module `tresorerie`** — Stripe, prix côté serveur, webhook signé
 - [ ] **Frontend** — Next.js, constructeur de pages, rendu public
