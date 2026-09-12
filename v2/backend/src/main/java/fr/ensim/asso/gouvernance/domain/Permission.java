@@ -18,6 +18,10 @@ public enum Permission {
     THEME_EDITER     (EnumSet.of(Poste.PRESIDENT, Poste.VICE_PRESIDENT, Poste.RESP_COM)),
     MEMBRE_GERER     (EnumSet.of(Poste.PRESIDENT, Poste.SECRETAIRE)),
     EVENEMENT_GERER  (EnumSet.of(Poste.PRESIDENT, Poste.RESP_EVENEMENTS)),
+    // Un partenariat engage l'association : le président, celui qui encaisse,
+    // et celui qui affiche le logo. Pas le responsable évènements, qui n'est
+    // partie à aucune des deux contreparties.
+    PARTENAIRE_GERER (EnumSet.of(Poste.PRESIDENT, Poste.TRESORIER, Poste.RESP_COM)),
     FINANCE_CONSULTER(EnumSet.of(Poste.PRESIDENT, Poste.TRESORIER)),
     CAMPAGNE_GERER   (EnumSet.of(Poste.PRESIDENT, Poste.TRESORIER)),
     MEDIA_DEPOSER    (EnumSet.of(Poste.PRESIDENT, Poste.VICE_PRESIDENT, Poste.RESP_COM,

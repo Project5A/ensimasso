@@ -39,7 +39,24 @@ public record PageRendue(
     public record BlocRendu(UUID id, String type, int schemaVersion,
                             Map<String, Object> payload,
                             Map<String, String> urlsMedias,
-                            List<MembreVue> equipe) { }
+                            List<MembreVue> equipe,
+                            List<EvenementVue> agenda,
+                            List<PartenaireVue> partenaires) { }
+
+    /**
+     * Un évènement de l'agenda, réduit à ce qui s'affiche.
+     *
+     * <p>{@code statut} est exposé — et vaut {@code ANNULE} le cas échéant —
+     * parce qu'un évènement annulé doit se voir barré plutôt que disparaître :
+     * ceux qui avaient prévu de venir ont besoin de le lire.
+     */
+    public record EvenementVue(String slug, String titre, String resume, String lieu,
+                               OffsetDateTime debutLe, OffsetDateTime finLe,
+                               String statut, boolean complet, String motifAnnulation,
+                               String lien, String afficheUrl) { }
+
+    /** Un partenaire du mandat de la page. */
+    public record PartenaireVue(String nom, String niveau, String url, String logoUrl) { }
 
     /**
      * Un membre du bureau, réduit à ce qui est public.

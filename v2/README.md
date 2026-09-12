@@ -58,6 +58,20 @@ vendue** (`couvre_annee_code` / `vendue_par_mandat_id`), sans quoi une campagne
 « early bird » de juillet produit des adhésions que le contrôle d'accès refuse
 pendant six semaines.
 
+Les **évènements** et les **partenaires** suivent la même règle, et c'est là
+qu'elle se voit le mieux. Un partenariat se renégocie chaque année : rattaché à
+l'association, « Crédit Mutuel » réapparaîtrait tout seul sur la page de
+2026-2027, logo et mention « partenaire officiel » compris, sans que personne
+n'ait rien resigné. Rattaché au mandat, il reste sur la page de 2024-2025, où il
+est vrai. Le jeu de données de démonstration contient exactement ce cas.
+
+Le corollaire est moins évident : sur une page d'archive, un bloc agenda réglé
+sur « à venir » n'a rien à montrer, puisque le mandat est terminé. Appliquer le
+filtre à la lettre donnerait une page d'archive à l'agenda vide, laissant croire
+que ce bureau n'a rien organisé. Une page de mandat clos affiche donc son agenda
+complet — son bilan. La règle est une fonction pure, `SelectionBlocs`, testée à
+part : c'est le genre de logique qui se trompe sans jamais lever d'exception.
+
 ---
 
 ## Ce que la base garantit, et que le code ne pourrait pas
@@ -87,7 +101,7 @@ futur développeur pressé, une contrainte ne l'est pas.
 | Le journal comptable est append-only | trigger |
 
 `infra/postgres/verifier-contraintes.sql` (`make verif-contraintes`) vérifie
-ces vingt-six garanties contre un vrai PostgreSQL : chaque bloc « doit être
+ces trente-sept garanties contre un vrai PostgreSQL : chaque bloc « doit être
 REFUSÉ » doit produire une erreur. Un script qui passe sans erreur signifie
 qu'une contrainte a disparu. `ContraintesTemporellesIT` et
 `ImmuabiliteContenuIT` font la même chose via Testcontainers.
@@ -101,6 +115,8 @@ gouvernance   associations, années, mandats, bureaux, permissions   ← ne dép
 contenu       pages, versions, blocs, thèmes, registre              ← dépend de gouvernance
 adhesion      campagnes, tarifs, adhésions                          ← dépend de gouvernance
 media         dépôt présigné, métadonnées, résolution d'URL         ← dépend de gouvernance
+agenda        évènements d'un mandat, annulations                    ← dépend de gouvernance
+partenariat   partenaires d'un mandat, niveaux                       ← dépend de gouvernance
 portail       rendu public : compose contenu + bureau + médias        ← orchestration
 tresorerie    commandes, paiements, journal comptable               ← dépend de gouvernance + adhesion
 passation     orchestration du transfert annuel                     ← dépend de gouvernance + contenu
@@ -193,6 +209,8 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [ ] **`media-worker`** — variantes WebP/AVIF, EXIF, magic bytes, ClamAV
 - [x] ~~**Module `tresorerie`**~~ — Stripe, prix serveur, webhook signé, journal
 - [x] ~~**Portail public**~~ — Vite + TS, registre de blocs, thème par mandat, archives
+- [x] ~~**Agenda et partenaires**~~ — rattachés au mandat, blocs `EVENT_LIST`,
+      `PARTNERS`, `COUNTDOWN` et `EMBED` rendus
 - [x] ~~**Tableau de bord**~~ — mandats, pages, éditeur de blocs, publication, OIDC
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur

@@ -16,5 +16,7 @@
             "gouvernance :: domain", "gouvernance :: app",
             "contenu :: domain", "contenu :: app",
             "media :: domain", "media :: app",
+            "agenda :: domain", "agenda :: app",
+            "partenariat :: domain", "partenariat :: app",
             "shared"})
 package fr.ensim.asso.portail;

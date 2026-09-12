@@ -2,15 +2,19 @@ package fr.ensim.asso.portail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.ensim.asso.agenda.app.ServiceAgenda;
+import fr.ensim.asso.agenda.domain.Evenement;
 import fr.ensim.asso.contenu.app.ServiceContenu;
 import fr.ensim.asso.contenu.domain.*;
 import fr.ensim.asso.gouvernance.domain.*;
 import fr.ensim.asso.media.app.ServiceMedia;
+import fr.ensim.asso.partenariat.app.ServicePartenariat;
+import fr.ensim.asso.partenariat.domain.Partenaire;
 import fr.ensim.asso.shared.error.Erreurs;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 /**
@@ -43,6 +47,8 @@ public class ServicePortail {
     private final ThemeVersionRepository themes;
     private final ServiceContenu contenu;
     private final ServiceMedia medias;
+    private final ServiceAgenda agenda;
+    private final ServicePartenariat partenariats;
     private final AnneeUniversitaireRepository annees;
     private final ObjectMapper mapper;
     private final java.time.Clock horloge;
@@ -51,6 +57,7 @@ public class ServicePortail {
                           MembreBureauRepository membres, PageRepository pages,
                           PageVersionRepository versions, ThemeVersionRepository themes,
                           ServiceContenu contenu, ServiceMedia medias,
+                          ServiceAgenda agenda, ServicePartenariat partenariats,
                           AnneeUniversitaireRepository annees, ObjectMapper mapper,
                           java.time.Clock horloge) {
         this.associations = associations;
@@ -61,6 +68,8 @@ public class ServicePortail {
         this.themes = themes;
         this.contenu = contenu;
         this.medias = medias;
+        this.agenda = agenda;
+        this.partenariats = partenariats;
         this.annees = annees;
         this.mapper = mapper;
         this.horloge = horloge;
@@ -120,8 +129,16 @@ public class ServicePortail {
         // les blocs qui en ont besoin.
         List<PageRendue.MembreVue> equipe = equipeDe(mandat.getId());
 
+        // Agenda et partenaires sont résolus une fois pour la page, et seulement
+        // si un bloc les demande : une page sans agenda ne doit pas payer une
+        // requête pour rien.
+        List<Evenement> tousEvenements = blocs.stream().anyMatch(b -> "EVENT_LIST".equals(b.getType()))
+                ? agenda.publicsDuMandat(mandat.getId()) : List.of();
+        List<Partenaire> tousPartenaires = blocs.stream().anyMatch(b -> "PARTNERS".equals(b.getType()))
+                ? partenariats.visiblesDuMandat(mandat.getId()) : List.of();
+
         List<PageRendue.BlocRendu> rendus = blocs.stream()
-                .map(b -> rendreBloc(b, equipe))
+                .map(b -> rendreBloc(b, equipe, tousEvenements, tousPartenaires, estCourant))
                 .toList();
 
         List<PageRendue.PageLien> menu = pages.findByMandatIdOrderByOrdreMenuAsc(mandat.getId())
@@ -147,13 +164,27 @@ public class ServicePortail {
                 theme, rendus, menu, anneesPubliees);
     }
 
-    private PageRendue.BlocRendu rendreBloc(Bloc bloc, List<PageRendue.MembreVue> equipe) {
+    private PageRendue.BlocRendu rendreBloc(Bloc bloc, List<PageRendue.MembreVue> equipe,
+                                           List<Evenement> tousEvenements,
+                                           List<Partenaire> tousPartenaires,
+                                           boolean estCourant) {
         Map<String, Object> payload = lireJson(bloc.getPayload());
+
+        List<Evenement> evenements = "EVENT_LIST".equals(bloc.getType())
+                ? SelectionBlocs.agenda(payload, tousEvenements, estCourant,
+                                        OffsetDateTime.now(horloge))
+                : List.of();
+        List<Partenaire> partenaires = "PARTNERS".equals(bloc.getType())
+                ? SelectionBlocs.partenaires(payload, tousPartenaires) : List.of();
 
         // Les clés de médias sont résolues MAINTENANT. Rien de périssable
         // n'est jamais écrit en base : c'est toute la correction de STOR-01.
+        // Les affiches d'évènements et les logos de partenaires suivent la même
+        // règle, et sont donc résolus ici comme le reste.
         Set<String> cles = new LinkedHashSet<>();
         collecterCles(payload, cles);
+        evenements.stream().map(Evenement::getMediaKey).filter(Objects::nonNull).forEach(cles::add);
+        partenaires.stream().map(Partenaire::getLogoMediaKey).filter(Objects::nonNull).forEach(cles::add);
         Map<String, String> urls = cles.isEmpty() ? Map.of() : medias.urlsDe(cles);
 
         // Seul un bloc trombinoscope reçoit l'équipe : inutile de la répéter.
@@ -161,7 +192,23 @@ public class ServicePortail {
                 "TEAM_GRID".equals(bloc.getType()) ? equipe : List.of();
 
         return new PageRendue.BlocRendu(bloc.getId(), bloc.getType(), bloc.getSchemaVersion(),
-                payload, urls, equipeDuBloc);
+                payload, urls, equipeDuBloc,
+                evenements.stream().map(e -> vue(e, urls)).toList(),
+                partenaires.stream().map(pa -> vue(pa, urls)).toList());
+    }
+
+    private PageRendue.EvenementVue vue(Evenement e, Map<String, String> urls) {
+        return new PageRendue.EvenementVue(
+                e.getSlug(), e.getTitre(), e.getResume(), e.getLieu(),
+                e.getDebutLe(), e.getFinLe(), e.getStatut().name(), e.isComplet(),
+                e.getMotifAnnulation(), e.getLien(),
+                e.getMediaKey() == null ? null : urls.get(e.getMediaKey()));
+    }
+
+    private PageRendue.PartenaireVue vue(Partenaire p, Map<String, String> urls) {
+        return new PageRendue.PartenaireVue(
+                p.getNom(), p.getNiveau().name(), p.getUrl(),
+                p.getLogoMediaKey() == null ? null : urls.get(p.getLogoMediaKey()));
     }
 
     private List<PageRendue.MembreVue> equipeDe(UUID mandatId) {

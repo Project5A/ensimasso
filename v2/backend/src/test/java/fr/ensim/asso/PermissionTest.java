@@ -28,6 +28,8 @@ class PermissionTest {
             "MEMBRE_GERER,      SECRETAIRE",
             "FINANCE_CONSULTER, TRESORIER",
             "EVENEMENT_GERER,   RESP_EVENEMENTS",
+            "PARTENAIRE_GERER,  TRESORIER",
+            "PARTENAIRE_GERER,  RESP_COM",
             "PASSATION_LANCER,  PRESIDENT",
     })
     @DisplayName("les postes attendus portent bien leurs permissions")
@@ -54,6 +56,11 @@ class PermissionTest {
             // Les finances ne sont pas ouvertes à la communication.
             "FINANCE_CONSULTER, RESP_COM",
             "FINANCE_CONSULTER, SECRETAIRE",
+            // Le responsable évènements organise, il ne signe pas les conventions.
+            "PARTENAIRE_GERER,  RESP_EVENEMENTS",
+            "PARTENAIRE_GERER,  SECRETAIRE",
+            // Et le trésorier, qui encaisse le partenariat, ne gère pas l'agenda.
+            "EVENEMENT_GERER,   TRESORIER",
     })
     @DisplayName("les postes non habilités sont bien refusés")
     void permissionsRefusees(Permission permission, Poste poste) {

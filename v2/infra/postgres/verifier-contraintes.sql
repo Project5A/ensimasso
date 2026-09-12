@@ -188,3 +188,59 @@ UPDATE ecriture_ledger SET montant_cents = 1 WHERE motif = 'Encaissement';
 
 \echo '--- 26. ... et indestructible ---'
 DELETE FROM ecriture_ledger WHERE motif = 'Encaissement';
+
+\echo '--- 27. un evenement ANNULE sans date d annulation doit etre REFUSE ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le, statut) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','gala','Gala','2026-10-03 20:00+00','ANNULE');
+
+\echo '--- 28. ... avec sa date, il passe, et il RESTE visible ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le, statut, annule_le, motif_annulation) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','gala','Gala','2026-10-03 20:00+00','ANNULE',
+  now(),'Salle indisponible');
+\echo 'OK: evenement annule enregistre, avec son motif'
+
+\echo '--- 29. deux evenements de meme slug dans un meme mandat : REFUSE ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','gala','Gala bis','2026-11-03 20:00+00');
+
+\echo '--- 30. ... mais le mandat precedent garde le sien ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le) VALUES
+ ('aaaa0000-0000-4000-8000-000000000001','gala','Gala 2024','2024-11-23 20:00+00');
+\echo 'OK: chaque mandat a son propre agenda'
+
+\echo '--- 31. une fin anterieure au debut doit etre REFUSEE ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le, fin_le) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','retro','Retro',
+  '2026-10-03 20:00+00','2026-10-03 18:00+00');
+
+\echo '--- 32. un lien « javascript: » doit etre REFUSE ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le, lien) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','xss','XSS','2026-10-03 20:00+00',
+  'javascript:alert(1)');
+
+\echo '--- 33. une URL a la place d une cle de media doit etre REFUSEE ---'
+INSERT INTO evenement (mandat_id, slug, titre, debut_le, media_key) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','url','Url','2026-10-03 20:00+00',
+  'https://exemple.org/affiche.png?sig=abc');
+
+\echo '--- 34. le MEME partenaire peut exister sur deux mandats ---'
+INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
+ ('aaaa0000-0000-4000-8000-000000000001','Le Mans Metropole','OR'),
+ ('aaaa0000-0000-4000-8000-000000000002','Le Mans Metropole','ARGENT');
+\echo 'OK: un partenariat se renegocie chaque annee, niveau compris'
+
+\echo '--- 35. ... mais pas deux fois sur le meme mandat ---'
+INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','Le Mans Metropole','OR');
+
+\echo '--- 36. un niveau de partenariat invente doit etre REFUSE ---'
+INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
+ ('aaaa0000-0000-4000-8000-000000000002','Platine SA','PLATINE');
+
+\echo '--- 37. supprimer un mandat emporte son agenda et ses partenaires ---'
+DELETE FROM mandat WHERE id='aaaa0000-0000-4000-8000-000000000001';
+SELECT 'evenements orphelins : ' || count(*)::text
+  FROM evenement WHERE mandat_id='aaaa0000-0000-4000-8000-000000000001';
+SELECT 'partenaires orphelins : ' || count(*)::text
+  FROM partenaire WHERE mandat_id='aaaa0000-0000-4000-8000-000000000001';
+\echo '(les deux doivent valoir 0 : rien ne survit a son mandat)'

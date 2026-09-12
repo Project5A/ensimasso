@@ -33,6 +33,36 @@ export type PageLien = {
   ordreMenu: number
 }
 
+/**
+ * Un évènement de l'agenda, tel que le portail le renvoie.
+ *
+ * <p>`statut` peut valoir ANNULE : un évènement annulé reste affiché, barré,
+ * avec son motif. Le faire disparaître laisserait sans réponse ceux qui
+ * comptaient venir.
+ */
+export type EvenementVue = {
+  slug: string
+  titre: string
+  resume: string | null
+  lieu: string | null
+  debutLe: string
+  finLe: string | null
+  statut: 'PUBLIE' | 'ANNULE'
+  complet: boolean
+  motifAnnulation: string | null
+  lien: string | null
+  afficheUrl: string | null
+}
+
+export type NiveauPartenaire = 'OR' | 'ARGENT' | 'BRONZE' | 'SOUTIEN'
+
+export type PartenaireVue = {
+  nom: string
+  niveau: NiveauPartenaire
+  url: string | null
+  logoUrl: string | null
+}
+
 /** Le payload d'un bloc est volontairement opaque : chaque composant valide le sien. */
 export type BlocRendu = {
   id: string
@@ -41,6 +71,8 @@ export type BlocRendu = {
   payload: Record<string, unknown>
   urlsMedias: Record<string, string>
   equipe: MembreVue[]
+  agenda: EvenementVue[]
+  partenaires: PartenaireVue[]
 }
 
 export type Theme = {

@@ -98,6 +98,7 @@ export default function PageAsso({ archive = false }: { archive?: boolean }) {
             bloc={bloc}
             slug={page.association.slug}
             anneeCode={page.mandat.anneeCode}
+            estCourant={page.mandat.estCourant}
           />
         ))}
       </main>

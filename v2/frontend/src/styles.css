@@ -131,6 +131,76 @@ h2 { font-size: clamp(1.25rem, 2.5vw, 1.55rem); letter-spacing: -0.01em; margin:
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: 0.6rem; }
 .galerie img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--rayon); }
 
+/* ------------------------------------------------------------- agenda */
+.agenda__liste { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.9rem; }
+.agenda__liste--cartes { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+
+.evenement { display: flex; gap: 1rem; background: var(--surface);
+  border: 1px solid var(--trait); border-radius: var(--rayon); overflow: hidden; }
+.agenda__liste--cartes .evenement { flex-direction: column; gap: 0; }
+.evenement__affiche { width: 8rem; object-fit: cover; flex: 0 0 auto; }
+.agenda__liste--cartes .evenement__affiche { width: 100%; aspect-ratio: 16/9; }
+.evenement__corps { padding: 1rem 1.1rem; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 0.3rem; }
+.evenement__corps h3 { margin: 0; font-size: 1.05rem; }
+.evenement__date { color: var(--accent); font-weight: 600; font-size: 0.85rem;
+  font-variant-numeric: tabular-nums; }
+.evenement__lieu, .evenement__resume { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.evenement__etats:empty { display: none; }
+.evenement__etats { margin: 0.2rem 0 0; display: flex; gap: 0.4rem; }
+.evenement__motif { margin: 0; font-size: 0.85rem; color: var(--muted); font-style: italic; }
+.evenement .bouton { margin-top: 0.6rem; }
+
+/* Un évènement annulé reste lisible : barré, atténué, mais présent. Le faire
+   disparaître laisserait sans réponse ceux qui comptaient venir. */
+.evenement--annule .evenement__corps h3 { text-decoration: line-through; }
+.evenement--annule { opacity: 0.75; }
+
+.etiquette { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.etiquette--annule { background: #fdecea; color: #8a1c12; }
+.etiquette--complet { background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent); }
+
+/* -------------------------------------------------------- partenaires */
+.partenaires__niveau h3 { font-size: 0.78rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin: 1.4rem 0 0.7rem; }
+.partenaires ul { list-style: none; padding: 0; margin: 0; display: flex;
+  flex-wrap: wrap; align-items: center; gap: 1.5rem; }
+.partenaires img { max-height: 3rem; max-width: 10rem; object-fit: contain; }
+/* Le niveau se lit à la taille, pas seulement au titre de section. */
+.partenaires__niveau--or img { max-height: 4.5rem; max-width: 14rem; }
+.partenaires__niveau--soutien { font-size: 0.9rem; color: var(--muted); }
+
+/* ------------------------------------------------------- intégrations */
+.integration__cadre { position: relative; width: 100%; border-radius: var(--rayon);
+  overflow: hidden; background: var(--trait); }
+.integration iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* ---------------------------------------------------- compte à rebours */
+.rebours { text-align: center; background: color-mix(in srgb, var(--accent) 8%, var(--fond));
+  border-radius: var(--rayon); padding: 2rem 1.25rem; }
+.rebours h2 { margin-top: 0; }
+.rebours__sous-titre { color: var(--muted); margin-top: -0.5rem; }
+.rebours__cadran { list-style: none; padding: 0; margin: 1.2rem 0; display: flex;
+  justify-content: center; flex-wrap: wrap; gap: 0.8rem; }
+.rebours__cadran li { min-width: 4.2rem; padding: 0.7rem 0.5rem; background: var(--surface);
+  border: 1px solid var(--trait); border-radius: var(--rayon); }
+.rebours__valeur { display: block; font-size: 1.7rem; font-weight: 700; color: var(--accent);
+  font-variant-numeric: tabular-nums; }
+.rebours__unite { display: block; font-size: 0.72rem; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted); }
+
+/* Le cadran change chaque seconde : il est aria-hidden, et cette phrase le
+   remplace pour les lecteurs d'écran — lue une fois, pas soixante fois. */
+.sr-seulement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 40rem) {
+  .evenement { flex-direction: column; }
+  .evenement__affiche { width: 100%; aspect-ratio: 16/9; }
+}
+
 /* -------------------------------------------------------------- pied */
 .asso__pied { max-width: 68rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem;
   border-top: 1px solid var(--trait); color: var(--muted); font-size: 0.88rem; }

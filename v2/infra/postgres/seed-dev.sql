@@ -81,15 +81,26 @@ INSERT INTO page_version (id, page_id, numero, statut, cree_par) VALUES
 INSERT INTO bloc (page_version_id, ordre, type, schema_version, payload) VALUES
     ('ffffffff-0000-0000-0000-000000000001',0,'HERO',1,
      '{"titre":"Bureau des Élèves","sousTitre":"La vie étudiante à l''ENSIM, depuis 1988","hauteur":"MOYENNE","overlay":"DEGRADE","actions":[{"libelle":"Adhérer","href":"/adherer","style":"PRIMAIRE"},{"libelle":"Nos évènements","href":"/evenements","style":"SECONDAIRE"}]}'::jsonb),
-    ('ffffffff-0000-0000-0000-000000000001',1,'STATS',1,
+    ('ffffffff-0000-0000-0000-000000000001',1,'COUNTDOWN',1,
+     jsonb_build_object(
+       'titre','Avant le Gala de printemps',
+       'cibleLe', to_jsonb(date_trunc('day', now() + interval '3 weeks') + interval '20 hours'),
+       'sousTitre','Billetterie ouverte aux adhérents',
+       'messageApres','Le Gala a eu lieu. Merci aux 300 personnes présentes !',
+       'action', jsonb_build_object('libelle','Billetterie','href','/evenements/gala-de-printemps'))),
+    ('ffffffff-0000-0000-0000-000000000001',2,'STATS',1,
      '{"items":[{"libelle":"Adhérents","valeur":"420"},{"libelle":"Évènements par an","valeur":"35"},{"libelle":"Clubs affiliés","valeur":"12"}]}'::jsonb),
-    ('ffffffff-0000-0000-0000-000000000001',2,'RICH_TEXT',1,
+    ('ffffffff-0000-0000-0000-000000000001',3,'RICH_TEXT',1,
      '{"largeur":"NORMALE","doc":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Le BDE fédère la vie associative de l''école : évènements, clubs, partenariats et représentation des étudiants auprès de l''administration."}]},{"type":"paragraph","content":[{"type":"text","text":"Adhérer donne accès aux tarifs réduits sur tous les évènements de l''année, à la K-Fêt et aux sorties organisées par les clubs."}]}]}}'::jsonb),
-    ('ffffffff-0000-0000-0000-000000000001',3,'TEAM_GRID',1,
+    ('ffffffff-0000-0000-0000-000000000001',4,'TEAM_GRID',1,
      '{"source":"MANDAT_DE_LA_PAGE","colonnes":3}'::jsonb),
-    ('ffffffff-0000-0000-0000-000000000001',4,'FAQ',1,
+    ('ffffffff-0000-0000-0000-000000000001',5,'EVENT_LIST',1,
+     '{"filtre":"A_VENIR","limite":4,"style":"CARTES"}'::jsonb),
+    ('ffffffff-0000-0000-0000-000000000001',6,'PARTNERS',1,
+     '{"titre":"Ils nous soutiennent cette année"}'::jsonb),
+    ('ffffffff-0000-0000-0000-000000000001',7,'FAQ',1,
      '{"items":[{"question":"Comment adhérer ?","reponse":"En ligne depuis cette page, ou au local du BDE pendant les permanences."},{"question":"L''adhésion est-elle valable toute l''année ?","reponse":"Elle couvre l''année universitaire en cours, de septembre à août."},{"question":"Je suis en échange, puis-je adhérer ?","reponse":"Oui, au tarif étudiant, sur présentation de votre certificat de scolarité."}]}'::jsonb),
-    ('ffffffff-0000-0000-0000-000000000001',5,'CTA_ADHESION',1,
+    ('ffffffff-0000-0000-0000-000000000001',8,'CTA_ADHESION',1,
      '{"titre":"Rejoignez le BDE","texte":"Une adhésion, toute l''année, et tous les évènements à tarif réduit.","note":"Le tarif est affiché à l''étape suivante."}'::jsonb),
     ('ffffffff-0000-0000-0000-000000000002',0,'HERO',1,
      '{"titre":"L''équipe 2025-2026","sousTitre":"Le bureau élu à l''assemblée générale d''avril 2025","hauteur":"COMPACTE","overlay":"SOMBRE"}'::jsonb),
@@ -125,7 +136,15 @@ INSERT INTO bloc (page_version_id, ordre, type, schema_version, payload) VALUES
     ('ffffffff-0000-0000-0000-000000000009',0,'HERO',1,
      '{"titre":"Bureau des Élèves","sousTitre":"Mandat 2024-2025 — archive","hauteur":"COMPACTE","overlay":"SOMBRE"}'::jsonb),
     ('ffffffff-0000-0000-0000-000000000009',1,'TEAM_GRID',1,
-     '{"source":"MANDAT_DE_LA_PAGE","colonnes":3}'::jsonb)
+     '{"source":"MANDAT_DE_LA_PAGE","colonnes":3}'::jsonb),
+    -- Le MÊME bloc « à venir » que sur la page en cours. Sur une archive il
+    -- affiche le bilan du mandat : un mandat terminé n'a rien à venir, et une
+    -- page d'archive à l'agenda vide laisserait croire que ce bureau n'a rien
+    -- organisé.
+    ('ffffffff-0000-0000-0000-000000000009',2,'EVENT_LIST',1,
+     '{"filtre":"A_VENIR","limite":10,"style":"LISTE"}'::jsonb),
+    ('ffffffff-0000-0000-0000-000000000009',3,'PARTNERS',1,
+     '{"titre":"Nos partenaires en 2024-2025"}'::jsonb)
 ;
 UPDATE page_version
    SET statut = 'PUBLIEE', publie_le = now(), publie_par = 'd0000000-0000-4000-8000-000000000009'
@@ -134,6 +153,71 @@ UPDATE page_version
 INSERT INTO theme_version (id, mandat_id, numero, statut, tokens) VALUES
     ('a1a1a1a1-0000-0000-0000-000000000009','aaaaaaaa-0000-0000-0000-000000000001',1,'PUBLIEE',
      '{"accent":"#5B4B8A","accentContraste":"#FFFFFF","encre":"#171426","fond":"#F7F6FA","police":"SANS","rayon":"8px"}'::jsonb)
+;
+
+-- ------------------------------------------------------------ agenda
+--
+-- Les évènements appartiennent au MANDAT qui les organise. Les dates du mandat
+-- en cours sont relatives à « maintenant » pour que le jeu de données ne
+-- pourrisse pas : un agenda de démonstration entièrement passé ne démontre
+-- plus rien six mois après avoir été écrit.
+-- Noter la colonne annule_le : une contrainte CHECK refuse un évènement
+-- ANNULE sans date d'annulation, et elle a attrapé la première version de
+-- ce script. Un statut « annulé » sans trace de quand ne vaut rien pour
+-- quelqu'un qui cherche à savoir s'il a manqué l'information.
+INSERT INTO evenement (mandat_id, slug, titre, resume, lieu, debut_le, fin_le, statut,
+                       lien, complet, annule_le, motif_annulation) VALUES
+    ('aaaaaaaa-0000-0000-0000-000000000002','gala-de-printemps','Gala de printemps',
+     'La soirée de l''année, en tenue de soirée, au Palais des Congrès.',
+     'Palais des Congrès, Le Mans',
+     date_trunc('day', now() + interval '3 weeks') + interval '20 hours',
+     date_trunc('day', now() + interval '3 weeks') + interval '26 hours', 'PUBLIE',
+     'https://billetterie.example.org/gala', false, NULL, NULL),
+    ('aaaaaaaa-0000-0000-0000-000000000002','week-end-integration','Week-end d''intégration',
+     'Deux jours pour que la promo entrante rencontre le reste de l''école.',
+     'Base de loisirs de la Gèsière',
+     date_trunc('day', now() + interval '8 weeks') + interval '9 hours',
+     date_trunc('day', now() + interval '8 weeks 2 days') + interval '17 hours', 'PUBLIE', NULL, true, NULL, NULL),
+    ('aaaaaaaa-0000-0000-0000-000000000002','tournoi-e-sport','Tournoi e-sport',
+     'Annulé faute de salle : la réservation de l''amphi a été reprise par l''administration.',
+     'Amphi A',
+     date_trunc('day', now() + interval '2 weeks') + interval '14 hours', NULL, 'ANNULE', NULL, false,
+     now() - interval '2 days', 'Amphi repris par l''administration pour un jury.'),
+    ('aaaaaaaa-0000-0000-0000-000000000002','afterwork-rentree','Afterwork de rentrée',
+     'Le premier rendez-vous de l''année, à la K-Fêt.', 'K-Fêt',
+     date_trunc('day', now() - interval '5 weeks') + interval '18 hours',
+     date_trunc('day', now() - interval '5 weeks') + interval '22 hours',
+     'PUBLIE', NULL, false, NULL, NULL),
+    ('aaaaaaaa-0000-0000-0000-000000000002','brouillon-ski','Séjour ski',
+     'Encore en préparation : ni dates ni budget arrêtés.', 'Alpes',
+     date_trunc('day', now() + interval '20 weeks') + interval '8 hours', NULL, 'BROUILLON', NULL, false, NULL, NULL),
+
+    -- Le mandat clos garde les siens, pour toujours.
+    ('aaaaaaaa-0000-0000-0000-000000000001','gala-2024','Gala 2024',
+     'L''édition précédente, au Théâtre des Quinconces.', 'Théâtre des Quinconces',
+     '2024-11-23 20:00+00','2024-11-24 03:00+00','PUBLIE', NULL, false, NULL, NULL),
+    ('aaaaaaaa-0000-0000-0000-000000000001','telethon-2024','Téléthon',
+     '24 heures de défis sportifs au profit du Téléthon.', 'Gymnase de l''ENSIM',
+     '2024-12-06 08:00+00','2024-12-07 08:00+00','PUBLIE', NULL, false, NULL, NULL),
+    ('aaaaaaaa-0000-0000-0000-000000000001','forum-entreprises-2025','Forum entreprises',
+     'Trente entreprises reçues par les élèves de deuxième année.', 'Hall de l''ENSIM',
+     '2025-02-04 09:00+00','2025-02-04 17:00+00','PUBLIE', NULL, false, NULL, NULL)
+;
+
+-- ------------------------------------------------------- partenaires
+--
+-- Le cas qui justifie le rattachement au mandat : « Crédit Mutuel » soutenait
+-- le BDE en 2024-2025 et pas en 2025-2026. Dans une modélisation par
+-- association, il réapparaîtrait tout seul sur la page en cours, logo compris,
+-- sans que personne n'ait rien resigné.
+INSERT INTO partenaire (mandat_id, nom, niveau, url, ordre, visible) VALUES
+    ('aaaaaaaa-0000-0000-0000-000000000002','Le Mans Métropole','OR','https://www.lemansmetropole.fr',0,true),
+    ('aaaaaaaa-0000-0000-0000-000000000002','MMArena','ARGENT','https://www.mmarena.com',0,true),
+    ('aaaaaaaa-0000-0000-0000-000000000002','Librairie Thuard','SOUTIEN',NULL,0,true),
+    ('aaaaaaaa-0000-0000-0000-000000000002','Partenaire en discussion','BRONZE',NULL,0,false),
+
+    ('aaaaaaaa-0000-0000-0000-000000000001','Crédit Mutuel','OR',NULL,0,true),
+    ('aaaaaaaa-0000-0000-0000-000000000001','Le Mans Métropole','ARGENT','https://www.lemansmetropole.fr',0,true)
 ;
 
 -- Campagne d'adhésion « early bird » : ouverte par le bureau 2025-2026 mais

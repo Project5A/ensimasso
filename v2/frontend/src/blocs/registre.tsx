@@ -1,5 +1,18 @@
 import type { BlocRendu } from '../types'
-import { BlocInconnu, CtaAdhesion, Faq, Gallery, Hero, RichText, Stats, TeamGrid } from './Blocs'
+import {
+  BlocInconnu,
+  Countdown,
+  CtaAdhesion,
+  Embed,
+  EventList,
+  Faq,
+  Gallery,
+  Hero,
+  Partners,
+  RichText,
+  Stats,
+  TeamGrid,
+} from './Blocs'
 
 /**
  * Le registre : un type de bloc, un composant.
@@ -16,9 +29,12 @@ export type ContexteBloc = {
   bloc: BlocRendu
   slug: string
   anneeCode: string
+  /** Le mandat de la page est-il celui en fonction ? L'agenda s'intitule
+   *  autrement sur une archive, où plus rien n'est « à venir ». */
+  estCourant: boolean
 }
 
-export function RendreBloc({ bloc, slug, anneeCode }: ContexteBloc) {
+export function RendreBloc({ bloc, slug, anneeCode, estCourant }: ContexteBloc) {
   switch (bloc.type) {
     case 'HERO':
       return <Hero bloc={bloc} />
@@ -34,9 +50,17 @@ export function RendreBloc({ bloc, slug, anneeCode }: ContexteBloc) {
       return <CtaAdhesion bloc={bloc} slug={slug} />
     case 'GALLERY':
       return <Gallery bloc={bloc} />
+    case 'EVENT_LIST':
+      return <EventList bloc={bloc} anneeCode={anneeCode} estCourant={estCourant} />
+    case 'PARTNERS':
+      return <Partners bloc={bloc} />
+    case 'EMBED':
+      return <Embed bloc={bloc} />
+    case 'COUNTDOWN':
+      return <Countdown bloc={bloc} />
     default:
-      // EVENT_LIST, PARTNERS, COUNTDOWN, EMBED : au registre côté serveur,
-      // pas encore rendus. Ils sont ignorés, pas plantés.
+      // Un type au registre côté serveur mais absent de ce bundle : ignoré
+      // proprement, jamais planté.
       return <BlocInconnu bloc={bloc} />
   }
 }
