@@ -47,6 +47,14 @@ ensimasso:
     bucket: ${MINIO_BUCKET_ORIGINAUX:media-originaux}
     region: ${MINIO_REGION:us-east-1}
 
+  paiement:
+    type: ${PAIEMENT_TYPE:stripe}
+    # Jamais de valeur par défaut pour un secret : une clé absente doit faire
+    # échouer bruyamment, pas démarrer avec un placeholder. La v1 avait la
+    # clé secrète Stripe en clair dans application.properties, committée.
+    cle-secrete: ${STRIPE_CLE_SECRETE:}
+    secret-webhook: ${STRIPE_SECRET_WEBHOOK:}
+
 server:
   port: ${PORT:8080}
   error:

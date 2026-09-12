@@ -47,6 +47,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                         "/api/public/**").permitAll()
 
+                // --- webhook de paiement ---
+                // Ouvert sans jeton, mais PAS non authentifié : l'identité est
+                // prouvée par la signature cryptographique de Stripe, vérifiée
+                // dans le contrôleur avant toute lecture du contenu. C'est la
+                // seule exception d'écriture de toute la chaîne.
+                .requestMatchers(HttpMethod.POST, "/api/webhooks/stripe").permitAll()
+
                 // --- supervision ---
                 .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                 .requestMatchers("/actuator/prometheus").hasAuthority("ROLE_PLATFORM_ADMIN")

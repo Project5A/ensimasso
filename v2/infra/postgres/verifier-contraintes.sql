@@ -129,3 +129,62 @@ INSERT INTO media_usage (media_key, page_version_id) VALUES
  ('bde/2025-2026/9f1c.jpg','ffff0000-0000-4000-8000-000000000001');
 \echo 'OK: usage enregistre'
 DELETE FROM media_asset WHERE cle = 'bde/2025-2026/9f1c.jpg';
+
+\echo '--- 19. le total d une commande DOIT egaler la somme de ses lignes ---'
+BEGIN;
+INSERT INTO commande (id, personne_id, association_id, statut, montant_total_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000001','d0000000-0000-4000-8000-000000000003',
+  '11111111-1111-1111-1111-111111111111','OUVERTE', 1500);
+INSERT INTO ligne_commande (commande_id, type_ligne, reference_id, libelle, montant_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000001','ADHESION','a0000000-0000-4000-8000-000000000001',
+  'Adhesion', 900);
+COMMIT;
+
+\echo '--- 20. total coherent : accepte ---'
+BEGIN;
+INSERT INTO commande (id, personne_id, association_id, statut, montant_total_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000002','d0000000-0000-4000-8000-000000000003',
+  '11111111-1111-1111-1111-111111111111','OUVERTE', 1500);
+INSERT INTO ligne_commande (commande_id, type_ligne, reference_id, libelle, montant_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000002','ADHESION','a0000000-0000-4000-8000-000000000002',
+  'Adhesion', 1500);
+COMMIT;
+\echo 'OK: commande coherente acceptee'
+
+\echo '--- 21. un meme droit ne peut pas etre facture deux fois ---'
+BEGIN;
+INSERT INTO commande (id, personne_id, association_id, statut, montant_total_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000003','d0000000-0000-4000-8000-000000000003',
+  '11111111-1111-1111-1111-111111111111','OUVERTE', 1500);
+INSERT INTO ligne_commande (commande_id, type_ligne, reference_id, libelle, montant_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000003','ADHESION','a0000000-0000-4000-8000-000000000002',
+  'Doublon', 1500);
+COMMIT;
+
+\echo '--- 22. les lignes d une commande PAYEE sont figees ---'
+UPDATE commande SET statut='PAYEE', payee_le=now() WHERE id='c0000000-0000-4000-8000-000000000002';
+INSERT INTO ligne_commande (commande_id, type_ligne, reference_id, libelle, montant_cents) VALUES
+ ('c0000000-0000-4000-8000-000000000002','BILLET','b0000000-0000-4000-8000-000000000001',
+  'Ajout apres paiement', 500);
+
+\echo '--- 23. un meme paiement ne peut pas etre enregistre deux fois ---'
+INSERT INTO paiement (commande_id, reference, montant_cents, statut) VALUES
+ ('c0000000-0000-4000-8000-000000000002','pi_3ABC',1500,'REUSSI');
+\echo 'OK: paiement enregistre'
+INSERT INTO paiement (commande_id, reference, montant_cents, statut) VALUES
+ ('c0000000-0000-4000-8000-000000000002','pi_3ABC',1500,'REUSSI');
+
+\echo '--- 24. un meme evenement webhook ne peut pas etre traite deux fois ---'
+INSERT INTO evenement_stripe (id, type) VALUES ('evt_1ABC','payment_intent.succeeded');
+\echo 'OK: evenement enregistre'
+INSERT INTO evenement_stripe (id, type) VALUES ('evt_1ABC','payment_intent.succeeded');
+
+\echo '--- 25. le journal comptable est append-only ---'
+INSERT INTO ecriture_ledger (commande_id, association_id, sens, montant_cents, motif) VALUES
+ ('c0000000-0000-4000-8000-000000000002','11111111-1111-1111-1111-111111111111',
+  'ENTREE',1500,'Encaissement');
+\echo 'OK: ecriture enregistree'
+UPDATE ecriture_ledger SET montant_cents = 1 WHERE motif = 'Encaissement';
+
+\echo '--- 26. ... et indestructible ---'
+DELETE FROM ecriture_ledger WHERE motif = 'Encaissement';
