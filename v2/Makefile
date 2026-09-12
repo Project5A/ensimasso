@@ -82,3 +82,11 @@ lint: ## Vérifie les frontières de modules et la compilation
 .PHONY: build
 build: ## Construit le jar
 	$(MVN) -DskipTests package
+
+.PHONY: sauvegarde
+sauvegarde: ## Sauvegarde chiffrée de la base et des objets (AGE_DESTINATAIRE requis)
+	@infra/sauvegarde/sauvegarder.sh
+
+.PHONY: drill
+drill: ## Exercice de restauration complet, sur une base jetable
+	@infra/sauvegarde/drill-restauration.sh $${PGDATABASE:-ensimasso}

@@ -2,7 +2,7 @@ name: CI v2
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main, "claude/**", "refacto/**"]
     paths: ["v2/**", ".github/workflows/ci-v2.yml"]
   pull_request:
     paths: ["v2/**", ".github/workflows/ci-v2.yml"]
@@ -106,6 +106,52 @@ jobs:
             p/secrets
             p/owasp-top-ten
         continue-on-error: true
+
+  # Une sauvegarde jamais restaurée n'est pas une sauvegarde. L'exercice tourne
+  # ici pour que la chaîne casse en CI plutôt que le jour où on en a besoin :
+  # il ne vérifie pas que pg_restore est sorti en 0, il compare le contenu, le
+  # schéma, puis tente sur la base restaurée les écritures qu'elle doit refuser.
+  sauvegarde:
+    name: Exercice de restauration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci_seulement
+          POSTGRES_DB: ensimasso
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: ci_seulement
+      PGDATABASE: ensimasso
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Outils
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age postgresql-client-16
+
+      # Les migrations sont du SQL pur : les rejouer sans Flyway garde ce job
+      # indépendant de la chaîne Java, donc rapide et lisible quand il casse.
+      - name: Migrations et jeu de données
+        run: |
+          for f in v2/backend/src/main/resources/db/migration/V*.sql; do
+            echo "→ $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+          psql -v ON_ERROR_STOP=1 -q -f v2/infra/postgres/seed-dev.sql
+
+      - name: Exercice complet
+        run: v2/infra/sauvegarde/drill-restauration.sh ensimasso
 
   image:
     name: Image conteneur

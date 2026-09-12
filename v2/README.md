@@ -162,6 +162,27 @@ illisibles. Les tests d'intégration
 
 ---
 
+## Sauvegardes
+
+```bash
+make sauvegarde   # dump chiffré + objets, avec rétention
+make drill        # exercice de restauration complet, sur une base jetable
+```
+
+Le chiffrement est asymétrique : la machine sauvegardée ne détient que la clé
+publique, donc elle peut écrire des sauvegardes sans pouvoir relire les
+anciennes. L'exercice de restauration ne se contente pas de vérifier que
+`pg_restore` est sorti en 0 — il compare le contenu table par table, compare le
+schéma, puis **tente sur la base restaurée les écritures qu'elle doit refuser**.
+Une restauration qui ramènerait les lignes sans les contraintes produirait une
+base qui a l'air correcte et dans laquelle deux bureaux peuvent coexister sur la
+même période.
+
+RPO 24 h, RTO 4 h, et ce qui n'est pas couvert (WAL, realm Keycloak, copie hors
+site) : [`infra/sauvegarde/README.md`](infra/sauvegarde/README.md).
+
+---
+
 ## Reste à faire
 
 Honnêtement, pour que ce fichier ne devienne pas le README de la v1 — qui
@@ -176,7 +197,9 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
 - [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir
-- [ ] **Déploiement** — k3s, ArgoCD, sauvegardes et test de restauration
+- [x] ~~**Sauvegardes**~~ — chiffrées `age`, avec un exercice de restauration
+      qui vérifie les données, le schéma *et* les invariants
+- [ ] **Déploiement** — k3s, ArgoCD, copie hors site des sauvegardes
 
 L'infrastructure de `docker-compose.dev.yml` est démarrée d'avance pour que
 chaque module s'y branche sans changer la boucle de développement ; tout ce qui
