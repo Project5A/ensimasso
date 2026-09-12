@@ -193,6 +193,18 @@ public class ServiceMedia {
     // ------------------------------------------------------------- lecture
 
     /**
+     * Combien de temps une URL de lecture reste valide.
+     *
+     * <p>Exposé parce que tout ce qui mémorise une page rendue doit expirer
+     * AVANT elle. Une page gardée en cache plus longtemps que ses URL signées
+     * afficherait des images mortes : ce serait STOR-01 réintroduit par la
+     * porte de derrière, avec la même conséquence et une cause de plus.
+     */
+    public Duration validiteUrlLecture() {
+        return VALIDITE_LECTURE;
+    }
+
+    /**
      * L'URL d'un média, fabriquée maintenant.
      *
      * <p>Le cœur de la correction STOR-01 : cette valeur n'est jamais écrite en

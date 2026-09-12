@@ -37,8 +37,25 @@ spring:
     virtual:
       enabled: true              # Java 21 : utile sur le profil delivery, IO-bound
 
+  # Utilisé uniquement lorsque ensimasso.cache.type vaut « valkey ». Délais
+  # courts : le cache est un confort, et attendre un cache en panne coûterait
+  # plus cher que de ne pas l'avoir.
+  data:
+    redis:
+      url: ${VALKEY_URL:redis://localhost:6379}
+      timeout: 300ms
+      connect-timeout: 300ms
+
 # --- stockage objet (MinIO en auto-hébergement) ---
 ensimasso:
+  # Cache du chemin de lecture public. « memoire » ne demande aucune
+  # infrastructure ; « valkey » partage le cache entre répliques du profil
+  # delivery. La durée est plafonnée dans le code par la validité des URL de
+  # médias : une page mémorisée plus longtemps afficherait des images mortes.
+  cache:
+    type: ${CACHE_TYPE:memoire}
+    duree: ${CACHE_DUREE:PT10M}
+
   stockage:
     type: ${STOCKAGE_TYPE:s3}
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

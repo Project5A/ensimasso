@@ -12,9 +12,11 @@ import fr.ensim.asso.media.app.ServiceMedia;
 import fr.ensim.asso.partenariat.app.ServicePartenariat;
 import fr.ensim.asso.partenariat.domain.Partenaire;
 import fr.ensim.asso.shared.error.Erreurs;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 
@@ -51,6 +53,8 @@ public class ServicePortail {
     private final ServiceAgenda agenda;
     private final ServicePartenariat partenariats;
     private final PolitiqueAcces politique;
+    private final PortCache cache;
+    private final Duration dureeCache;
     private final AnneeUniversitaireRepository annees;
     private final ObjectMapper mapper;
     private final java.time.Clock horloge;
@@ -61,6 +65,8 @@ public class ServicePortail {
                           ServiceContenu contenu, ServiceMedia medias,
                           ServiceAgenda agenda, ServicePartenariat partenariats,
                           AnneeUniversitaireRepository annees, PolitiqueAcces politique,
+                          PortCache cache,
+                          @Value("${ensimasso.cache.duree:PT10M}") Duration dureeCache,
                           ObjectMapper mapper, java.time.Clock horloge) {
         this.associations = associations;
         this.mandats = mandats;
@@ -73,6 +79,12 @@ public class ServicePortail {
         this.agenda = agenda;
         this.partenariats = partenariats;
         this.politique = politique;
+        this.cache = cache;
+        // Plafonnée par la validité des URL de médias : une page mémorisée plus
+        // longtemps que ses URL signées afficherait des images mortes. La règle
+        // est ici, pas dans un commentaire de configuration, pour qu'une valeur
+        // trop généreuse dans un fichier .env ne puisse pas la contourner.
+        this.dureeCache = plafonner(dureeCache, medias.validiteUrlLecture());
         this.annees = annees;
         this.mapper = mapper;
         this.horloge = horloge;
@@ -153,7 +165,54 @@ public class ServicePortail {
         PageVersion publiee = versions.versionPubliee(page.getId()).orElseThrow(() ->
                 new Erreurs.Introuvable("version publiée de la page", slugPage));
 
-        return rendre(asso, mandat, page, publiee, estCourant);
+        // La clé contient l'identifiant de version : publier écrit une NOUVELLE
+        // clé, et l'ancienne s'éteint seule. Il n'y a donc rien à invalider —
+        // c'est-à-dire rien à rater. L'aperçu d'un brouillon, lui, appelle le
+        // rendu directement : il n'est jamais mémorisé.
+        String cle = cleDe(asso, page, publiee.getId(), estCourant);
+        Optional<PageRendue> memorisee = cache.lire(cle).flatMap(this::relire);
+        if (memorisee.isPresent()) {
+            return memorisee.get();
+        }
+
+        PageRendue rendue = rendre(asso, mandat, page, publiee, estCourant);
+        ecrire(cle, rendue);
+        return rendue;
+    }
+
+    /**
+     * Ce qui n'est PAS couvert par la clé : le thème du mandat, le menu, l'agenda
+     * et les partenaires. Ces données changent sans créer de version de page, et
+     * peuvent donc accuser un retard borné par la durée du cache. C'est le prix
+     * assumé d'une clé qu'on peut calculer sans faire le travail qu'on cherche à
+     * éviter ; la durée est courte pour cette raison.
+     */
+    static String cleDe(Association asso, Page page, UUID versionId, boolean estCourant) {
+        return "portail:v1:" + asso.getSlug() + ':' + page.getMandatId() + ':'
+             + page.getSlug() + ':' + versionId + ':' + (estCourant ? "courant" : "archive");
+    }
+
+    /** Le cache est un confort : une valeur illisible se jette, elle n'échoue pas. */
+    private Optional<PageRendue> relire(String json) {
+        try {
+            return Optional.of(mapper.readValue(json, PageRendue.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private void ecrire(String cle, PageRendue rendue) {
+        try {
+            cache.ecrire(cle, mapper.writeValueAsString(rendue), dureeCache);
+        } catch (Exception e) {
+            // Ne pas savoir mémoriser une page n'est pas une raison de ne pas
+            // la servir.
+        }
+    }
+
+    static Duration plafonner(Duration demandee, Duration validiteDesUrls) {
+        Duration maximum = validiteDesUrls.dividedBy(2);
+        return demandee.compareTo(maximum) > 0 ? maximum : demandee;
     }
 
     private PageRendue rendre(Association asso, Mandat mandat, Page page,

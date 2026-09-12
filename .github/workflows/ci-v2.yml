@@ -33,6 +33,19 @@ jobs:
   build:
     name: Compilation, tests, frontières de modules
     runs-on: ubuntu-latest
+    # Valkey parle le protocole Redis : l'adaptateur de cache se teste contre
+    # l'un ou l'autre. CacheValkeyIT ÉCHOUE si aucun serveur n'est joignable,
+    # plutôt que de se désactiver en silence — un test qui s'ignore lui-même
+    # donne la même couleur qu'un test qui passe.
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

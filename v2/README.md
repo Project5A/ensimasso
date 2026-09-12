@@ -186,6 +186,40 @@ réintroduisant l'un de ces trois appels, il échoue en le nommant.
 
 ---
 
+## Le cache, et pourquoi il n'a pas d'invalidation
+
+La clé d'une page en cache contient l'identifiant de sa **version publiée** :
+
+```
+portail:v1:bde:{mandat}:accueil:{versionId}:courant
+```
+
+Publier crée une nouvelle version, donc écrit une nouvelle clé ; l'ancienne
+entrée s'éteint toute seule. L'invalidation — la partie où l'on se trompe —
+n'existe pas comme problème.
+
+Deux bornes, toutes deux dans le code plutôt que dans un commentaire de
+configuration :
+
+- **La durée est plafonnée par la validité des URL de médias.** Une page gardée
+  plus longtemps que ses URL signées afficherait des images mortes : ce serait
+  STOR-01 réintroduit par la porte de derrière. Une valeur trop généreuse dans
+  un `.env` ne peut pas contourner la règle.
+- **Le cache en mémoire est borné en nombre d'entrées.** Un cache sans borne est
+  une fuite de mémoire qu'on ne découvre qu'en production.
+
+Ce que la clé ne couvre pas, et qui accuse donc un retard borné par la durée :
+le thème du mandat, le menu, l'agenda et les partenaires. Ces données changent
+sans créer de version de page. C'est le prix d'une clé calculable sans faire le
+travail qu'on cherche à éviter, et c'est pourquoi la durée est courte.
+
+Vérifié sur l'application en fonctionnement : une modification faite
+directement en base n'apparaît pas tant que l'entrée vit, puis apparaît d'elle-même
+à son expiration. `CacheValkeyIT` s'exécute contre un vrai serveur — et échoue
+si aucun n'est joignable, au lieu de se désactiver en silence.
+
+---
+
 ## Sauvegardes
 
 ```bash
@@ -226,7 +260,9 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [x] ~~**Tableau de bord**~~ — mandats, pages, éditeur de blocs, publication, OIDC
 - [x] ~~**Aperçu d'un brouillon**~~ — le même composant de rendu que le site
       public, pour qu'un aperçu ne puisse pas diverger de ce qui sera publié
-- [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
+- [x] ~~**Cache du chemin public**~~ — clé versionnée, donc aucune invalidation
+      à écrire ; en mémoire par défaut, Valkey sur le profil `delivery`
+- [ ] **Profil `delivery`** — cache branché ; le snapshot lecture seule reste à faire
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
 - [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir
 - [x] ~~**Sauvegardes**~~ — chiffrées `age`, avec un exercice de restauration

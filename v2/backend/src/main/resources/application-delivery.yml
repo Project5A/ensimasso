@@ -20,6 +20,13 @@ spring:
     hibernate:
       ddl-auto: none
 
+# Plusieurs répliques derrière un HPA : le cache doit être partagé, sinon
+# chacune rechauffe le sien à chaque montée en charge — c'est-à-dire au moment
+# précis où la base a le plus besoin d'être épargnée.
+ensimasso:
+  cache:
+    type: ${CACHE_TYPE:valkey}
+
 server:
   port: ${PORT:8080}
 
