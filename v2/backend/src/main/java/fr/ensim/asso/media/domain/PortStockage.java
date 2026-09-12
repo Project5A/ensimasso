@@ -33,6 +33,16 @@ public interface PortStockage {
 
     Optional<MetadonneesObjet> metadonnees(String cle);
 
+    /**
+     * Lit les premiers octets d'un objet, par une requête de plage.
+     *
+     * <p>Sert à vérifier la signature réelle d'un fichier. L'objet n'est pas
+     * téléchargé : on lit une poignée d'octets et on les compare à des
+     * constantes. Aucun décodeur n'est exposé — décoder un fichier hostile
+     * reste le travail du worker média, dans un processus isolé.
+     */
+    Optional<byte[]> lireDebut(String cle, int octets);
+
     void supprimer(String cle);
 
     /** Une URL de dépôt et les en-têtes que le client doit rejouer tels quels. */

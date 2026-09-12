@@ -103,13 +103,18 @@ public class ServiceMedia {
     /**
      * Confirme le dépôt en relisant l'objet réellement présent.
      *
-     * <p>On ne fait pas confiance à ce que le client déclare avoir envoyé : la
-     * taille et le type sont relus auprès du stockage. Un objet absent, trop
-     * gros, ou d'un type hors liste blanche est rejeté.
+     * <p>On ne fait pas confiance à ce que le client déclare avoir envoyé. La
+     * taille et le type sont relus auprès du stockage — mais le
+     * {@code Content-Type} que renvoie S3 est celui que le navigateur a écrit
+     * dans son PUT signé : le relire, c'est relire le client. Les premiers
+     * octets de l'objet sont donc lus et comparés à la signature du format
+     * annoncé. Un document HTML porteur de script, déposé sous
+     * {@code image/png}, franchissait le contrôle précédent sans difficulté.
      *
-     * <p>Note honnête : la vérification des octets d'en-tête (« magic bytes »)
-     * et l'analyse antivirale relèvent du worker média, qui n'est pas encore
-     * écrit. Ce contrôle-ci est nécessaire, pas suffisant.
+     * <p>Ce qui manque encore, et qui reste le travail du worker média : le
+     * retrait des métadonnées EXIF, la génération des variantes, et l'analyse
+     * antivirale. Tout cela suppose de <em>décoder</em> le fichier, ce qui ne
+     * doit pas se produire dans ce processus.
      */
     @Transactional
     public MediaAsset confirmerDepot(UUID demandeur, UUID mediaId) {
@@ -126,14 +131,63 @@ public class ServiceMedia {
             throw new Erreurs.Conflit("fichier trop volumineux : "
                     + meta.tailleOctets() + " octets (maximum " + TAILLE_MAX_OCTETS + ")");
         }
-        if (!TYPES_AUTORISES.containsKey(meta.contentType())) {
-            media.rejeter();
-            stockage.supprimer(media.getCle());
-            throw new Erreurs.Conflit("type réel non autorisé : " + meta.contentType());
+        if (!TYPES_AUTORISES.containsKey(normaliser(meta.contentType()))) {
+            rejeter(media, "type déclaré non autorisé : " + meta.contentType());
         }
 
-        media.confirmer(meta.tailleOctets(), meta.contentType(), OffsetDateTime.now(horloge));
+        verifierSignature(media, meta.contentType());
+
+        media.confirmer(meta.tailleOctets(), normaliser(meta.contentType()), OffsetDateTime.now(horloge));
         return media;
+    }
+
+    /**
+     * Compare les octets réellement déposés au type annoncé.
+     *
+     * <p>Un objet illisible est rejeté plutôt qu'accepté par défaut : un dépôt
+     * dont on ne peut pas lire le début est un dépôt qu'on ne peut pas vérifier.
+     */
+    private void verifierSignature(MediaAsset media, String contentTypeDeclare) {
+        byte[] debut = stockage.lireDebut(media.getCle(), SignatureFichier.OCTETS_A_LIRE)
+                .orElse(null);
+        if (debut == null) {
+            rejeter(media, "impossible de relire le fichier déposé pour en vérifier le format");
+        }
+
+        SignatureFichier.Type reel = SignatureFichier.identifier(debut);
+        if (SignatureFichier.correspond(reel, contentTypeDeclare)) {
+            return;
+        }
+
+        // Nommer le format trouvé : un refus muet se contourne en renommant le
+        // fichier, un refus qui explique ne se contourne pas.
+        String explication = switch (reel) {
+            case SVG -> "ce fichier est un SVG, qui peut embarquer du script et "
+                      + "s'exécuterait sur notre origine : il n'est jamais accepté";
+            case HTML -> "ce fichier est un document HTML, pas une image";
+            case SCRIPT -> "ce fichier est un script, pas une image";
+            case INCONNU -> "le contenu ne correspond à aucun format accepté";
+            default -> "le contenu est un fichier " + reel
+                     + ", alors que le dépôt annonçait " + contentTypeDeclare;
+        };
+        rejeter(media, "contenu refusé : " + explication);
+    }
+
+    /** Rejette, efface l'objet, et échoue. Ne rend jamais la main. */
+    private void rejeter(MediaAsset media, String raison) {
+        media.rejeter();
+        stockage.supprimer(media.getCle());
+        throw new Erreurs.Conflit(raison);
+    }
+
+    /** « image/png; charset=utf-8 » et « image/png » désignent le même type. */
+    private static String normaliser(String contentType) {
+        if (contentType == null) {
+            return "";
+        }
+        int pointVirgule = contentType.indexOf(';');
+        return (pointVirgule >= 0 ? contentType.substring(0, pointVirgule) : contentType)
+                .trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     // ------------------------------------------------------------- lecture

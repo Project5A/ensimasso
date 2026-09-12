@@ -206,7 +206,11 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 
 - [x] ~~**Module `adhesion`**~~ — campagnes, tarifs, adhésions ; prix côté serveur
 - [x] ~~**Module `media`**~~ — MinIO, dépôt présigné, clés jamais d'URL
-- [ ] **`media-worker`** — variantes WebP/AVIF, EXIF, magic bytes, ClamAV
+- [x] ~~**Vérification de signature au dépôt**~~ — les octets réels doivent
+      correspondre au type annoncé ; un SVG ou un document HTML déposé sous
+      `image/png` est refusé et effacé
+- [ ] **`media-worker`** — variantes WebP/AVIF, retrait de l'EXIF, ClamAV :
+      tout ce qui suppose de *décoder* le fichier, donc un processus isolé
 - [x] ~~**Module `tresorerie`**~~ — Stripe, prix serveur, webhook signé, journal
 - [x] ~~**Portail public**~~ — Vite + TS, registre de blocs, thème par mandat, archives
 - [x] ~~**Agenda et partenaires**~~ — rattachés au mandat, blocs `EVENT_LIST`,

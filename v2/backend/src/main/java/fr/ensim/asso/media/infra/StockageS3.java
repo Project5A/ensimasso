@@ -104,6 +104,26 @@ public class StockageS3 implements PortStockage, AutoCloseable {
         }
     }
 
+    /**
+     * Requête par plage : on lit les premiers octets, pas l'objet.
+     *
+     * <p>Un fichier de 15 Mo coûte ici la même chose qu'un fichier de 500
+     * octets — la vérification de signature reste donc possible sur chaque
+     * dépôt, sans condition ni exception.
+     */
+    @Override
+    public Optional<byte[]> lireDebut(String cle, int octets) {
+        try {
+            var reponse = client.getObjectAsBytes(GetObjectRequest.builder()
+                    .bucket(bucket).key(cle)
+                    .range("bytes=0-" + (octets - 1))
+                    .build());
+            return Optional.of(reponse.asByteArray());
+        } catch (S3Exception e) {
+            return Optional.empty();
+        }
+    }
+
     @Override
     public void supprimer(String cle) {
         client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(cle).build());
