@@ -17,21 +17,29 @@ init: ## Crée .env à partir du modèle
 	@test -f .env || (cp .env.example .env && echo "→ .env créé, pensez à le relire")
 
 .PHONY: up
-up: init ## Démarre l'infrastructure de développement
+up: init ## Démarre l'infrastructure réellement utilisée par le code
 	$(COMPOSE) up -d
 	@echo "Postgres     localhost:5432  (via PgBouncer : 6432)"
 	@echo "Keycloak     http://localhost:8081   admin / \$$KEYCLOAK_ADMIN_PASSWORD"
+	@echo "Valkey       localhost:6379"
 	@echo "MinIO        http://localhost:9001"
+	@echo
+	@echo "Redpanda, Meilisearch et Mailpit ne sont PAS démarrés : aucun code"
+	@echo "ne les utilise encore. « make up-tout » si vous travaillez dessus."
+
+.PHONY: up-tout
+up-tout: init ## Démarre aussi ce qui n'est pas encore branché (Redpanda, Meilisearch, Mailpit)
+	$(COMPOSE) --profile futur up -d
 	@echo "Meilisearch  http://localhost:7700"
 	@echo "Mailpit      http://localhost:8025"
 
 .PHONY: down
 down: ## Arrête l'infrastructure
-	$(COMPOSE) down
+	$(COMPOSE) --profile futur down
 
 .PHONY: reset
 reset: ## Repart d'une base vierge (DESTRUCTIF)
-	$(COMPOSE) down -v
+	$(COMPOSE) --profile futur down -v
 	$(COMPOSE) up -d
 
 .PHONY: run

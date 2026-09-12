@@ -12,7 +12,7 @@ chaque année, et tout ce qu'il possède change avec lui.**
 ## Démarrer
 
 ```bash
-make up        # infrastructure : Postgres, PgBouncer, Keycloak, Valkey, MinIO, Redpanda, Meilisearch, Mailpit
+make up        # infrastructure réellement utilisée : Postgres, PgBouncer, Keycloak, Valkey, MinIO
 make run       # l'API sur http://localhost:8080
 make seed      # trois associations réelles réparties sur deux années
 make front     # le portail public sur http://localhost:5173
@@ -25,8 +25,16 @@ make front     # le portail public sur http://localhost:5173
 | API | http://localhost:8080 | jeton Keycloak |
 | Keycloak | http://localhost:8081 | `admin` / `$KEYCLOAK_ADMIN_PASSWORD` |
 | MinIO | http://localhost:9001 | `$MINIO_USER` / `$MINIO_PASSWORD` |
-| Meilisearch | http://localhost:7700 | `$MEILI_KEY` |
-| Mailpit | http://localhost:8025 | — |
+| Valkey | localhost:6379 | — |
+
+`make up` ne démarre **que** ce dont le code se sert. Redpanda, Meilisearch et
+Mailpit sont déclarés dans le fichier compose mais rangés dans un profil
+`futur` : aucune ligne de code ne les référence aujourd'hui, et trois
+conteneurs qui tournent pour rien coûtent de la mémoire à chaque contributeur
+tout en laissant croire que le système publie des évènements, indexe une
+recherche et envoie des courriels. `make up-tout` les démarre pour qui
+travaille dessus — et le jour où l'un d'eux est branché, un test exige qu'il
+sorte du profil.
 
 Utilisateurs de développement (mot de passe `dev`) : `president.bde`,
 `tresorier.bde`, `etudiant`, `admin.plateforme`.
@@ -317,7 +325,8 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [x] ~~**Cache du chemin public**~~ — clé versionnée, donc aucune invalidation
       à écrire ; en mémoire par défaut, Valkey sur le profil `delivery`
 - [ ] **Profil `delivery`** — cache branché ; le snapshot lecture seule reste à faire
-- [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
+- [ ] **Évènements** — Redpanda est déclaré, rangé dans le profil `futur` tant
+      qu'aucun producteur ni consommateur n'existe
 - [x] ~~**Observabilité**~~ — métriques métier, identifiant de trace dans chaque
       ligne de journal, journaux JSON en production
 - [ ] **Export des traces** — le pont OpenTelemetry est là ; l'exporteur OTLP
@@ -328,6 +337,8 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
       schémas et leurs renvois — mais jamais appliqués à un cluster
 - [ ] **Premier déploiement réel** — et la copie hors site des sauvegardes
 
-L'infrastructure de `docker-compose.dev.yml` est démarrée d'avance pour que
-chaque module s'y branche sans changer la boucle de développement ; tout ce qui
-y figure n'est pas encore utilisé par le code.
+`docker-compose.dev.yml` déclare aussi ce qui n'est pas encore branché, pour
+que le jour venu un module s'y raccorde sans changer la boucle de
+développement — mais ces services-là ne démarrent pas par défaut, et
+`InfrastructureUtiliseeTest` vérifie dans les deux sens que ce qui démarre est
+utilisé et que ce qui est utilisé démarre.

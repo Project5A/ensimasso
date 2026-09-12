@@ -68,7 +68,13 @@ services:
       - miniodata:/data
     ports: ["9000:9000", "9001:9001"]
 
+  # Aucun producteur, aucun consommateur dans le code à ce jour. Démarré
+  # seulement avec « make up-tout », parce qu'un courtier qui tourne pour rien
+  # coûte de la mémoire à chaque contributeur et laisse croire que le système
+  # publie des évènements — ce qu'il ne fait pas.
+  # Le jour où un module l'utilise, retirer ce profil : un test l'exige.
   redpanda:
+    profiles: [futur]
     image: redpandadata/redpanda:latest
     command:
       - redpanda start
@@ -79,7 +85,9 @@ services:
       - --advertise-kafka-addr PLAINTEXT://redpanda:9092
     ports: ["9092:9092"]
 
+  # Même chose : rien n'indexe et rien ne cherche pour l'instant.
   meilisearch:
+    profiles: [futur]
     image: getmeili/meilisearch:v1.11
     environment:
       MEILI_MASTER_KEY: ${MEILI_KEY:-dev_seulement_masterkey}
@@ -89,7 +97,9 @@ services:
     ports: ["7700:7700"]
 
   # Boîte mail de développement : aucun message ne part réellement.
+  # Même chose : aucun envoi de courriel dans le code.
   mailpit:
+    profiles: [futur]
     image: axllent/mailpit:latest
     ports: ["8025:8025", "1025:1025"]
 
