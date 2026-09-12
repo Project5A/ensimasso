@@ -247,10 +247,61 @@ h2 { font-size: clamp(1.25rem, 2.5vw, 1.55rem); letter-spacing: -0.01em; margin:
 .formulaire-ligne div { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .formulaire-ligne input { flex: 1 1 16rem; }
 
-input[type='text'], input[type='number'], select, textarea {
+input[type='text'], input[type='number'], input[type='url'],
+input[type='datetime-local'], select, textarea {
   width: 100%; padding: 0.55rem 0.7rem; font: inherit; color: inherit;
   background: var(--surface); border: 1px solid var(--rule, #c9d2d2); border-radius: 6px; }
 textarea { resize: vertical; }
+
+/* ------------------------------------------- onglets d'un mandat */
+.onglets { display: flex; gap: 0.25rem; flex-wrap: wrap; margin: 0 0 1.75rem;
+  border-bottom: 1px solid var(--trait); }
+.onglets a { padding: 0.55rem 0.9rem; text-decoration: none; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.onglets a[aria-current='page'] { color: var(--encre); font-weight: 600;
+  border-bottom-color: var(--accent); }
+
+/* --------------------------------------------- agenda et partenaires */
+.liste-evenements, .liste-partenaires { list-style: none; padding: 0; display: grid;
+  gap: 1px; background: var(--trait); border: 1px solid var(--trait);
+  border-radius: var(--rayon); overflow: hidden; }
+.liste-evenements > li, .liste-partenaires > li { display: flex; flex-wrap: wrap; gap: 1rem;
+  align-items: flex-start; justify-content: space-between;
+  padding: 0.9rem 1.2rem; background: var(--surface); }
+.evenement-ligne__titre, .partenaire__nom { margin: 0; font-weight: 600;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.evenement-ligne__actions { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+.evenement-ligne--annule .evenement-ligne__titre { text-decoration: line-through; }
+.evenement-ligne--annule, .partenaire--masque { opacity: 0.7; }
+
+.etiquette--brouillon { background: var(--trait); color: var(--muted); }
+.etiquette--publie { background: #e8f4ee; color: #14603f; }
+.etiquette--niveau-or { background: #fdf3d7; color: #7a5a05; }
+.etiquette--niveau-argent { background: #eef1f4; color: #4a5560; }
+.etiquette--niveau-bronze { background: #f6ece3; color: #7a4a24; }
+.etiquette--niveau-soutien { background: var(--trait); color: var(--muted); }
+
+.annulation { margin-top: 0.7rem; padding: 0.8rem 1rem; background: #fdecea;
+  border-radius: var(--rayon); display: grid; gap: 0.4rem; }
+.annulation label { font-weight: 600; font-size: 0.85rem; }
+.annulation div { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+.annulation input { flex: 1 1 14rem; }
+
+/* ------------------------------------------------- formulaire complet */
+.formulaire { margin-top: 2.5rem; border-top: 1px solid var(--trait); padding-top: 1.5rem;
+  display: grid; gap: 0.35rem; max-width: 40rem; }
+.formulaire h2 { margin: 0 0 0.75rem; font-size: 1.1rem; }
+.formulaire label { font-weight: 600; font-size: 0.9rem; margin-top: 0.6rem; }
+.formulaire__paire { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.formulaire__paire label { margin-top: 0.6rem; display: block; }
+.formulaire__actions { display: flex; align-items: center; gap: 1.2rem; margin-top: 1.2rem; }
+.case { display: flex; align-items: center; gap: 0.5rem; font-weight: 600;
+  font-size: 0.9rem; margin-top: 0.9rem; }
+.case input { width: auto; }
+
+@media (max-width: 34rem) {
+  .formulaire__paire { grid-template-columns: 1fr; }
+}
 
 /* --------------------------------------------------------------- éditeur */
 .editeur { max-width: 56rem; }

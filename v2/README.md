@@ -210,7 +210,7 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [x] ~~**Module `tresorerie`**~~ — Stripe, prix serveur, webhook signé, journal
 - [x] ~~**Portail public**~~ — Vite + TS, registre de blocs, thème par mandat, archives
 - [x] ~~**Agenda et partenaires**~~ — rattachés au mandat, blocs `EVENT_LIST`,
-      `PARTNERS`, `COUNTDOWN` et `EMBED` rendus
+      `PARTNERS`, `COUNTDOWN` et `EMBED` rendus, gérés depuis le tableau de bord
 - [x] ~~**Tableau de bord**~~ — mandats, pages, éditeur de blocs, publication, OIDC
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur

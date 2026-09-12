@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiDashboard, ErreurApi, type PageVue } from '../api'
 import { useAuth } from '../auth/AuthContext'
+import { FilMandat, NavMandat } from './NavMandat'
 
 /** Les pages d'un mandat, et la création d'une nouvelle. */
 export default function Pages() {
@@ -49,8 +50,9 @@ export default function Pages() {
 
   return (
     <main className="page page--centree">
-      <nav className="fil"><Link to="/tableau">Tableau de bord</Link><span aria-hidden="true"> › </span><span>Pages</span></nav>
+      <FilMandat section="Pages" />
       <h1>Pages du mandat</h1>
+      <NavMandat mandatId={mandatId} actif="pages" />
 
       {erreur && <p role="alert" className="erreur">{erreur}</p>}
       {!pages && !erreur && <p aria-live="polite">Chargement…</p>}

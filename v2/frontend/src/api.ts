@@ -98,6 +98,39 @@ export type BlocVue = {
   payload: string; visible: boolean
 }
 
+/** Un évènement vu du tableau de bord : il montre les brouillons, contrairement
+ *  au portail public. */
+export type EvenementDashboard = {
+  id: string; slug: string; titre: string
+  resume: string | null; description: string | null; lieu: string | null
+  debutLe: string; finLe: string | null
+  mediaKey: string | null; lien: string | null
+  statut: 'BROUILLON' | 'PUBLIE' | 'ANNULE'
+  complet: boolean; motifAnnulation: string | null
+}
+
+export type RedactionEvenement = {
+  slug?: string
+  titre: string
+  resume: string | null
+  description: string | null
+  lieu: string | null
+  debutLe: string
+  finLe: string | null
+  mediaKey: string | null
+  lien: string | null
+  complet: boolean
+}
+
+export type PartenaireDashboard = {
+  id: string; nom: string
+  niveau: 'OR' | 'ARGENT' | 'BRONZE' | 'SOUTIEN'
+  logoMediaKey: string | null; url: string | null
+  ordre: number; visible: boolean
+}
+
+export type RedactionPartenaire = Omit<PartenaireDashboard, 'id'>
+
 export const api = {
   annuaire: () => get<AssociationVue[]>('/api/public/associations'),
 
@@ -149,4 +182,48 @@ export const apiDashboard = {
 
   publier: (j: string | null, versionId: string) =>
     authed<VersionVue>(`/api/contenu/versions/${versionId}/publier`, j, { method: 'POST' }),
+
+  // ------------------------------------------------------------- agenda
+
+  evenements: (j: string | null, mandatId: string) =>
+    authed<EvenementDashboard[]>(`/api/agenda/mandats/${mandatId}/evenements`, j),
+
+  creerEvenement: (j: string | null, mandatId: string, corps: RedactionEvenement) =>
+    authed<EvenementDashboard>(`/api/agenda/mandats/${mandatId}/evenements`, j, {
+      method: 'POST', body: JSON.stringify(corps),
+    }),
+
+  modifierEvenement: (j: string | null, id: string, corps: RedactionEvenement) =>
+    authed<EvenementDashboard>(`/api/agenda/evenements/${id}`, j, {
+      method: 'PUT', body: JSON.stringify(corps),
+    }),
+
+  publierEvenement: (j: string | null, id: string) =>
+    authed<EvenementDashboard>(`/api/agenda/evenements/${id}/publier`, j, { method: 'POST' }),
+
+  annulerEvenement: (j: string | null, id: string, motif: string) =>
+    authed<EvenementDashboard>(`/api/agenda/evenements/${id}/annuler`, j, {
+      method: 'POST', body: JSON.stringify({ motif }),
+    }),
+
+  supprimerEvenement: (j: string | null, id: string) =>
+    authed<void>(`/api/agenda/evenements/${id}`, j, { method: 'DELETE' }),
+
+  // -------------------------------------------------------- partenaires
+
+  partenaires: (j: string | null, mandatId: string) =>
+    authed<PartenaireDashboard[]>(`/api/partenaires/mandats/${mandatId}`, j),
+
+  creerPartenaire: (j: string | null, mandatId: string, corps: RedactionPartenaire) =>
+    authed<PartenaireDashboard>(`/api/partenaires/mandats/${mandatId}`, j, {
+      method: 'POST', body: JSON.stringify(corps),
+    }),
+
+  modifierPartenaire: (j: string | null, id: string, corps: RedactionPartenaire) =>
+    authed<PartenaireDashboard>(`/api/partenaires/${id}`, j, {
+      method: 'PUT', body: JSON.stringify(corps),
+    }),
+
+  supprimerPartenaire: (j: string | null, id: string) =>
+    authed<void>(`/api/partenaires/${id}`, j, { method: 'DELETE' }),
 }

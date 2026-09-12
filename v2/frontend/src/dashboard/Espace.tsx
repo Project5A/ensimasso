@@ -1,7 +1,9 @@
 import { Route, Routes } from 'react-router-dom'
 import { FournisseurAuth } from '../auth/AuthContext'
 import { Protege } from '../auth/Protege'
+import Agenda from './Agenda'
 import Editeur from './Editeur'
+import Partenaires from './Partenaires'
 import Pages from './Pages'
 import Tableau from './Tableau'
 
@@ -22,6 +24,8 @@ export default function Espace() {
             sont donc relatifs au point de montage. */}
         <Route path="/" element={<Protege><Tableau /></Protege>} />
         <Route path="mandats/:mandatId" element={<Protege><Pages /></Protege>} />
+        <Route path="mandats/:mandatId/agenda" element={<Protege><Agenda /></Protege>} />
+        <Route path="mandats/:mandatId/partenaires" element={<Protege><Partenaires /></Protege>} />
         <Route path="pages/:pageId" element={<Protege><Editeur /></Protege>} />
       </Routes>
     </FournisseurAuth>
