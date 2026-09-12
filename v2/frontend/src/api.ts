@@ -37,6 +37,67 @@ async function get<T>(chemin: string): Promise<T> {
   return (await reponse.json()) as T
 }
 
+/** Requête authentifiée : le jeton est lu à l'appel, jamais capturé. */
+async function authed<T>(chemin: string, jeton: string | null, init: RequestInit = {}): Promise<T> {
+  if (!jeton) throw new ErreurApi(401, 'Session expirée, reconnectez-vous.')
+
+  const reponse = await fetch(`${BASE}${chemin}`, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      Authorization: `Bearer ${jeton}`,
+      ...init.headers,
+    },
+  })
+
+  if (reponse.status === 204) return undefined as T
+
+  if (!reponse.ok) {
+    let detail = `Erreur ${reponse.status}`
+    let erreurs: string[] | undefined
+    try {
+      const probleme = (await reponse.json()) as {
+        detail?: string; title?: string; erreurs?: string[]
+      }
+      detail = probleme.detail ?? probleme.title ?? detail
+      erreurs = probleme.erreurs
+    } catch {
+      /* réponse non JSON */
+    }
+    // Le backend renvoie les erreurs de schéma d'un bloc dans « erreurs » :
+    // les remonter telles quelles est ce qui rend l'éditeur utilisable.
+    throw new ErreurApi(reponse.status, erreurs?.length ? `${detail} — ${erreurs.join(' ; ')}` : detail)
+  }
+  return (await reponse.json()) as T
+}
+
+export type TypeBlocVue = {
+  type: string
+  schemaVersion: number
+  libelle: string
+  categorie: string
+  composantReact: string
+  jsonSchema: string
+}
+
+export type PosteVue = {
+  associationId: string
+  mandatId: string
+  anneeCode: string
+  poste: string
+}
+
+export type PageVue = { id: string; mandatId: string; slug: string; titre: string; ordreMenu: number }
+export type VersionVue = {
+  id: string; pageId: string; numero: number; statut: string
+  publieLe: string | null; note: string | null
+}
+export type BlocVue = {
+  id: string; ordre: number; type: string; schemaVersion: number
+  payload: string; visible: boolean
+}
+
 export const api = {
   annuaire: () => get<AssociationVue[]>('/api/public/associations'),
 
@@ -46,4 +107,46 @@ export const api = {
   /** Une archive est une autre année, pas un autre code. */
   archive: (slugAsso: string, annee: string, slugPage = 'accueil') =>
     get<PageRendue>(`/api/public/associations/${slugAsso}/annees/${annee}/pages/${slugPage}`),
+}
+
+/** Les appels du tableau de bord. Tous authentifiés, tous autorisés côté serveur. */
+export const apiDashboard = {
+  mesPostes: (j: string | null) => authed<PosteVue[]>('/api/gouvernance/moi/postes', j),
+
+  catalogue: (j: string | null) => authed<TypeBlocVue[]>('/api/contenu/types-blocs', j),
+
+  pages: (j: string | null, mandatId: string) =>
+    authed<PageVue[]>(`/api/contenu/mandats/${mandatId}/pages`, j),
+
+  creerPage: (j: string | null, mandatId: string, corps: { slug: string; titre: string; ordreMenu: number }) =>
+    authed<PageVue>(`/api/contenu/mandats/${mandatId}/pages`, j, {
+      method: 'POST', body: JSON.stringify(corps),
+    }),
+
+  ouvrirBrouillon: (j: string | null, pageId: string) =>
+    authed<VersionVue>(`/api/contenu/pages/${pageId}/brouillon`, j, { method: 'POST' }),
+
+  blocs: (j: string | null, versionId: string) =>
+    authed<BlocVue[]>(`/api/contenu/versions/${versionId}/blocs`, j),
+
+  ajouterBloc: (j: string | null, versionId: string, type: string, payload: unknown, ordre?: number) =>
+    authed<BlocVue>(`/api/contenu/versions/${versionId}/blocs`, j, {
+      method: 'POST', body: JSON.stringify({ type, payload, ordre }),
+    }),
+
+  modifierBloc: (j: string | null, blocId: string, payload: unknown) =>
+    authed<BlocVue>(`/api/contenu/blocs/${blocId}`, j, {
+      method: 'PUT', body: JSON.stringify({ payload }),
+    }),
+
+  supprimerBloc: (j: string | null, blocId: string) =>
+    authed<void>(`/api/contenu/blocs/${blocId}`, j, { method: 'DELETE' }),
+
+  reordonner: (j: string | null, versionId: string, blocs: string[]) =>
+    authed<void>(`/api/contenu/versions/${versionId}/ordre`, j, {
+      method: 'PUT', body: JSON.stringify({ blocs }),
+    }),
+
+  publier: (j: string | null, versionId: string) =>
+    authed<VersionVue>(`/api/contenu/versions/${versionId}/publier`, j, { method: 'POST' }),
 }

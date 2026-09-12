@@ -5,6 +5,9 @@ import { Route, Routes } from 'react-router-dom'
 // téléchargeait toutes les pages, plus three.js et un modèle 3-D de 2,9 Mo.
 const Annuaire = lazy(() => import('./pages/Annuaire'))
 const PageAsso = lazy(() => import('./pages/PageAsso'))
+// Tout l'espace authentifié — fournisseur OIDC compris — derrière une seule
+// frontière paresseuse, pour qu'aucun visiteur public ne le télécharge.
+const Espace = lazy(() => import('./dashboard/Espace'))
 
 function Chargement() {
   return (
@@ -29,6 +32,12 @@ export default function App() {
 
         {/* L'archive : mêmes composants, autre mandat. */}
         <Route path="/assos/:slug/:annee/:pageSlug" element={<PageAsso archive />} />
+
+        {/* Tableau de bord. Le garde REND l'invite de connexion à la place du
+            contenu — il ne l'affiche pas puis ne redirige trois secondes plus
+            tard, comme le faisait la v1. La vraie autorisation reste serveur. */}
+        <Route path="/connexion/retour" element={<Espace />} />
+        <Route path="/tableau/*" element={<Espace />} />
 
         <Route
           path="*"

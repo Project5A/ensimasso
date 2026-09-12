@@ -172,7 +172,7 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 - [ ] **`media-worker`** — variantes WebP/AVIF, EXIF, magic bytes, ClamAV
 - [x] ~~**Module `tresorerie`**~~ — Stripe, prix serveur, webhook signé, journal
 - [x] ~~**Portail public**~~ — Vite + TS, registre de blocs, thème par mandat, archives
-- [ ] **Tableau de bord** — constructeur de pages, connexion Keycloak
+- [x] ~~**Tableau de bord**~~ — mandats, pages, éditeur de blocs, publication, OIDC
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
 - [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir

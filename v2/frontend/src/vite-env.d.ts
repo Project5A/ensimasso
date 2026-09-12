@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string
+  readonly VITE_OIDC_AUTHORITY?: string
+  readonly VITE_OIDC_CLIENT?: string
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv

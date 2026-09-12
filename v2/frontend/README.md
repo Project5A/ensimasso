@@ -34,14 +34,25 @@ moteur de rendu est un bundle compilé : un type inconnu est inévitable, et
 `dangerouslySetInnerHTML`, donc aucun XSS stocké possible sur une page publique
 partagée par dix associations.
 
-**Découpage par route.** La v1 n'avait pas un seul `React.lazy` : chaque
-visiteur téléchargeait toutes les pages, plus three.js et un modèle 3-D de
-2,9 Mo.
+**Découpage par route, mesuré.** Le fournisseur OIDC vit dans le chunk du
+tableau de bord, pas à la racine : sans cela `oidc-client-ts` entrait dans le
+chunk d'entrée et chaque visiteur d'une page publique téléchargeait 68 Ko
+d'authentification inutile. Chunk d'entrée : 167 Ko (54,9 Ko gzip), identique
+à avant l'ajout du tableau de bord. La v1 n'avait pas un seul `React.lazy` et
+servait three.js plus un modèle 3-D de 2,9 Mo à tout le monde.
+
+**Le formulaire d'édition est généré depuis le JSON Schema** servi par l'API —
+le même que celui qui valide côté serveur. Il ne peut donc pas diverger de ce
+que la base accepte. Ajouter un type de bloc = une ligne dans `type_bloc` et
+un composant de rendu, sans toucher au constructeur.
 
 ## Reste à faire
 
-- [ ] Tableau de bord : constructeur de pages (glisser-déposer, aperçu, publication)
-- [ ] Connexion Keycloak (OIDC + PKCE, client `ensimasso-dashboard` déjà déclaré)
+- [x] ~~Tableau de bord : mes mandats, pages, éditeur de blocs, publication~~
+- [x] ~~Connexion Keycloak (OIDC + PKCE)~~ — écrite, **flux non vérifié de bout
+      en bout** faute de Keycloak dans l'environnement de développement utilisé
+- [ ] Glisser-déposer pour le réordonnancement (boutons ↑/↓ pour l'instant)
+- [ ] Aperçu du brouillon avant publication
 - [ ] Blocs `EVENT_LIST`, `PARTNERS`, `COUNTDOWN`, `EMBED` — au registre serveur, pas encore rendus
 - [ ] Types dérivés d'un schéma OpenAPI en CI, pour qu'appeler une route
       inexistante devienne une erreur de compilation
