@@ -1,86 +1,75 @@
 # ENSIMAsso
 
-Bienvenue sur le dépôt officiel du projet **ENSIMAsso**, une plateforme web centralisant les informations et services des associations étudiantes de l'ENSIM. Ce projet vise à offrir une interface moderne et intuitive pour les étudiants et les administrateurs des associations.
+Plateforme des associations étudiantes de l'ENSIM.
 
-## Fonctionnalités principales
+Le dépôt contient **deux versions** du projet :
 
-- **Page d'accueil** : 
-  - Slider avec une brève présentation des associations.
-  - Accès rapide aux pages des associations.
-- **Forum** : 
-  - Fil d'actualité interactif similaire aux réseaux sociaux.
-- **Événements** : 
-  - Affichage des événements à venir sous forme de timeline.
-  - Boutons pour s'inscrire, partager ou consulter plus d'informations.
-- **Associations et clubs** : 
-  - Liste principale des associations avec descriptions.
-  - Pages dédiées pour chaque association/club comprenant :
-    - Description, membres, services, événements.
-    - Formulaire d'adhésion.
-- **Dashboard utilisateur** : 
-  - Gestion des informations personnelles et des notifications.
-- **Authentification** :
-  - Connexion et inscription sécurisées.
+| Dossier | Quoi | État |
+|---|---|---|
+| [`v2/`](v2/) | Réécriture en cours | Développement actif — [README](v2/README.md) |
+| `BackEnd/` · `FrontEnd/` | Version d'origine (2025) | Figée, conservée pour référence |
 
-## Technologies utilisées
+---
 
-### Frontend
-- **React** : Pour une interface utilisateur réactive et moderne.
-- **TailwindCSS** : Pour un design rapide et personnalisable.
+## v2 — la réécriture
 
-### Backend
-- **Spring Boot** : Pour une API robuste et performante.
-- **MySQL** : Gestion des données relationnelles.
+Tout est décrit dans **[`v2/README.md`](v2/README.md)**. Pour démarrer :
 
-### Outils de développement
-- **GitHub** : Hébergement du code source.
-- **Docker** : Conteneurisation pour simplifier le déploiement.
-- **Jenkins** : Automatisation des tests et des déploiements.
+```bash
+cd v2
+make            # liste les cibles
+make test       # tests unitaires et d'architecture, sans Docker
+make up         # infrastructure de développement (Docker requis)
+```
 
-## Installation locale
+L'idée qui structure la réécriture : une **association** est permanente, un
+**mandat** est le terme d'un bureau. Les pages, le thème, l'agenda, les
+partenaires et l'équipe appartiennent au mandat, pas à l'association. C'est ce
+qui fait exister les archives par année sans code particulier, et ce qu'un
+modèle clé sur `(association, année)` ne sait pas représenter — les élections
+de BDE ont lieu au printemps, pas au 1er septembre.
 
-### Prérequis
-- Node.js et npm
-- Java 17+
-- Docker et Docker Compose
+---
 
-### Étapes
-1. Clonez le dépôt :
-   ```bash
-   git clone https://github.com/Project5A/ensimasso.git
-   ```
-2. **Frontend** :
-   ```bash
-   cd frontend/ensimasso
-   npm install
-   npm start
-   ```
-3. **Backend** :
-   ```bash
-   cd backend
-   ./mvnw spring-boot:run
-   ```
-4. **Docker (optionnel)** :
-   ```bash
-   docker-compose up
-   ```
+## v1 — la version d'origine
 
-## Contribution
+Écrite en 2025 par les auteurs ci-dessous. Elle a été auditée avant la
+réécriture ; les constats sont repris dans `v2/README.md` et chacun est
+aujourd'hui vérifié par un test.
 
-Les contributions sont les bienvenues ! Veuillez suivre les étapes suivantes :
-1. Forkez le dépôt.
-2. Créez une branche pour vos modifications :
-   ```bash
-   git checkout -b feature/nom-de-la-fonctionnalite
-   ```
-3. Effectuez vos modifications et testez-les.
-4. Soumettez une pull request en expliquant vos changements.
+**Ce README-ci décrivait autre chose que le projet.** Il annonçait MySQL
+— c'était Azure SQL Server — Jenkins pour l'intégration continue, qui n'a
+jamais existé, et un `docker-compose up` sans fichier compose. Les chemins
+d'installation (`frontend/ensimasso`, `backend`) ne correspondaient pas non
+plus à ceux du dépôt (`FrontEnd/ensimasso`, `BackEnd`). C'est le constat OPS-04
+de l'audit, et il est corrigé ici parce qu'un document qui décrit un autre
+système que le sien fait perdre plus de temps qu'il n'en fait gagner.
+
+Stack réelle de la v1 : React 18 (Create React App) · Spring Boot 3 · Azure SQL
+Server · Azure Blob Storage · Stripe. Pas de conteneurisation fonctionnelle,
+pas de chaîne d'intégration, pas de tests.
+
+> ⚠️ L'historique git de la v1 contient des identifiants de production réels
+> (base de données, stockage, clé Stripe), committés en février 2025. Ils
+> doivent être considérés comme compromis et révoqués, que le code tourne
+> encore ou non — retirer un secret d'un fichier ne le retire pas de
+> l'historique.
+
+Elle se lance encore, pour qui veut la voir tourner :
+
+```bash
+cd BackEnd   && ./mvnw spring-boot:run     # exige des identifiants Azure valides
+cd FrontEnd/ensimasso && npm install && npm start
+```
+
+---
 
 ## Auteurs
-- [ELYACOUBI YAHYA]
-- [ELKALCHY ACHRAF]
-- [BOUIBER TAHA]
+
+- ELYACOUBI Yahya
+- ELKALCHY Achraf
+- BOUIBER Taha
 
 ## Licence
 
-Ce projet est sous licence MIT. Consultez le fichier `LICENSE` pour plus d'informations.
+MIT — voir [`LICENSE`](LICENSE).
