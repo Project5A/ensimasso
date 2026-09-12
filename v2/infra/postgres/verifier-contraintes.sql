@@ -97,3 +97,35 @@ INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par
                       montant_paye_cents, statut) VALUES
  ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
   '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'ACTIVE');
+
+\echo '--- 13. une URL ne peut pas etre stockee comme cle de media (STOR-01) ---'
+INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par) VALUES
+ ('11111111-1111-1111-1111-111111111111','2025-2026',
+  'https://compte.blob.core.windows.net/userphotos/x.jpg?sv=2024&sig=abc',
+  'image/jpeg','ATTENTE_DEPOT','d0000000-0000-4000-8000-000000000001');
+
+\echo '--- 14. une cle avec chaine de requete est refusee ---'
+INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par) VALUES
+ ('11111111-1111-1111-1111-111111111111','2025-2026','bde/2025-2026/x.jpg?token=abc',
+  'image/jpeg','ATTENTE_DEPOT','d0000000-0000-4000-8000-000000000001');
+
+\echo '--- 15. une cle ordinaire est acceptee ---'
+INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par, confirme_le) VALUES
+ ('11111111-1111-1111-1111-111111111111','2025-2026','bde/2025-2026/9f1c.jpg',
+  'image/jpeg','DISPONIBLE','d0000000-0000-4000-8000-000000000001', now());
+\echo 'OK: cle d objet acceptee'
+
+\echo '--- 16. DISPONIBLE sans date de confirmation doit etre REFUSE ---'
+INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par) VALUES
+ ('11111111-1111-1111-1111-111111111111','2025-2026','bde/2025-2026/incoherent.jpg',
+  'image/jpeg','DISPONIBLE','d0000000-0000-4000-8000-000000000001');
+
+\echo '--- 17. media_usage ne peut pas designer un media inexistant ---'
+INSERT INTO media_usage (media_key, page_version_id) VALUES
+ ('bde/2025-2026/nexiste-pas.jpg','ffff0000-0000-4000-8000-000000000001');
+
+\echo '--- 18. un media reference par une version figee ne peut pas etre supprime ---'
+INSERT INTO media_usage (media_key, page_version_id) VALUES
+ ('bde/2025-2026/9f1c.jpg','ffff0000-0000-4000-8000-000000000001');
+\echo 'OK: usage enregistre'
+DELETE FROM media_asset WHERE cle = 'bde/2025-2026/9f1c.jpg';

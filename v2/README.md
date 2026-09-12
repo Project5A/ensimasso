@@ -76,9 +76,14 @@ futur développeur pressé, une contrainte ne l'est pas.
 | Un bloc archivé reste revalidable | `PK(type, schema_version)` + FK |
 | Une adhésion par personne, asso et année | contrainte d'unicité |
 | Une référence de paiement n'active qu'une adhésion | index unique partiel |
+| Une clé de média n'est jamais une URL | `CHECK (cle !~ '^https?://' AND cle !~ '\?')` |
+| Un média utilisé par une archive est indestructible | FK `media_usage → media_asset` |
 
-`ContraintesTemporellesIT` et `ImmuabiliteContenuIT` vérifient chacune de ces
-lignes contre un vrai PostgreSQL.
+`infra/postgres/verifier-contraintes.sql` (`make verif-contraintes`) vérifie
+ces dix-huit garanties contre un vrai PostgreSQL : chaque bloc « doit être
+REFUSÉ » doit produire une erreur. Un script qui passe sans erreur signifie
+qu'une contrainte a disparu. `ContraintesTemporellesIT` et
+`ImmuabiliteContenuIT` font la même chose via Testcontainers.
 
 ---
 
@@ -88,6 +93,7 @@ lignes contre un vrai PostgreSQL.
 gouvernance   associations, années, mandats, bureaux, permissions   ← ne dépend de rien
 contenu       pages, versions, blocs, thèmes, registre              ← dépend de gouvernance
 adhesion      campagnes, tarifs, adhésions                          ← dépend de gouvernance
+media         dépôt présigné, métadonnées, résolution d'URL         ← dépend de gouvernance
 passation     orchestration du transfert annuel                     ← dépend de gouvernance + contenu
 shared        sécurité, erreurs, configuration (module ouvert)
 ```
@@ -117,6 +123,12 @@ et une clé de signature JWT codée en dur. Les corrections sont structurelles :
   méthode d'API renvoie un `@Entity`.
 - **Les écritures ne visent que le mandat en fonction.** Un mandat clos
   n'accepte plus rien : c'est ce qui rend l'archive fiable.
+- **Le dépôt de fichier exige une identité et un droit.** Dans la v1,
+  `POST /api/posts/uploadImage` était en `permitAll` et acceptait n'importe
+  quel fichier de 20 Mo — hébergement gratuit pour tout internet.
+- **La base ne stocke jamais d'URL signée.** Une contrainte `CHECK` refuse
+  toute clé ressemblant à une URL, ce qui rend STOR-01 impossible à
+  réintroduire, même par un script d'import.
 
 ---
 
@@ -127,9 +139,9 @@ make test      # unitaires + architecture — aucun Docker requis
 make verify    # + intégration Testcontainers — Docker requis
 ```
 
-61 tests unitaires et d'architecture, dont la table de vérité complète des
-permissions, le cycle de vie des mandats et l'idempotence de l'activation des
-adhésions. Les tests d'intégration
+72 tests unitaires et d'architecture, dont la table de vérité complète des
+permissions, le cycle de vie des mandats, l'idempotence de l'activation des
+adhésions et le refus d'une URL comme clé d'objet. Les tests d'intégration
 (`*IT.java`) exigent un démon Docker et tournent en CI.
 
 ---
@@ -140,7 +152,8 @@ Honnêtement, pour que ce fichier ne devienne pas le README de la v1 — qui
 documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 
 - [x] ~~**Module `adhesion`**~~ — campagnes, tarifs, adhésions ; prix côté serveur
-- [ ] **Module `media`** — MinIO, URL présignées, `media-worker` séparé
+- [x] ~~**Module `media`**~~ — MinIO, dépôt présigné, clés jamais d'URL
+- [ ] **`media-worker`** — variantes WebP/AVIF, EXIF, magic bytes, ClamAV
 - [ ] **Module `tresorerie`** — Stripe, prix côté serveur, webhook signé
 - [ ] **Frontend** — Next.js, constructeur de pages, rendu public
 - [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey

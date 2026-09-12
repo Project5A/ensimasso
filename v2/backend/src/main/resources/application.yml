@@ -37,6 +37,16 @@ spring:
     virtual:
       enabled: true              # Java 21 : utile sur le profil delivery, IO-bound
 
+# --- stockage objet (MinIO en auto-hébergement) ---
+ensimasso:
+  stockage:
+    type: ${STOCKAGE_TYPE:s3}
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    acces: ${MINIO_USER:ensimasso}
+    secret: ${MINIO_PASSWORD:}
+    bucket: ${MINIO_BUCKET_ORIGINAUX:media-originaux}
+    region: ${MINIO_REGION:us-east-1}
+
 server:
   port: ${PORT:8080}
   error:
