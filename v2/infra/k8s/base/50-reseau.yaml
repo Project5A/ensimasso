@@ -1,0 +1,114 @@
+# Refus par défaut, puis autorisations nommées.
+#
+# Le raisonnement est le même que pour les routes HTTP : la v1 avait une liste
+# de motifs d'URL en « autoriser », et 27 routes sur 32 se sont retrouvées
+# publiques. Une politique réseau qui énumère ce qui est interdit finit au même
+# endroit. Ici, ce qui n'est pas écrit ne passe pas.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: refus-par-defaut
+  namespace: ensimasso
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: resolution-dns
+  namespace: ensimasso
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Le cœur : base, stockage objet, Keycloak, et Stripe vers l'extérieur.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: core
+  namespace: ensimasso
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-core }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: ensimasso-portail }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [postgres, minio, valkey, keycloak]
+    - # Stripe. Restreint au port 443 : rien d'autre ne sort en clair.
+      to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports:
+        - { protocol: TCP, port: 443 }
+---
+# La lecture publique ne sort QUE vers la base et le cache.
+#
+# C'est la contrepartie concrète du « plus petit jeu de secrets possible » :
+# même si le rendu public était compromis, il n'a ni le droit d'écrire, ni le
+# chemin réseau pour joindre Stripe ou l'administration de Keycloak.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: delivery
+  namespace: ensimasso
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-delivery }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: ensimasso-portail }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [postgres, valkey, minio]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: portail
+  namespace: ensimasso
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-portail }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [ensimasso-core, ensimasso-delivery]
+      ports:
+        - { protocol: TCP, port: 8080 }

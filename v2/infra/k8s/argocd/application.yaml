@@ -1,0 +1,38 @@
+# Déploiement par ArgoCD : l'état du cluster suit le dépôt, et rien d'autre.
+#
+# Le point qui compte n'est pas l'automatisation mais la réversibilité : quand
+# le bureau change, personne ne sait plus ce qui a été appliqué à la main. Ici,
+# la réponse est dans git, et selfHeal remet le cluster d'accord avec le dépôt
+# si quelqu'un a « juste corrigé un petit truc » en direct.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ensimasso
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Project5A/ensimasso.git
+    targetRevision: main
+    path: v2/infra/k8s/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ensimasso
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false      # le namespace porte ses règles de sécurité
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff: { duration: 20s, factor: 2, maxDuration: 5m }
+  # Les Secrets ne sont ni suivis ni synchronisés : ils n'existent pas dans le
+  # dépôt, et ArgoCD ne doit pas les supprimer en croyant les avoir en trop.
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers: ["/data"]

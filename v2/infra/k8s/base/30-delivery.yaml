@@ -1,0 +1,114 @@
+# La lecture publique. MÊME image que le cœur, profil différent.
+#
+# C'est ce qui rend la séparation honnête : il n'y a pas deux bases de code à
+# maintenir en parallèle, donc pas de dérive possible entre ce que le public
+# voit et ce que le bureau publie. La différence tient dans le profil Spring,
+# le rôle PostgreSQL, et le jeu de secrets — qui est ici le plus petit possible :
+# ni clé Stripe, ni client d'administration Keycloak, ni droit d'écriture.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ensimasso-delivery
+  namespace: ensimasso
+  labels: { app.kubernetes.io/name: ensimasso-delivery }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-delivery }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: ensimasso-delivery }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        # Deux répliques sur le même nœud ne protègent de rien.
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app.kubernetes.io/name: ensimasso-delivery }
+      containers:
+        - name: delivery
+          image: ghcr.io/project5a/ensimasso-core:2.0.0
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: SPRING_PROFILES_ACTIVE, value: delivery }
+            - { name: CACHE_TYPE, value: valkey }
+          envFrom:
+            - configMapRef: { name: ensimasso-config }
+            # Un Secret DISTINCT, et volontairement pauvre : le composant le
+            # plus exposé du système est celui qui détient le moins.
+            - secretRef: { name: ensimasso-secrets-lecture }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: "200m", memory: "512Mi" }
+            limits:   { cpu: "1",    memory: "768Mi" }
+          startupProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 20
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ensimasso-delivery
+  namespace: ensimasso
+spec:
+  selector: { app.kubernetes.io/name: ensimasso-delivery }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ensimasso-delivery
+  namespace: ensimasso
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ensimasso-delivery
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+  behavior:
+    scaleUp:
+      # Monter vite : l'ouverture de la billetterie est annoncée à l'avance et
+      # tout le monde arrive dans la même minute.
+      stabilizationWindowSeconds: 0
+    scaleDown:
+      # Redescendre lentement : une accalmie de deux minutes n'est pas la fin
+      # de l'affluence, et un aller-retour coûte des démarrages à froid.
+      stabilizationWindowSeconds: 600
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ensimasso-delivery
+  namespace: ensimasso
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-delivery }

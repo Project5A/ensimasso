@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ensimasso-config
+  namespace: ensimasso
+data:
+  # Rien de secret ici. Les mots de passe, clés Stripe et clés de stockage
+  # vivent dans des Secrets créés hors du dépôt — voir le README de ce dossier.
+  # C'est la correction du constat le plus grave de l'audit de la v1 : mot de
+  # passe Azure SQL, clé de compte de stockage et clé secrète Stripe étaient
+  # committés en clair depuis février 2025.
+  DB_URL: "jdbc:postgresql://postgres.ensimasso.svc.cluster.local:5432/ensimasso"
+  OIDC_ISSUER: "https://auth.ensimasso.fr/realms/ensimasso"
+  MINIO_ENDPOINT: "http://minio.ensimasso.svc.cluster.local:9000"
+  MINIO_BUCKET_ORIGINAUX: "media-originaux"
+  VALKEY_URL: "redis://valkey.ensimasso.svc.cluster.local:6379"
+  LOG_FORMAT: "ecs"
+  LOG_LEVEL: "INFO"
+  # Clé PUBLIQUE age : elle n'a rien de secret, c'est tout l'intérêt du
+  # chiffrement asymétrique. À remplacer par la vôtre — si vous déployez avec
+  # celle-ci, personne parmi vous ne pourra relire ses propres sauvegardes.
+  AGE_DESTINATAIRE: "age1remplacez-moi000000000000000000000000000000000000000000000"
+  CACHE_TYPE: "memoire"

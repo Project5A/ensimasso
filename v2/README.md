@@ -303,7 +303,9 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
       attend qu'il y ait un Tempo en face
 - [x] ~~**Sauvegardes**~~ — chiffrées `age`, avec un exercice de restauration
       qui vérifie les données, le schéma *et* les invariants
-- [ ] **Déploiement** — k3s, ArgoCD, copie hors site des sauvegardes
+- [x] ~~**Manifestes de déploiement**~~ — k3s et ArgoCD, validés contre les
+      schémas et leurs renvois — mais jamais appliqués à un cluster
+- [ ] **Premier déploiement réel** — et la copie hors site des sauvegardes
 
 L'infrastructure de `docker-compose.dev.yml` est démarrée d'avance pour que
 chaque module s'y branche sans changer la boucle de développement ; tout ce qui

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ensimasso
+  labels:
+    app.kubernetes.io/part-of: ensimasso
+    # Les règles de sécurité des pods sont imposées au niveau du namespace :
+    # un manifeste qui demanderait root ou un montage hôte est refusé à
+    # l'admission, pas découvert à la revue.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

@@ -1,0 +1,76 @@
+# Le portail statique, servi par nginx, qui relaie aussi l'API sur la MÊME
+# origine : pas de CORS, donc pas de liste d'origines autorisées à tenir à jour.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ensimasso-portail
+  namespace: ensimasso
+  labels: { app.kubernetes.io/name: ensimasso-portail }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-portail }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: ensimasso-portail }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: nginx
+          image: ghcr.io/project5a/ensimasso-portail:2.0.0
+          ports:
+            - { name: http, containerPort: 8080 }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+          resources:
+            requests: { cpu: "10m",  memory: "32Mi" }
+            limits:   { cpu: "200m", memory: "128Mi" }
+          readinessProbe:
+            httpGet: { path: /index.html, port: http }
+            periodSeconds: 10
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: cache, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ensimasso-portail
+  namespace: ensimasso
+spec:
+  selector: { app.kubernetes.io/name: ensimasso-portail }
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ensimasso
+  namespace: ensimasso
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    # HSTS est posé ici parce que c'est le seul point qui voit le TLS ;
+    # l'application, derrière, ne parle qu'en clair dans le cluster.
+    traefik.ingress.kubernetes.io/router.middlewares: ensimasso-securite@kubernetescrd
+spec:
+  tls:
+    - hosts: ["ensimasso.fr", "www.ensimasso.fr"]
+      secretName: ensimasso-tls
+  rules:
+    - host: ensimasso.fr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ensimasso-portail
+                port: { number: 80 }

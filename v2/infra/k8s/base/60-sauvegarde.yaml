@@ -1,0 +1,101 @@
+# La sauvegarde quotidienne, et l'exercice de restauration hebdomadaire.
+#
+# Le second n'est pas un luxe : une sauvegarde jamais restaurée n'est pas une
+# sauvegarde. L'exercice sort en code 1 quand quelque chose casse, donc un Job
+# en échec est visible comme n'importe quel autre.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sauvegarde
+  namespace: ensimasso
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: sauvegarde
+              image: ghcr.io/project5a/ensimasso-sauvegarde:2.0.0
+              command: ["/opt/sauvegarde/sauvegarder.sh"]
+              env:
+                # La clé PUBLIQUE seulement. Ce pod peut écrire des
+                # sauvegardes ; il ne peut pas relire les anciennes. Un hôte
+                # compromis ne donne donc pas l'historique des adhérents.
+                - name: AGE_DESTINATAIRE
+                  valueFrom:
+                    configMapKeyRef: { name: ensimasso-config, key: AGE_DESTINATAIRE }
+              envFrom:
+                - secretRef: { name: ensimasso-secrets-sauvegarde }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: depot, mountPath: /var/backups/ensimasso }
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: "100m", memory: "256Mi" }
+                limits:   { cpu: "500m", memory: "512Mi" }
+          volumes:
+            - name: depot
+              persistentVolumeClaim: { claimName: sauvegardes }
+            - { name: tmp, emptyDir: {} }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: drill-restauration
+  namespace: ensimasso
+spec:
+  schedule: "0 4 * * 0"
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 0     # un échec doit rester visible, pas être réessayé
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: drill
+              image: ghcr.io/project5a/ensimasso-sauvegarde:2.0.0
+              command: ["/opt/sauvegarde/drill-restauration.sh"]
+              envFrom:
+                # Ici, et ici seulement, la clé PRIVÉE : c'est la seule tâche
+                # qui a besoin de déchiffrer.
+                - secretRef: { name: ensimasso-secrets-restauration }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: "200m", memory: "512Mi" }
+                limits:   { cpu: "1",    memory: "1Gi" }
+          volumes:
+            - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sauvegardes
+  namespace: ensimasso
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 20Gi }

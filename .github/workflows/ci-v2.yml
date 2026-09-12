@@ -166,6 +166,25 @@ jobs:
       - name: Exercice complet
         run: v2/infra/sauvegarde/drill-restauration.sh ensimasso
 
+  manifestes:
+    name: Manifestes Kubernetes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz kubeconform
+          ./kubeconform -strict -summary -ignore-missing-schemas \
+            v2/infra/k8s/base/*.yaml v2/infra/k8s/argocd/*.yaml
+
+      # Ce que kubeconform ne peut pas voir : une clé de ConfigMap référencée
+      # qui n'existe pas, un conteneur sans limite de ressources, et surtout un
+      # Secret qui se serait glissé dans le dépôt.
+      - name: Cohérence et absence de secrets
+        run: python3 v2/infra/k8s/verifier-manifests.py
+
   image:
     name: Image conteneur
     needs: [build, secrets, frontend]

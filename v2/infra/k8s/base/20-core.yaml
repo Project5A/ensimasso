@@ -1,0 +1,79 @@
+# Le cœur : écriture, tableau de bord, webhook de paiement, passation.
+#
+# Il ne passe PAS à l'échelle horizontalement par défaut. Ce n'est pas une
+# limite technique, c'est une décision : son trafic est celui d'une dizaine de
+# bureaux qui éditent des pages, et une réplique unique rend le raisonnement sur
+# les transactions et les migrations beaucoup plus simple. C'est « delivery »
+# qui absorbe les soirs de gala.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ensimasso-core
+  namespace: ensimasso
+  labels: { app.kubernetes.io/name: ensimasso-core }
+spec:
+  replicas: 1
+  strategy:
+    # Recreate et non RollingUpdate : Flyway migre au démarrage, et deux
+    # versions du schéma en vol pendant une bascule est la façon la plus sûre
+    # de perdre des données un mardi soir.
+    type: Recreate
+  selector:
+    matchLabels: { app.kubernetes.io/name: ensimasso-core }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: ensimasso-core }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: core
+          # Étiquette fixe, jamais « latest » : avec la synchronisation
+          # automatique d'ArgoCD, une étiquette mobile fait dériver le cluster
+          # sans qu'aucun commit ne le dise. Le déploiement ne vaut que ce que
+          # vaut cette ligne — l'épinglage par empreinte est l'étape suivante.
+          image: ghcr.io/project5a/ensimasso-core:2.0.0
+          ports:
+            - { name: http, containerPort: 8080 }
+          envFrom:
+            - configMapRef: { name: ensimasso-config }
+            - secretRef: { name: ensimasso-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            # Racine en lecture seule : la JVM a tout de même besoin d'écrire
+            # ses fichiers temporaires quelque part.
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: "250m", memory: "768Mi" }
+            limits:   { cpu: "1",    memory: "1Gi" }
+          startupProbe:
+            # Généreuse : Flyway peut avoir des migrations à appliquer, et un
+            # redémarrage en boucle pendant une migration est bien pire qu'une
+            # attente.
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: http }
+            periodSeconds: 20
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ensimasso-core
+  namespace: ensimasso
+spec:
+  selector: { app.kubernetes.io/name: ensimasso-core }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
