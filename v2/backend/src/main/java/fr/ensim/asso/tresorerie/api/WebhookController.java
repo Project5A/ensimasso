@@ -2,6 +2,7 @@ package fr.ensim.asso.tresorerie.api;
 
 import fr.ensim.asso.tresorerie.app.ServiceTresorerie;
 import fr.ensim.asso.tresorerie.domain.PortPaiement;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -31,9 +32,21 @@ public class WebhookController {
     private final PortPaiement prestataire;
     private final ServiceTresorerie service;
 
-    public WebhookController(PortPaiement prestataire, ServiceTresorerie service) {
+    /**
+     * Le compteur est ici et non dans le service, parce que c'est ici qu'on
+     * voit tout : les signatures invalides, que le service ne connaît pas, et
+     * les échecs de traitement, qu'il signale en levant. Une rafale de
+     * « signature_invalide » est soit une clé de webhook périmée, soit
+     * quelqu'un qui tente de s'offrir une adhésion — les deux méritent qu'on
+     * le sache le jour même.
+     */
+    private final MeterRegistry metriques;
+
+    public WebhookController(PortPaiement prestataire, ServiceTresorerie service,
+                             MeterRegistry metriques) {
         this.prestataire = prestataire;
         this.service = service;
+        this.metriques = metriques;
     }
 
     @PostMapping("/stripe")
@@ -47,11 +60,23 @@ public class WebhookController {
             // Ni le contenu ni l'erreur ne sont détaillés : une signature
             // invalide est soit une mauvaise configuration, soit une attaque.
             log.warn("webhook rejeté : {}", e.getMessage());
+            compter("signature_invalide");
             return ResponseEntity.badRequest().body("signature invalide");
         }
 
-        ServiceTresorerie.ResultatWebhook resultat = service.traiter(evenement);
+        ServiceTresorerie.ResultatWebhook resultat;
+        try {
+            resultat = service.traiter(evenement);
+        } catch (RuntimeException e) {
+            compter("echec");
+            throw e;                       // 500 : Stripe réessaiera, et il le doit
+        }
+        compter(resultat.name().toLowerCase(java.util.Locale.ROOT));
         log.info("webhook {} ({}) : {}", evenement.id(), evenement.type(), resultat);
         return ResponseEntity.status(HttpStatus.OK).body(resultat.name());
+    }
+
+    private void compter(String resultat) {
+        metriques.counter("ensimasso.tresorerie.webhook", "resultat", resultat).increment();
     }
 }

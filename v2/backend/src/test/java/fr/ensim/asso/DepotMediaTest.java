@@ -43,6 +43,7 @@ class DepotMediaTest {
     private MediaAssetRepository medias;
     private PortStockage stockage;
     private PolitiqueAcces politique;
+    private io.micrometer.core.instrument.simple.SimpleMeterRegistry metriques;
     private ServiceMedia service;
     private MediaAsset media;
 
@@ -59,9 +60,11 @@ class DepotMediaTest {
         // d'accès sans que rien ne le signale.
         politique = mock(PolitiqueAcces.class);
 
+        metriques = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
         service = new ServiceMedia(medias, stockage,
                 mock(AssociationRepository.class), mock(AnneeUniversitaireRepository.class),
-                politique, Clock.fixed(Instant.parse("2026-09-12T12:00:00Z"), ZoneOffset.UTC));
+                politique, metriques,
+                Clock.fixed(Instant.parse("2026-09-12T12:00:00Z"), ZoneOffset.UTC));
 
         media = new MediaAsset(ASSO, "2025-2026", CLE, "logo.png", "image/png", DEPOSANT);
         when(medias.findById(any())).thenReturn(Optional.of(media));
@@ -102,6 +105,21 @@ class DepotMediaTest {
         // Laisser l'objet en place servirait une page hostile depuis l'origine
         // du stockage, que le rejet en base n'empêche pas.
         verify(stockage).supprimer(CLE);
+    }
+
+    @Test
+    @DisplayName("un refus est compté, avec le motif : c'est ainsi qu'on voit qu'on est sondé")
+    void refusCompte() {
+        objetDepose("image/png", "<svg xmlns=\"http://www.w3.org/2000/svg\"/>".getBytes(StandardCharsets.UTF_8));
+        assertThatThrownBy(() -> service.confirmerDepot(DEPOSANT, UUID.randomUUID()))
+                .isInstanceOf(Erreurs.Conflit.class);
+
+        // Un site associatif qui refuse soudain des dizaines de SVG déguisés en
+        // images est en train d'être sondé, et rien d'autre ne le dirait.
+        assertThat(metriques.counter("ensimasso.media.depot", "resultat", "refuse", "motif", "svg")
+                .count()).isEqualTo(1.0);
+        assertThat(metriques.counter("ensimasso.media.depot", "resultat", "accepte", "motif", "aucun")
+                .count()).isZero();
     }
 
     @Test

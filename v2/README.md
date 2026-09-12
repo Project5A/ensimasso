@@ -186,6 +186,39 @@ réintroduisant l'un de ces trois appels, il échoue en le nommant.
 
 ---
 
+## Ce que le système raconte de lui-même
+
+Quatre mesures, choisies parce que chacune répond à une question qu'on se pose
+vraiment. Une métrique qu'on ne sait pas relier à une décision est une métrique
+qu'on paiera à stocker sans jamais la regarder.
+
+| Métrique | La question |
+|---|---|
+| `ensimasso_portail_cache_total{resultat}` | le cache sert-il à quelque chose ? |
+| `ensimasso_portail_rendu_seconds` (p50, p95) | combien coûte une page quand il n'a pas servi ? |
+| `ensimasso_media_depot_total{resultat,motif}` | est-ce qu'on nous sonde ? |
+| `ensimasso_tresorerie_webhook_total{resultat}` | les paiements arrivent-ils, et sinon pourquoi ? |
+| `ensimasso_gouvernance_mandats_en_fonction` | combien d'associations sont réellement dirigées ? |
+
+La dernière est une **jauge**, et c'est sa chute qui compte : zéro bureau en
+fonction signifie qu'aucune page publique ne s'affiche plus. Aucune métrique
+technique ne dit cela — le processus va très bien, la base répond, et le site
+est vide.
+
+Chaque ligne de journal porte l'identifiant de trace de la requête qui l'a
+produite, ce qui relie « ça a planté à 19 h » aux lignes qui le racontent.
+`LOG_FORMAT=ecs` bascule les journaux en un objet JSON par ligne, que Loki
+indexe sans expression régulière.
+
+**Ce qui n'est pas inclus, et pourquoi.** L'exporteur OTLP tire okhttp et la
+bibliothèque standard Kotlin — plusieurs mégaoctets — pour envoyer des traces
+vers un Tempo qui n'existe pas encore. C'est exactement le travers reproché à
+la v1, qui servait three.js et un modèle 3-D de 2,9 Mo à des visiteurs qui n'en
+voyaient jamais rien. Une dépendance suffira le jour où il y aura un collecteur
+en face.
+
+---
+
 ## Le cache, et pourquoi il n'a pas d'invalidation
 
 La clé d'une page en cache contient l'identifiant de sa **version publiée** :
@@ -264,7 +297,10 @@ documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
       à écrire ; en mémoire par défaut, Valkey sur le profil `delivery`
 - [ ] **Profil `delivery`** — cache branché ; le snapshot lecture seule reste à faire
 - [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
-- [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir
+- [x] ~~**Observabilité**~~ — métriques métier, identifiant de trace dans chaque
+      ligne de journal, journaux JSON en production
+- [ ] **Export des traces** — le pont OpenTelemetry est là ; l'exporteur OTLP
+      attend qu'il y ait un Tempo en face
 - [x] ~~**Sauvegardes**~~ — chiffrées `age`, avec un exercice de restauration
       qui vérifie les données, le schéma *et* les invariants
 - [ ] **Déploiement** — k3s, ArgoCD, copie hors site des sauvegardes

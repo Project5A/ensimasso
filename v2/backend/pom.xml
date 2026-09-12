@@ -86,6 +86,21 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <!-- Traces : le pont Micrometer vers OpenTelemetry. Il donne l'identifiant
+         de trace dans chaque ligne de journal et la propagation entre requêtes,
+         ce qui est la moitié utile au quotidien : relier « ça a planté à 19 h »
+         aux lignes qui le racontent.
+
+         L'exporteur OTLP n'est PAS inclus, délibérément. Il tire okhttp et la
+         bibliothèque standard Kotlin — plusieurs mégaoctets — pour envoyer des
+         traces vers un Tempo qui n'existe pas encore. C'est exactement le
+         travers de la v1, qui servait three.js et un modèle 3-D de 2,9 Mo à
+         des visiteurs qui n'en voyaient jamais rien. Une dépendance suffira le
+         jour où il y aura un collecteur en face. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing-bridge-otel</artifactId>
+    </dependency>
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>

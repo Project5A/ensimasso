@@ -2,6 +2,9 @@ package fr.ensim.asso.portail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import fr.ensim.asso.agenda.app.ServiceAgenda;
 import fr.ensim.asso.agenda.domain.Evenement;
 import fr.ensim.asso.contenu.app.ServiceContenu;
@@ -55,6 +58,17 @@ public class ServicePortail {
     private final PolitiqueAcces politique;
     private final PortCache cache;
     private final Duration dureeCache;
+
+    /**
+     * Les deux seules mesures qui répondent à une question qu'on se pose
+     * vraiment : « le cache sert-il à quelque chose ? » et « combien coûte le
+     * rendu d'une page quand il n'a pas servi ? ». Une métrique qu'on ne sait
+     * pas relier à une décision est une métrique qu'on paiera à stocker sans
+     * jamais la regarder.
+     */
+    private final Counter cacheSucces;
+    private final Counter cacheDefauts;
+    private final Timer dureeRendu;
     private final AnneeUniversitaireRepository annees;
     private final ObjectMapper mapper;
     private final java.time.Clock horloge;
@@ -67,6 +81,7 @@ public class ServicePortail {
                           AnneeUniversitaireRepository annees, PolitiqueAcces politique,
                           PortCache cache,
                           @Value("${ensimasso.cache.duree:PT10M}") Duration dureeCache,
+                          MeterRegistry metriques,
                           ObjectMapper mapper, java.time.Clock horloge) {
         this.associations = associations;
         this.mandats = mandats;
@@ -85,6 +100,29 @@ public class ServicePortail {
         // est ici, pas dans un commentaire de configuration, pour qu'une valeur
         // trop généreuse dans un fichier .env ne puisse pas la contourner.
         this.dureeCache = plafonner(dureeCache, medias.validiteUrlLecture());
+
+        this.cacheSucces = Counter.builder("ensimasso.portail.cache")
+                .description("Lectures du cache du portail public")
+                .tag("resultat", "succes").register(metriques);
+        this.cacheDefauts = Counter.builder("ensimasso.portail.cache")
+                .description("Lectures du cache du portail public")
+                .tag("resultat", "defaut").register(metriques);
+        this.dureeRendu = Timer.builder("ensimasso.portail.rendu")
+                .description("Rendu complet d'une page, cache non servi")
+                // La moyenne d'un temps de rendu ne dit rien : c'est la queue
+                // qui fait qu'un visiteur attend. On publie la médiane et le
+                // 95e centile, pas une moyenne rassurante.
+                .publishPercentiles(0.5, 0.95)
+                .register(metriques);
+
+        // Le nombre d'associations réellement dirigées. Si cette valeur tombe à
+        // zéro, plus aucune page publique ne s'affiche : c'est l'alerte la plus
+        // utile du système, et elle ne se déduit d'aucune métrique technique.
+        io.micrometer.core.instrument.Gauge
+                .builder("ensimasso.gouvernance.mandats.en_fonction",
+                         () -> mandats.countByStatut(StatutMandat.EN_FONCTION))
+                .description("Associations ayant un bureau en fonction")
+                .register(metriques);
         this.annees = annees;
         this.mapper = mapper;
         this.horloge = horloge;
@@ -172,10 +210,12 @@ public class ServicePortail {
         String cle = cleDe(asso, page, publiee.getId(), estCourant);
         Optional<PageRendue> memorisee = cache.lire(cle).flatMap(this::relire);
         if (memorisee.isPresent()) {
+            cacheSucces.increment();
             return memorisee.get();
         }
+        cacheDefauts.increment();
 
-        PageRendue rendue = rendre(asso, mandat, page, publiee, estCourant);
+        PageRendue rendue = dureeRendu.record(() -> rendre(asso, mandat, page, publiee, estCourant));
         ecrire(cle, rendue);
         return rendue;
     }

@@ -55,6 +55,9 @@ ensimasso:
   cache:
     type: ${CACHE_TYPE:memoire}
     duree: ${CACHE_DUREE:PT10M}
+    # Borné : un cache sans limite est une fuite de mémoire qu'on ne découvre
+    # qu'en production, et le nombre de pages publiques est connu et petit.
+    entrees-max: ${CACHE_ENTREES_MAX:500}
 
   stockage:
     type: ${STOCKAGE_TYPE:s3}
@@ -95,6 +98,13 @@ management:
       application: ensimasso-core
 
 logging:
+  # Lisibles à l'œil en développement, structurés en production : « ecs »
+  # produit un objet JSON par ligne, que Loki indexe sans expression régulière.
+  # C'est ce qui permet de chercher par identifiant de trace plutôt que par
+  # sous-chaîne.
+  structured:
+    format:
+      console: ${LOG_FORMAT:}
   level:
     root: INFO
     fr.ensim.asso: ${LOG_LEVEL:INFO}

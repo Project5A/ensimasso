@@ -25,4 +25,8 @@ public interface MandatRepository extends JpaRepository<Mandat, UUID> {
               and m.statut = fr.ensim.asso.gouvernance.domain.StatutMandat.EN_FONCTION
            """)
     Optional<Mandat> mandatEnFonction(@Param("asso") UUID associationId);
+    /** Combien d'associations sont réellement dirigées. Sert la métrique dont
+     *  la chute à zéro signifie qu'aucune page publique ne s'affiche plus. */
+    long countByStatut(StatutMandat statut);
+
 }

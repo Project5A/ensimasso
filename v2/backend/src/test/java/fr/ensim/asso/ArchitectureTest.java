@@ -89,4 +89,37 @@ class ArchitectureTest {
                        + "le domaine utilise java.time")
                 .check(CLASSES);
     }
+    @Test
+    @DisplayName("un composant Spring n'a qu'un constructeur : sinon il ne démarre pas")
+    void composantsSansConstructeurAmbigu() {
+        // Panne réellement rencontrée : CacheMemoire avait deux constructeurs,
+        // Spring n'a pas su choisir, et l'application refusait de démarrer sur
+        // son profil PAR DÉFAUT. Aucun test unitaire ne l'a vu — ils
+        // instancient la classe eux-mêmes — et tous les lancements manuels
+        // utilisaient l'autre implémentation.
+        ArchCondition<JavaClass> unSeulConstructeurInjectable =
+                new ArchCondition<>("n'avoir qu'un constructeur, ou un seul annoté @Autowired") {
+                    @Override
+                    public void check(JavaClass classe, ConditionEvents evenements) {
+                        long constructeurs = classe.getConstructors().size();
+                        long annotes = classe.getConstructors().stream()
+                                .filter(c -> c.isAnnotatedWith(
+                                        org.springframework.beans.factory.annotation.Autowired.class))
+                                .count();
+                        if (constructeurs > 1 && annotes != 1) {
+                            evenements.add(SimpleConditionEvent.violated(classe,
+                                    classe.getName() + " déclare " + constructeurs
+                                  + " constructeurs sans en désigner un : Spring ne saura pas choisir"));
+                        }
+                    }
+                };
+
+        com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes()
+                .that().areAnnotatedWith(org.springframework.stereotype.Component.class)
+                .or().areAnnotatedWith(org.springframework.stereotype.Service.class)
+                .or().areAnnotatedWith(org.springframework.web.bind.annotation.RestController.class)
+                .should(unSeulConstructeurInjectable)
+                .check(CLASSES);
+    }
+
 }

@@ -25,7 +25,7 @@ class CachePortailTest {
     @Test
     @DisplayName("une valeur mémorisée est relue, et comptée comme un succès")
     void lectureApresEcriture() {
-        CacheMemoire cache = new CacheMemoire(new HorlogeReglable());
+        CacheMemoire cache = new CacheMemoire(new HorlogeReglable(), 500);
         cache.ecrire("a", "valeur", Duration.ofMinutes(10));
 
         assertThat(cache.lire("a")).contains("valeur");
@@ -41,7 +41,7 @@ class CachePortailTest {
     @DisplayName("une entrée expirée n'est pas servie, et ne reste pas en mémoire")
     void expiration() {
         HorlogeReglable horloge = new HorlogeReglable();
-        CacheMemoire cache = new CacheMemoire(horloge);
+        CacheMemoire cache = new CacheMemoire(horloge, 500);
         cache.ecrire("a", "valeur", Duration.ofMinutes(10));
 
         horloge.avancerDe(Duration.ofMinutes(9));

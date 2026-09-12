@@ -4,6 +4,7 @@ import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.*;
 import fr.ensim.asso.media.domain.*;
 import fr.ensim.asso.shared.error.Erreurs;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,14 +53,23 @@ public class ServiceMedia {
     private final PolitiqueAcces politique;
     private final Clock horloge;
 
+    /**
+     * Combien de dépôts sont refusés, et pourquoi. La question derrière cette
+     * mesure n'est pas technique : un site associatif qui se met soudain à
+     * refuser des dizaines de fichiers HTML déguisés en images est en train
+     * d'être sondé, et personne ne s'en apercevrait autrement.
+     */
+    private final MeterRegistry metriques;
+
     public ServiceMedia(MediaAssetRepository medias, PortStockage stockage,
                         AssociationRepository associations, AnneeUniversitaireRepository annees,
-                        PolitiqueAcces politique, Clock horloge) {
+                        PolitiqueAcces politique, MeterRegistry metriques, Clock horloge) {
         this.medias = medias;
         this.stockage = stockage;
         this.associations = associations;
         this.annees = annees;
         this.politique = politique;
+        this.metriques = metriques;
         this.horloge = horloge;
     }
 
@@ -126,19 +136,24 @@ public class ServiceMedia {
                         "aucun objet déposé pour cette clé : le dépôt a-t-il abouti ?"));
 
         if (meta.tailleOctets() > TAILLE_MAX_OCTETS) {
-            media.rejeter();
-            stockage.supprimer(media.getCle());
-            throw new Erreurs.Conflit("fichier trop volumineux : "
+            compter("refuse", "taille");
+            rejeter(media, "fichier trop volumineux : "
                     + meta.tailleOctets() + " octets (maximum " + TAILLE_MAX_OCTETS + ")");
         }
         if (!TYPES_AUTORISES.containsKey(normaliser(meta.contentType()))) {
+            compter("refuse", "type_declare");
             rejeter(media, "type déclaré non autorisé : " + meta.contentType());
         }
 
         verifierSignature(media, meta.contentType());
 
         media.confirmer(meta.tailleOctets(), normaliser(meta.contentType()), OffsetDateTime.now(horloge));
+        compter("accepte", "aucun");
         return media;
+    }
+
+    private void compter(String resultat, String motif) {
+        metriques.counter("ensimasso.media.depot", "resultat", resultat, "motif", motif).increment();
     }
 
     /**
@@ -151,6 +166,7 @@ public class ServiceMedia {
         byte[] debut = stockage.lireDebut(media.getCle(), SignatureFichier.OCTETS_A_LIRE)
                 .orElse(null);
         if (debut == null) {
+            compter("refuse", "illisible");
             rejeter(media, "impossible de relire le fichier déposé pour en vérifier le format");
         }
 
@@ -170,6 +186,9 @@ public class ServiceMedia {
             default -> "le contenu est un fichier " + reel
                      + ", alors que le dépôt annonçait " + contentTypeDeclare;
         };
+        // Le motif est l'information qui compte : « html » et « svg » disent
+        // qu'on nous teste, « JPEG annoncé PNG » dit qu'un navigateur se trompe.
+        compter("refuse", reel.name().toLowerCase(java.util.Locale.ROOT));
         rejeter(media, "contenu refusé : " + explication);
     }
 

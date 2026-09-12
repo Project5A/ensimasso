@@ -1,5 +1,6 @@
 package fr.ensim.asso.portail;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -38,11 +39,15 @@ public class CacheMemoire implements PortCache {
     private final AtomicLong echecs = new AtomicLong();
     private final AtomicLong evictions = new AtomicLong();
 
-    public CacheMemoire(Clock horloge) {
-        this(horloge, 500);
-    }
-
-    CacheMemoire(Clock horloge, int capacite) {
+    /**
+     * Un seul constructeur, délibérément. Deux constructeurs sur un
+     * {@code @Component} sans {@code @Autowired} laissent Spring incapable de
+     * choisir, et l'application ne démarre plus — panne découverte ici parce
+     * que le profil par défaut n'avait jamais été lancé, tous les essais ayant
+     * utilisé l'autre implémentation.
+     */
+    public CacheMemoire(Clock horloge,
+                        @Value("${ensimasso.cache.entrees-max:500}") int capacite) {
         this.horloge = horloge;
         this.capacite = capacite;
         this.entrees = new LinkedHashMap<>(16, 0.75f, true) {
