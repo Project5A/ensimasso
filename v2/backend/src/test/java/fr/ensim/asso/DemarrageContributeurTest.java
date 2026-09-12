@@ -139,6 +139,41 @@ class DemarrageContributeurTest {
         assertThat(cible).doesNotContain("$(COMPOSE)");
     }
 
+    @Test
+    @DisplayName("toute cible qui lance npm installe d'abord les dépendances")
+    void ciblesNpmInstallentLeursDependances() throws IOException {
+        // Depuis un clone neuf, node_modules n'existe pas : « npm run
+        // typecheck » échoue alors sur « Cannot find module 'react' », et
+        // envoie chercher un problème de typage là où il n'y a qu'un dossier
+        // absent. Constaté sur « make front-test ».
+        List<String> fautives = new ArrayList<>();
+        for (String recetteBrute : makefile().split("\n\n")) {
+            // Sans retirer les commentaires, un « # npm ci d'abord » suffit à
+            // satisfaire la vérification. C'est la troisième fois dans ce dépôt
+            // qu'un contrôle se valide sur son propre commentaire : compter les
+            // permitAll(), les @echo du Makefile, et maintenant ceci.
+            String recette = recetteBrute.lines()
+                    .filter(l -> !l.strip().startsWith("#"))
+                    .reduce("", (a, b) -> a + "\n" + b);
+            if (!recette.contains("npm run") && !recette.contains("npm test")) {
+                continue;
+            }
+            if (!recette.contains("npm ci") && !recette.contains("npm install")) {
+                // Nommer la cible, pas le « .PHONY » qui la précède : un test
+                // qui échoue doit dire quoi corriger.
+                String nom = recette.lines()
+                        .filter(l -> l.contains(":") && !l.startsWith("\t"))
+                        .filter(l -> !l.startsWith(".PHONY"))
+                        .findFirst().orElse(recette).split(":")[0];
+                fautives.add(nom.trim());
+            }
+        }
+        assertThat(fautives)
+                .as("ces cibles lancent npm sans garantir que les dépendances "
+                  + "sont installées")
+                .isEmpty();
+    }
+
     private String concatener(Path racine) throws IOException {
         StringBuilder tout = new StringBuilder();
         try (Stream<Path> flux = Files.walk(racine)) {

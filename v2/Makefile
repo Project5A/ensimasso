@@ -74,7 +74,11 @@ front: ## Lance le portail public (proxy vers l'API locale)
 
 .PHONY: front-test
 front-test: ## Typage, tests et build du portail
-	cd frontend && npm run typecheck && npm test && npm run build
+	# npm ci d'abord : sans dépendances installées, « tsc » échoue sur
+	# « Cannot find module 'react' », ce qui envoie chercher un problème de
+	# typage là où il n'y a qu'un dossier node_modules absent.
+	cd frontend && npm ci --no-audit --no-fund \
+		&& npm run typecheck && npm test && npm run build
 
 .PHONY: verif-contraintes
 verif-contraintes: ## Prouve que les garanties sont bien portées par la base
