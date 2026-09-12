@@ -54,16 +54,20 @@ jobs:
           java-version: "21"
           cache: maven
 
+      # ./mvnw et non mvn : la CI doit emprunter le MÊME chemin d'entrée qu'un
+      # contributeur. Avec « mvn » après setup-java, une enveloppe Maven absente
+      # du dépôt donne une chaîne verte et un contributeur bloqué — c'est
+      # exactement ce qui s'est produit.
       - name: Tests unitaires et architecture
         working-directory: v2/backend
-        run: mvn -B test
+        run: ./mvnw -B test
 
       # Testcontainers démarre un vrai PostgreSQL : les garanties du système
       # (exclusion GiST, index partiels, triggers d'immuabilité) n'existent que
       # dans la base, les tester ailleurs reviendrait à ne pas les tester.
       - name: Tests d'intégration
         working-directory: v2/backend
-        run: mvn -B verify
+        run: ./mvnw -B verify
 
       - name: Rapports de test
         if: always()

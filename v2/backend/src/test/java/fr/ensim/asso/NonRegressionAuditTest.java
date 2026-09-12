@@ -193,7 +193,10 @@ class NonRegressionAuditTest {
     void integrationContinue() throws IOException {
         String ci = Files.readString(RACINE.resolve("../.github/workflows/ci-v2.yml"),
                 StandardCharsets.UTF_8);
-        for (String attendu : List.of("gitleaks", "mvn -B test", "npm run typecheck",
+        // « ./mvnw » et non « mvn » : la CI doit emprunter le même chemin
+        // d'entrée qu'un contributeur, sinon une enveloppe Maven absente donne
+        // une chaîne verte et un clone inutilisable. C'est arrivé.
+        for (String attendu : List.of("gitleaks", "./mvnw -B test", "npm run typecheck",
                                       "trivy", "kubeconform", "drill-restauration")) {
             assertThat(ci).as("la CI doit exécuter « %s »", attendu)
                     .containsIgnoringCase(attendu);
