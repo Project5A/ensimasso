@@ -110,9 +110,18 @@ class ImmuabiliteContenuIT extends BaseIT {
 
         UUID brouillon = version(2, "BROUILLON");
         UUID b = bloc(brouillon, 0);
+
+        // La version 1 doit être ARCHIVEE avant que la 2 soit publiée :
+        // l'index partiel page_version_une_seule_publiee n'admet qu'une seule
+        // version PUBLIEE par page. Ce n'est pas un contournement, c'est la
+        // transition que le domaine impose, et la seule que le trigger accepte.
+        //
+        // Cette ligne manquait : le commentaire qui annonçait l'archivage était
+        // écrit, l'archivage non. Le défaut est resté invisible parce que ce cas
+        // n'a jamais pu s'exécuter — il mourait avant, dans un nettoyage cassé.
+        jdbc.update("UPDATE page_version SET statut='ARCHIVEE' WHERE id=?", publiee);
         jdbc.update("UPDATE page_version SET statut='PUBLIEE', publie_le=now(), publie_par=? WHERE id=?",
                 UUID.randomUUID(), brouillon);
-        // (la version 1 reste PUBLIEE -> l'index partiel interdirait ; on la range d'abord)
 
         assertThatThrownBy(() -> jdbc.update("DELETE FROM bloc WHERE id = ?", b))
                 .isInstanceOf(DataIntegrityViolationException.class);

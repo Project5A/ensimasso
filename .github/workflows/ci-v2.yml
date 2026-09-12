@@ -163,19 +163,44 @@ jobs:
   analyse:
     name: Analyse statique
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      # L'action précédente tirait une image abandonnée qui plantait à chaque
+      # exécution sur « invalid rule severity value: MEDIUM ». Comme le job
+      # portait continue-on-error, il rapportait un SUCCÈS sans avoir rien
+      # analysé. Un analyseur cassé qui passe pour vert est pire qu'un analyseur
+      # absent : on croit être couvert.
+      - name: Installer semgrep
+        run: pip install --quiet semgrep
+
       - name: Semgrep
-        uses: semgrep/semgrep-action@v1
+        run: |
+          set +e
+          semgrep scan --config=p/java --config=p/secrets --config=p/owasp-top-ten \
+            --metrics=off --sarif --output=semgrep.sarif v2/
+          code=$?
+          set -e
+          # 0 = rien trouvé · 1 = des constats · >= 2 = l'analyseur a échoué.
+          # Seul le dernier cas fait échouer le job. Les constats méritent un
+          # tri avant de bloquer une chaîne — mais l'analyseur, lui, doit
+          # s'exécuter, et son échec ne doit plus jamais passer inaperçu.
+          if [ "$code" -ge 2 ]; then
+            echo "::error::semgrep n'a pas pu s'exécuter (code $code)"
+            exit 1
+          fi
+          echo "semgrep a terminé (code $code)"
+
+      - name: Rapport
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          config: >-
-            p/java
-            p/secrets
-            p/owasp-top-ten
-        continue-on-error: true
+          name: semgrep
+          path: semgrep.sarif
+          retention-days: 7
+          if-no-files-found: warn
 
   # Une sauvegarde jamais restaurée n'est pas une sauvegarde. L'exercice tourne
   # ici pour que la chaîne casse en CI plutôt que le jour où on en a besoin :
