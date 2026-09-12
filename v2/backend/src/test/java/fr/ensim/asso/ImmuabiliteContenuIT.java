@@ -25,13 +25,7 @@ class ImmuabiliteContenuIT extends BaseIT {
 
     @BeforeEach
     void jeuDEssai() {
-        jdbc.update("DELETE FROM media_usage");
-        jdbc.update("DELETE FROM bloc");
-        jdbc.update("DELETE FROM page_version");
-        jdbc.update("DELETE FROM page");
-        jdbc.update("DELETE FROM mandat");
-        jdbc.update("DELETE FROM association");
-        jdbc.update("DELETE FROM annee_universitaire");
+        viderLesTables();
 
         UUID asso = UUID.randomUUID();
         jdbc.update("INSERT INTO association (id, slug, nom, type_asso) VALUES (?,?,?,?)",

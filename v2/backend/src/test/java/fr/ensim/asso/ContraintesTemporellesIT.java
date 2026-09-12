@@ -25,11 +25,7 @@ class ContraintesTemporellesIT extends BaseIT {
 
     @BeforeEach
     void jeuDEssai() {
-        jdbc.update("DELETE FROM passation");
-        jdbc.update("DELETE FROM membre_bureau");
-        jdbc.update("DELETE FROM mandat");
-        jdbc.update("DELETE FROM association");
-        jdbc.update("DELETE FROM annee_universitaire");
+        viderLesTables();
 
         asso = UUID.randomUUID();
         jdbc.update("INSERT INTO association (id, slug, nom, type_asso) VALUES (?,?,?,?)",
