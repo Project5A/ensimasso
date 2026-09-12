@@ -1,0 +1,99 @@
+# Environnement de développement complet.
+#
+# Objectif explicite : `make up` doit suffire. Une plateforme distribuée dont
+# la boucle locale est pénible est une plateforme sur laquelle on cesse de
+# travailler — c'est, d'après la revue d'architecture, le mode d'échec le plus
+# probable du projet, avant toute panne technique.
+name: ensimasso
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ensimasso
+      POSTGRES_USER: ensimasso
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_seulement}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/01-roles.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ensimasso -d ensimasso"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports: ["5432:5432"]
+
+  # PgBouncer dès le développement, pas seulement en production : c'est
+  # l'épuisement de max_connections qui constitue la panne la plus probable
+  # un soir de gala, et on veut le même chemin de connexion partout.
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ensimasso
+      DB_PASSWORD: ${DB_PASSWORD:-dev_seulement}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "200"
+      DEFAULT_POOL_SIZE: "20"
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ["6432:5432"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+    ports: ["8081:8080"]
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "no"]
+    ports: ["6379:6379"]
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-ensimasso}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-dev_seulement_12}
+    volumes:
+      - miniodata:/data
+    ports: ["9000:9000", "9001:9001"]
+
+  redpanda:
+    image: redpandadata/redpanda:latest
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    ports: ["9092:9092"]
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_KEY:-dev_seulement_masterkey}
+      MEILI_ENV: development
+    volumes:
+      - meilidata:/meili_data
+    ports: ["7700:7700"]
+
+  # Boîte mail de développement : aucun message ne part réellement.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
+volumes:
+  pgdata:
+  miniodata:
+  meilidata:

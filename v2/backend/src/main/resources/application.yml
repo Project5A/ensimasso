@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: ensimasso-core
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:6432/ensimasso}
+    username: ${DB_USER:ensimasso}
+    password: ${DB_PASSWORD:}
+    hikari:
+      # Volontairement bas : plusieurs réplicas derrière PgBouncer en mode
+      # transaction. C'est l'épuisement de max_connections qui, d'après la
+      # revue, constitue la panne la plus probable un soir de gala.
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: 2
+
+  jpa:
+    open-in-view: false          # l'anti-pattern OSIV de la v1
+    hibernate:
+      ddl-auto: validate         # JAMAIS « update » : le schéma vient de Flyway
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER:http://localhost:8081/realms/ensimasso}
+
+  threads:
+    virtual:
+      enabled: true              # Java 21 : utile sur le profil delivery, IO-bound
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never       # rien d'interne ne fuit : voir GestionnaireErreurs
+    include-stacktrace: never
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true            # /health/liveness et /health/readiness pour k8s
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: ensimasso-core
+
+logging:
+  level:
+    root: INFO
+    fr.ensim.asso: ${LOG_LEVEL:INFO}
+    # Pas de show-sql : la v1 journalisait toutes ses requêtes en production.

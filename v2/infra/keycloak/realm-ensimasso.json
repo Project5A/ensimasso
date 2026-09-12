@@ -1,0 +1,94 @@
+{
+  "realm": "ensimasso",
+  "enabled": true,
+  "displayName": "ENSIMAsso",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "verifyEmail": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "failureFactor": 8,
+  "roles": {
+    "realm": [
+      { "name": "STUDENT",        "description": "Étudiant de l'ENSIM" },
+      { "name": "ALUMNI",         "description": "Ancien étudiant" },
+      { "name": "PLATFORM_ADMIN", "description": "Administration de la plateforme" }
+    ]
+  },
+  "defaultRoles": ["STUDENT"],
+  "clients": [
+    {
+      "clientId": "ensimasso-dashboard",
+      "name": "Tableau de bord des associations",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:5173",
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      }
+    },
+    {
+      "clientId": "ensimasso-core",
+      "name": "API cœur",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "president.bde",
+      "email": "president.bde@ensim.test",
+      "firstName": "Camille",
+      "lastName": "Durand",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "dev", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    },
+    {
+      "username": "tresorier.bde",
+      "email": "tresorier.bde@ensim.test",
+      "firstName": "Noam",
+      "lastName": "Leroy",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "dev", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    },
+    {
+      "username": "etudiant",
+      "email": "etudiant@ensim.test",
+      "firstName": "Sacha",
+      "lastName": "Moreau",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "dev", "temporary": false }],
+      "realmRoles": ["STUDENT"]
+    },
+    {
+      "username": "admin.plateforme",
+      "email": "admin@ensim.test",
+      "firstName": "Admin",
+      "lastName": "Plateforme",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "dev", "temporary": false }],
+      "realmRoles": ["STUDENT", "PLATFORM_ADMIN"]
+    }
+  ]
+}

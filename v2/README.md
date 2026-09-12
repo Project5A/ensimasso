@@ -1,0 +1,151 @@
+# ENSIMAsso v2 — plateforme des associations étudiantes
+
+Réécriture de la plateforme des associations de l'ENSIM, en monolithe modulaire
+auto-hébergé. Conçue autour du fait qui définit le domaine : **le bureau change
+chaque année, et tout ce qu'il possède change avec lui.**
+
+> État : **P1 en cours.** Le cœur du domaine (gouvernance, contenu, passation)
+> est implémenté et testé. Ce qui reste est listé plus bas, explicitement.
+
+---
+
+## Démarrer
+
+```bash
+make up        # infrastructure : Postgres, PgBouncer, Keycloak, Valkey, MinIO, Redpanda, Meilisearch, Mailpit
+make run       # l'API sur http://localhost:8080
+make seed      # trois associations réelles réparties sur deux années
+```
+
+`make` sans argument liste les cibles disponibles.
+
+| Service | URL | Identifiants |
+|---|---|---|
+| API | http://localhost:8080 | jeton Keycloak |
+| Keycloak | http://localhost:8081 | `admin` / `$KEYCLOAK_ADMIN_PASSWORD` |
+| MinIO | http://localhost:9001 | `$MINIO_USER` / `$MINIO_PASSWORD` |
+| Meilisearch | http://localhost:7700 | `$MEILI_KEY` |
+| Mailpit | http://localhost:8025 | — |
+
+Utilisateurs de développement (mot de passe `dev`) : `president.bde`,
+`tresorier.bde`, `etudiant`, `admin.plateforme`.
+
+---
+
+## L'idée centrale : mandat, pas année
+
+Une **association** est permanente — « BDE » existe pour toujours et porte
+l'URL. Un **mandat** est le terme d'un bureau : une période, avec ses pages,
+son thème, ses partenaires, son équipe.
+
+Le mandat est clé sur une **période**, pas sur une année :
+
+```sql
+periode  tstzrange GENERATED ALWAYS AS (tstzrange(debut_le, fin_le)) STORED,
+EXCLUDE USING gist (association_id WITH =, periode WITH &&) WHERE (statut <> 'PREPARATION')
+```
+
+Les élections de BDE ont lieu à l'AG, souvent au printemps. Un modèle clé sur
+`(association, année)` ne peut pas représenter une passation de juin : il
+faudrait soit écraser le bureau en cours — et perdre la trace de qui a
+réellement exercé — soit activer le mandat suivant trois mois trop tôt, ce qui
+invalide toutes les adhésions en cours. Le modèle par période n'a pas ce
+problème, et la non-superposition est garantie par la base.
+
+De la même façon, une adhésion distingue **ce qu'elle couvre** de **qui l'a
+vendue** (`couvre_annee_code` / `vendue_par_mandat_id`), sans quoi une campagne
+« early bird » de juillet produit des adhésions que le contrôle d'accès refuse
+pendant six semaines.
+
+---
+
+## Ce que la base garantit, et que le code ne pourrait pas
+
+L'essentiel des propriétés du système est imposé par PostgreSQL. C'est
+délibéré : du code peut être contourné par un script de maintenance ou un
+futur développeur pressé, une contrainte ne l'est pas.
+
+| Garantie | Mécanisme |
+|---|---|
+| Deux bureaux ne se chevauchent jamais | `EXCLUDE USING gist` |
+| Un seul mandat en fonction par association | index unique partiel |
+| Un seul président / trésorier par bureau | index unique partiel sur les postes statutaires |
+| Au plus une version publiée par page | index unique partiel |
+| Le contenu publié est immuable | trigger `bloc_fige` |
+| On ne dépublie pas | trigger de transition de statut |
+| Un bloc archivé reste revalidable | `PK(type, schema_version)` + FK |
+| Une adhésion par personne, asso et année | contrainte d'unicité |
+
+`ContraintesTemporellesIT` et `ImmuabiliteContenuIT` vérifient chacune de ces
+lignes contre un vrai PostgreSQL.
+
+---
+
+## Modules
+
+```
+gouvernance   associations, années, mandats, bureaux, permissions   ← ne dépend de rien
+contenu       pages, versions, blocs, thèmes, registre              ← dépend de gouvernance
+adhesion      campagnes, tarifs, adhésions                          ← dépend de gouvernance
+passation     orchestration du transfert annuel                     ← dépend des deux
+shared        sécurité, erreurs, configuration (module ouvert)
+```
+
+Les frontières sont vérifiées **à la compilation** par Spring Modulith et
+ArchUnit : `ApplicationModules.verify()` échoue en CI, pas en revue de code.
+C'est ce qui rend crédible la promesse « promouvoir un module en service séparé
+est un changement de déploiement, pas une réécriture ».
+
+---
+
+## Sécurité — ce que la v1 a raté
+
+L'audit de la v1 a trouvé 27 routes publiques sur 32, une reprise de compte
+sans authentification, des empreintes de mots de passe servies publiquement,
+et une clé de signature JWT codée en dur. Les corrections sont structurelles :
+
+- **Refus par défaut.** `anyRequest().authenticated()`, les exceptions sont
+  énumérées et se limitent à la lecture publique et aux sondes de santé.
+- **`@EnableMethodSecurity` réellement activé.** Dans la v1, `@PreAuthorize`
+  était présent mais inerte — pire que son absence, car il se lisait comme une
+  protection en revue de code.
+- **Aucune implémentation de JWT maison.** Keycloak émet, Spring valide.
+- **Les droits par association ne sont jamais dans le jeton.** Ils sont résolus
+  par `PolitiqueAcces` à chaque requête, donc révocables immédiatement.
+- **Aucune entité JPA n'est sérialisée.** Un test ArchUnit échoue si une
+  méthode d'API renvoie un `@Entity`.
+- **Les écritures ne visent que le mandat en fonction.** Un mandat clos
+  n'accepte plus rien : c'est ce qui rend l'archive fiable.
+
+---
+
+## Tests
+
+```bash
+make test      # unitaires + architecture — aucun Docker requis
+make verify    # + intégration Testcontainers — Docker requis
+```
+
+51 tests unitaires et d'architecture, dont la table de vérité complète des
+permissions et le cycle de vie des mandats. Les tests d'intégration
+(`*IT.java`) exigent un démon Docker et tournent en CI.
+
+---
+
+## Reste à faire
+
+Honnêtement, pour que ce fichier ne devienne pas le README de la v1 — qui
+documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
+
+- [ ] **Module `adhesion`** — le schéma existe, le code Java non
+- [ ] **Module `media`** — MinIO, URL présignées, `media-worker` séparé
+- [ ] **Module `tresorerie`** — Stripe, prix côté serveur, webhook signé
+- [ ] **Frontend** — Next.js, constructeur de pages, rendu public
+- [ ] **Profil `delivery`** — configuré, mais pas encore de snapshot ni de cache Valkey
+- [ ] **Évènements** — Redpanda tourne, aucun producteur ni consommateur
+- [ ] **Observabilité** — actuator et Prometheus exposés ; OTel, Loki, Tempo à venir
+- [ ] **Déploiement** — k3s, ArgoCD, sauvegardes et test de restauration
+
+L'infrastructure de `docker-compose.dev.yml` est démarrée d'avance pour que
+chaque module s'y branche sans changer la boucle de développement ; tout ce qui
+y figure n'est pas encore utilisé par le code.

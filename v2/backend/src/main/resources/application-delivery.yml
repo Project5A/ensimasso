@@ -1,0 +1,30 @@
+# Profil « delivery » — le chemin de lecture public.
+#
+# Même artefact que le profil par défaut, démarré séparément avec un rôle
+# PostgreSQL en lecture seule et le plus petit jeu de secrets possible : ni clé
+# Stripe, ni client d'administration Keycloak, ni droit d'écriture.
+#
+# C'est le seul composant dont le trafic varie d'un facteur 100 (ouverture de
+# la billetterie du gala), donc le seul qui a besoin d'un HPA — et il doit
+# continuer à servir pendant qu'on déploie ou qu'on casse le cœur.
+spring:
+  datasource:
+    username: ${DB_RO_USER:ensimasso_ro}
+    password: ${DB_RO_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      read-only: true
+  flyway:
+    enabled: false               # le profil lecture ne migre jamais
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

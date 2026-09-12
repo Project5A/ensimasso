@@ -1,0 +1,23 @@
+# Secrets — la raison d'être de ce fichier : la v1 a committé le mot de passe
+# de la base, la clé du compte de stockage et la clé secrète Stripe.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Build
+target/
+build/
+dist/
+node_modules/
+*.jar
+!**/maven-wrapper.jar
+
+# Outils
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
