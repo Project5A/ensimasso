@@ -50,6 +50,21 @@ spec:
   ports:
     - { name: http, port: 80, targetPort: http }
 ---
+# La limite de débit qui fait autorité : elle voit toutes les répliques, là où
+# celle de l'application ne voit que la sienne. Les deux existent — corriger
+# SEC-07 uniquement à l'Ingress laisserait l'application sans défense le jour
+# où quelqu'un expose un Service directement « juste pour tester ».
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: securite
+  namespace: ensimasso
+spec:
+  rateLimit:
+    average: 50
+    burst: 100
+    period: 1s
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

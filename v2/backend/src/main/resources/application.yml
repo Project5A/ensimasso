@@ -59,6 +59,15 @@ ensimasso:
     # qu'en production, et le nombre de pages publiques est connu et petit.
     entrees-max: ${CACHE_ENTREES_MAX:500}
 
+  # Limitation de débit sur les seules routes ouvertes sans jeton. Par
+  # instance : avec plusieurs répliques, le plafond réel est multiplié d'autant.
+  # La limite qui fait autorité est celle de l'Ingress ; celle-ci est une
+  # seconde barrière, qui tient même si la première est mal configurée.
+  debit:
+    actif: ${DEBIT_ACTIF:true}
+    par-minute: ${DEBIT_PAR_MINUTE:120}
+    clients-max: ${DEBIT_CLIENTS_MAX:10000}
+
   stockage:
     type: ${STOCKAGE_TYPE:s3}
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

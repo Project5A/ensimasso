@@ -170,7 +170,7 @@ make test      # unitaires + architecture — aucun Docker requis
 make verify    # + intégration Testcontainers — Docker requis
 ```
 
-143 tests unitaires et d'architecture, dont la table de vérité complète des
+181 tests unitaires et d'architecture, dont la table de vérité complète des
 permissions, le cycle de vie des mandats, l'idempotence de l'activation des
 adhésions, le refus d'une URL comme clé d'objet, le rejet des webhooks
 illisibles et la reconnaissance d'un SVG déposé sous `image/png`. Les tests
@@ -183,6 +183,27 @@ précaution théorique : le tableau de bord appelait `PUT /api/events/{id}`,
 implémenté — le bouton existait, le clic produisait un 405, et rien dans la
 chaîne de construction ne le disait. Le test a été vérifié à l'envers : en
 réintroduisant l'un de ces trois appels, il échoue en le nommant.
+
+---
+
+## Les constats de l'audit, vérifiés plutôt que cochés
+
+`NonRegressionAuditTest` reprend les constats de l'audit de la v1 et affirme,
+pour chacun, une propriété que la v1 n'avait pas — donc un test qui aurait
+échoué sur elle. Entre autres : le nombre d'exceptions `permitAll` est plafonné
+à trois, aucun secret ne réapparaît dans le dépôt, aucun `FetchType.EAGER`, et
+le README ne promet aucune commande `make` ni aucun fichier qui n'existe pas.
+
+Ce dernier point mérite d'être dit : le constat OPS-04 reprochait à la v1 un
+README décrivant MySQL, Jenkins et `docker-compose up`, dont aucun n'existait.
+Un document qui décrit autre chose que le système fait perdre plus de temps
+qu'il n'en fait gagner, et ce fichier-ci n'est pas exempt du risque. Il est donc
+vérifié à chaque build.
+
+Ces tests existent parce qu'une case cochée ne tient rien. Relire l'audit après
+coup a révélé que **SEC-07 — aucune limitation de débit — était resté ouvert
+pendant toute la réécriture**, alors même que les autres constats de sécurité
+étaient traités. Rien ne le signalait ; il fallait relire.
 
 ---
 
