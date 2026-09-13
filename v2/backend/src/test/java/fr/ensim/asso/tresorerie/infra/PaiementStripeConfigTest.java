@@ -37,4 +37,42 @@ class PaiementStripeConfigTest {
                 .as("chaque reprise multiplie le temps passé à tenir une connexion")
                 .isLessThanOrEqualTo(1);
     }
+
+    @Test
+    @DisplayName("la clé d'idempotence est déterministe : un réessai ne double pas l'effet")
+    void cleDeterministe() {
+        // Les appels partent depuis des méthodes transactionnelles. Quand le
+        // COMMIT échoue APRÈS l'appel — connexion coupée, délai dépassé — le
+        // remboursement, lui, a bien eu lieu : Stripe n'a pas de rollback. Sans
+        // clé, le réessai en crée un SECOND ; avec une clé stable, Stripe rend
+        // le résultat du premier et la base rattrape au lieu de doubler.
+        var premiere = PaiementStripe.idempotence("remboursement", "pi_123", 1500);
+        var seconde = PaiementStripe.idempotence("remboursement", "pi_123", 1500);
+
+        assertThat(premiere.getIdempotencyKey())
+                .as("deux appels identiques doivent porter la MÊME clé")
+                .isEqualTo(seconde.getIdempotencyKey())
+                .isNotNull();
+    }
+
+    @Test
+    @DisplayName("deux opérations distinctes ne partagent pas la même clé")
+    void cleDiscriminante() {
+        String remb1500 = PaiementStripe.idempotence("remboursement", "pi_123", 1500)
+                .getIdempotencyKey();
+
+        // Deux remboursements PARTIELS différents sur le même paiement sont
+        // deux opérations distinctes : les confondre serait pire que de ne rien
+        // faire, puisque le second ne partirait jamais.
+        assertThat(PaiementStripe.idempotence("remboursement", "pi_123", 500).getIdempotencyKey())
+                .isNotEqualTo(remb1500);
+        // Un autre paiement, évidemment.
+        assertThat(PaiementStripe.idempotence("remboursement", "pi_999", 1500).getIdempotencyKey())
+                .isNotEqualTo(remb1500);
+        // Et une création d'intention n'est pas un remboursement, même montant,
+        // même référence : sans le préfixe d'opération, les deux se
+        // confondraient et le second appel rendrait le résultat du premier.
+        assertThat(PaiementStripe.idempotence("intention", "pi_123", 1500).getIdempotencyKey())
+                .isNotEqualTo(remb1500);
+    }
 }

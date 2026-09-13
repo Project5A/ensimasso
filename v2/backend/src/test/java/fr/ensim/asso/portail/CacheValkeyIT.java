@@ -130,7 +130,7 @@ class CacheValkeyIT {
                         java.util.Map.of("titre", "Bonjour"), java.util.Map.of(),
                         java.util.List.of(), java.util.List.of(), java.util.List.of())),
                 java.util.List.of(new PageRendue.PageLien("accueil", "Accueil", 0)),
-                java.util.List.of("2025-2026"));
+                java.util.List.of("2025-2026"), "2025-2026");
 
         String cle = prefixe + "rendue";
         cache.ecrire(cle, mapper.writeValueAsString(page), Duration.ofMinutes(5));

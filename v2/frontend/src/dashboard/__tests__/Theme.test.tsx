@@ -67,7 +67,7 @@ describe('thème du mandat', () => {
     screen.getByRole('button', { name: /Enregistrer/ }).click()
 
     await waitFor(() => expect(apiDashboard.enregistrerTheme).toHaveBeenCalledTimes(1))
-    expect(apiDashboard.enregistrerTheme.mock.calls[0][2])
+    expect(apiDashboard.enregistrerTheme.mock.calls[0]?.[2])
       .toHaveProperty('couleurPrimaire')
     // Enregistrer ne doit jamais changer ce que voient les visiteurs.
     expect(apiDashboard.publierTheme).not.toHaveBeenCalled()

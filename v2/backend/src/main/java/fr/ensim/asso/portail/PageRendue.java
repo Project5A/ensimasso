@@ -23,7 +23,16 @@ public record PageRendue(
         Map<String, Object> theme,
         List<BlocRendu> blocs,
         List<PageLien> menu,
-        List<String> anneesDisponibles) {
+        List<String> anneesDisponibles,
+        /**
+         * L'année du mandat EN FONCTION, s'il y en a un.
+         *
+         * <p>Sans elle, le portail listait le mandat en cours parmi les
+         * « années précédentes » et y menait par l'URL d'archive : la page
+         * vivante était servie sous un bandeau annonçant une archive.
+         * {@code anneesDisponibles} ne dit pas lequel est lequel ; celle-ci si.
+         */
+        String anneeCourante) {
 
     public record AssociationVue(String slug, String nom, String type) { }
 

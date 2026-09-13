@@ -95,4 +95,8 @@ export type PageRendue = {
   blocs: BlocRendu[]
   menu: PageLien[]
   anneesDisponibles: string[]
+  /** L'année du mandat EN FONCTION, s'il y en a un. `anneesDisponibles` ne dit
+   *  pas lequel est lequel : sans cela, l'année en cours se retrouvait listée
+   *  parmi les « années précédentes » et liée par l'URL d'archive. */
+  anneeCourante: string | null
 }

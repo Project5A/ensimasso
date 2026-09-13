@@ -162,7 +162,12 @@ public class ServicePortail {
             // travaille ses brouillons, le public ne doit rien en voir.
             throw new Erreurs.Introuvable("mandat publié " + anneeCode + " pour", slugAsso);
         }
-        return rendre(asso, mandat, slugPage, false);
+        // `false` était écrit en dur. L'URL datée d'un mandat EN FONCTION est
+        // une URL légitime et citable — mais ce qu'elle sert n'est pas une
+        // archive, et le dire faisait apparaître le bandeau « vous consultez
+        // l'archive » sur la page vivante, et intituler son agenda comme celui
+        // d'une année révolue.
+        return rendre(asso, mandat, slugPage, mandat.getStatut() == StatutMandat.EN_FONCTION);
     }
 
     // ------------------------------------------------------------- interne
@@ -304,17 +309,22 @@ public class ServicePortail {
                 .map(t -> lireJson(t.getTokens()))
                 .orElseGet(Map::of);
 
-        List<String> anneesPubliees = mandats.findByAssociationIdOrderByDebutLeDesc(asso.getId())
+        List<Mandat> visibles = mandats.findByAssociationIdOrderByDebutLeDesc(asso.getId())
                 .stream()
                 .filter(m -> m.getStatut() != StatutMandat.PREPARATION)
-                .map(Mandat::getAnneeCode)
                 .toList();
+        List<String> anneesPubliees = visibles.stream().map(Mandat::getAnneeCode).toList();
+        String anneeCourante = visibles.stream()
+                .filter(m -> m.getStatut() == StatutMandat.EN_FONCTION)
+                .map(Mandat::getAnneeCode)
+                .findFirst()
+                .orElse(null);
 
         return new PageRendue(
                 new PageRendue.AssociationVue(asso.getSlug(), asso.getNom(), asso.getTypeAsso().name()),
                 new PageRendue.MandatVue(mandat.getAnneeCode(), mandat.getStatut().name(), estCourant),
                 page.getSlug(), page.getTitre(), publiee.getNumero(), publiee.getPublieLe(),
-                theme, rendus, menu, anneesPubliees);
+                theme, rendus, menu, anneesPubliees, anneeCourante);
     }
 
     private PageRendue.BlocRendu rendreBloc(Bloc bloc, List<PageRendue.MembreVue> equipe,

@@ -18,6 +18,7 @@ const page = (extra: Partial<PageRendue> = {}): PageRendue => ({
   titre: 'Accueil',
   versionNumero: 4,
   publieLe: null,
+  anneeCourante: '2025-2026',
   theme: { accent: '#1f4e79' },
   blocs: [bloc('HERO', { titre: 'Bureau des Élèves' }), bloc('FAQ', { items: [] })],
   menu: [
@@ -79,5 +80,42 @@ describe('RenduPage', () => {
   it('le numéro de version rendu est celui de la page servie', () => {
     monter(page({ versionNumero: 12 }), true)
     expect(screen.getByText(/version 12/)).toBeDefined()
+  })
+
+  it("l'année en cours n'est pas listée parmi les « années précédentes »", () => {
+    // Elle l'était, et le lien menait à l'URL d'archive : la page vivante
+    // était alors servie sous le bandeau « vous consultez l'archive ».
+    monter(page({
+      mandat: { anneeCode: '2023-2024', statut: 'CLOS', estCourant: false },
+      anneesDisponibles: ['2025-2026', '2024-2025', '2023-2024'],
+      anneeCourante: '2025-2026',
+    }))
+
+    const precedentes = screen.getByRole('navigation', { name: 'Années précédentes' })
+    expect(precedentes.textContent).toContain('2024-2025')
+    expect(precedentes.textContent).not.toContain('2025-2026')
+  })
+
+  it("depuis une archive, on revient à l'année en cours par son URL canonique", () => {
+    monter(page({
+      mandat: { anneeCode: '2023-2024', statut: 'CLOS', estCourant: false },
+      slug: 'accueil',
+      anneesDisponibles: ['2025-2026', '2023-2024'],
+      anneeCourante: '2025-2026',
+    }))
+
+    const retour = screen.getByRole('link', { name: /Voir l'année en cours/ })
+    // Sans date : l'URL datée annoncerait une archive.
+    expect(retour.getAttribute('href')).toBe('/assos/bde/accueil')
+  })
+
+  it("sur l'année en cours, aucun lien de retour n'est proposé", () => {
+    monter(page({
+      mandat: { anneeCode: '2025-2026', statut: 'EN_FONCTION', estCourant: true },
+      anneesDisponibles: ['2025-2026', '2024-2025'],
+      anneeCourante: '2025-2026',
+    }))
+
+    expect(screen.queryByText(/Voir l'année en cours/)).toBeNull()
   })
 })

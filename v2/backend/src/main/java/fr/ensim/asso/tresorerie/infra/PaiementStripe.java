@@ -82,18 +82,46 @@ public class PaiementStripe implements PortPaiement {
     @Override
     public Intention creerIntention(int montantCents, String devise, String referenceCommande) {
         try {
-            PaymentIntent intent = PaymentIntent.create(PaymentIntentCreateParams.builder()
-                    .setAmount((long) montantCents)     // décidé par le serveur
-                    .setCurrency(devise.toLowerCase())
-                    .putMetadata("commande", referenceCommande)
-                    .setAutomaticPaymentMethods(
-                            PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
-                                    .setEnabled(true).build())
-                    .build());
+            PaymentIntent intent = PaymentIntent.create(
+                    PaymentIntentCreateParams.builder()
+                            .setAmount((long) montantCents)     // décidé par le serveur
+                            .setCurrency(devise.toLowerCase())
+                            .putMetadata("commande", referenceCommande)
+                            .setAutomaticPaymentMethods(
+                                    PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                                            .setEnabled(true).build())
+                            .build(),
+                    idempotence("intention", referenceCommande, montantCents));
             return new Intention(intent.getId(), intent.getClientSecret());
         } catch (StripeException e) {
             throw new IllegalStateException("création de l'intention de paiement impossible", e);
         }
+    }
+
+    /**
+     * La clé d'idempotence d'un appel, DÉTERMINISTE.
+     *
+     * <p>Ces appels partent depuis des méthodes transactionnelles. Quand le
+     * COMMIT échoue après coup — une connexion coupée, un délai dépassé —
+     * l'effet chez le prestataire, lui, a bien eu lieu : Stripe n'a pas de
+     * rollback. Sans clé, le réessai crée un SECOND remboursement ou une
+     * SECONDE intention ; avec une clé stable, Stripe rend le résultat du
+     * premier appel et la base rattrape son retard au lieu de doubler l'effet.
+     *
+     * <p>Le montant fait partie de la clé : deux remboursements partiels
+     * différents sur un même paiement sont deux opérations distinctes, et les
+     * confondre serait pire que de ne rien faire. La clé générée par le SDK ne
+     * convient pas — elle est aléatoire, donc différente à chaque appel.
+     *
+     * <p>Ce que cela ne répare pas, et qui est écrit ici plutôt que sous-
+     * entendu : l'appel distant reste DANS la transaction. La clé borne les
+     * dégâts d'un réessai ; sortir l'appel de la transaction demanderait une
+     * machine à états persistée, que l'architecture a délibérément refusée.
+     */
+    static com.stripe.net.RequestOptions idempotence(String operation, String reference, int montantCents) {
+        return com.stripe.net.RequestOptions.builder()
+                .setIdempotencyKey(operation + "-" + reference + "-" + montantCents)
+                .build();
     }
 
     /**
@@ -174,10 +202,12 @@ public class PaiementStripe implements PortPaiement {
     @Override
     public void rembourser(String referencePaiement, int montantCents) {
         try {
-            Refund.create(RefundCreateParams.builder()
-                    .setPaymentIntent(referencePaiement)
-                    .setAmount((long) montantCents)
-                    .build());
+            Refund.create(
+                    RefundCreateParams.builder()
+                            .setPaymentIntent(referencePaiement)
+                            .setAmount((long) montantCents)
+                            .build(),
+                    idempotence("remboursement", referencePaiement, montantCents));
         } catch (StripeException e) {
             throw new IllegalStateException("remboursement impossible", e);
         }
