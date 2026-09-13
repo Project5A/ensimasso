@@ -106,13 +106,35 @@ export default function Editeur() {
   async function agir(action: () => Promise<VersionVue | void>, message?: string) {
     if (occupe || !version) return
     setOccupe(true); setErreur(null); setInfo(null)
+
+    let suivante: VersionVue
     try {
-      const suivante = (await action()) ?? version
+      suivante = (await action()) ?? version
       setVersion(suivante)
-      await rafraichirBlocs(suivante.id)
-      if (message) setInfo(message)
     } catch (e: unknown) {
       setErreur(e instanceof ErreurApi ? e.message : 'Opération impossible')
+      setOccupe(false)
+      return
+    }
+
+    // À partir d'ici, l'action a ABOUTI. Ce qui suit n'est qu'un
+    // rafraîchissement d'affichage, et son échec était raconté comme un échec
+    // de l'action : publier une page puis perdre le réseau affichait
+    // « Opération impossible » sur une page bel et bien publiée, sans le
+    // moindre message de succès. On republiait — en 409.
+    //
+    // Pire, les lignes restées à l'écran étaient celles de la version
+    // PRÉCÉDENTE : leurs identifiants appartenaient à une version figée, et
+    // chaque bouton d'une de ces lignes repartait en 409. Elles sont donc
+    // retirées, et l'écran dit les deux choses : ce qui a marché, et ce qu'il
+    // n'a pas pu relire.
+    try {
+      await rafraichirBlocs(suivante.id)
+      if (message) setInfo(message)
+    } catch {
+      setBlocs([])
+      setErreur('Action effectuée, mais la liste des blocs n’a pas pu être '
+              + 'relue. Rechargez la page pour la revoir.')
     } finally {
       setOccupe(false)
     }
@@ -264,6 +286,10 @@ export default function Editeur() {
                     bloc={bloc}
                     type={type}
                     occupe={occupe}
+                    // Le seul bouton d'écriture que le figeage de la version
+                    // avait oublié : il restait actif sur une version publiée
+                    // et repartait en 409, comme les autres avant lui.
+                    modifiable={estBrouillon}
                     onEnregistrer={(payload) =>
                       agir(async () => {
                         await apiDashboard.modifierBloc(jeton(), bloc.id, payload)
@@ -289,9 +315,9 @@ export default function Editeur() {
 }
 
 function FormulaireBloc({
-  bloc, type, occupe, onEnregistrer,
+  bloc, type, occupe, modifiable, onEnregistrer,
 }: {
-  bloc: BlocVue; type: TypeBlocVue; occupe: boolean
+  bloc: BlocVue; type: TypeBlocVue; occupe: boolean; modifiable: boolean
   onEnregistrer: (payload: Record<string, unknown>) => Promise<void>
 }) {
   const [valeur, setValeur] = useState<Record<string, unknown>>(() => {
@@ -309,7 +335,14 @@ function FormulaireBloc({
       {/* Le formulaire est généré depuis le MÊME schéma que celui qui valide
           côté serveur : il ne peut pas diverger de ce que la base accepte. */}
       <ChampsSchema schema={schema} valeur={valeur} onChange={setValeur} />
-      <button className="bouton bouton--petit" type="submit" disabled={occupe}>
+      {!modifiable && (
+        <p className="aide">
+          Cette version est publiée, donc figée. Reprenez l’édition en haut de
+          la page pour modifier ce bloc.
+        </p>
+      )}
+      <button className="bouton bouton--petit" type="submit"
+              disabled={occupe || !modifiable}>
         Enregistrer
       </button>
     </form>

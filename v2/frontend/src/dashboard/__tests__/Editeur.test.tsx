@@ -173,6 +173,56 @@ describe('éditeur de page : ce qui change quand on publie', () => {
     expect(apiDashboard.supprimerBloc.mock.calls[0]?.[1]).toBe('v5-a')
   })
 
+  it('le formulaire d’un bloc ne s’enregistre plus sur une version figée', async () => {
+    monter()
+    await attendreOuverture()
+    // Ouvrir le panneau d'un bloc AVANT de publier : il reste ouvert après.
+    boutons(/^Texte$/)[0]?.click()
+    await waitFor(() => expect(bouton(/^Enregistrer$/)).toBeTruthy())
+
+    bouton(/^Publier$/).click()
+    await waitFor(() => expect(screen.getByText('Version 4 publiée')).toBeTruthy())
+
+    // C'est le seul bouton d'écriture que le figeage avait oublié : il restait
+    // actif et appelait modifierBloc sur un bloc que le trigger refuse.
+    expect(bouton(/^Enregistrer$/).disabled).toBe(true)
+    expect(screen.getByText(/Cette version est publiée, donc figée/)).toBeTruthy()
+  })
+
+  it('une publication réussie dont la relecture échoue se raconte comme telle', async () => {
+    monter()
+    await attendreOuverture()
+
+    apiDashboard.blocs.mockRejectedValueOnce(new Error('réseau coupé'))
+    bouton(/^Publier$/).click()
+
+    await waitFor(() => expect(screen.getByText('Version 4 publiée')).toBeTruthy())
+    // Disait « Opération impossible » sur une page bel et bien publiée : on
+    // republiait, et on prenait un 409.
+    const alerte = screen.getByRole('alert').textContent ?? ''
+    expect(alerte).toContain('Action effectuée')
+    expect(alerte).not.toContain('Opération impossible')
+  })
+
+  it('après une relecture ratée, plus aucune ligne d’une version quittée', async () => {
+    apiDashboard.ouvrirBrouillon
+      .mockResolvedValueOnce(BROUILLON_4)
+      .mockResolvedValueOnce(BROUILLON_5)
+    monter()
+    await attendreOuverture()
+    bouton(/^Publier$/).click()
+    await waitFor(() => expect(screen.getByText('Version 4 publiée')).toBeTruthy())
+
+    apiDashboard.blocs.mockRejectedValueOnce(new Error('réseau coupé'))
+    bouton(/Reprendre/).click()
+    await waitFor(() => expect(screen.getByText('Brouillon — version 5')).toBeTruthy())
+
+    // Les lignes affichées étaient celles de v4 — figées — sous un bandeau
+    // annonçant v5. Chaque bouton de ces lignes repartait en 409.
+    expect(screen.queryAllByRole('button', { name: /^Supprimer$/ })).toHaveLength(0)
+    expect(screen.getByText(/Aucun bloc/)).toBeTruthy()
+  })
+
   it('le renouvellement du jeton ne rouvre pas — et ne CRÉE pas — de brouillon', async () => {
     const { rerender } = monter()
     await attendreOuverture()
