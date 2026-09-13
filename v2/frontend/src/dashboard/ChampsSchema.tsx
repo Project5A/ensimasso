@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 
 /**
  * Génère un formulaire d'édition à partir du JSON Schema d'un type de bloc.
@@ -71,31 +71,7 @@ function Champ({
   // chaque ligne devient un paragraphe. On ne stocke jamais de HTML, donc il
   // n'y a aucun balisage à injecter et aucun assainisseur à maintenir.
   if (nom === 'doc') {
-    const doc = valeur as { content?: { content?: { text?: string }[] }[] } | undefined
-    const texte = (doc?.content ?? [])
-      .map((p) => (p.content ?? []).map((f) => f.text ?? '').join(''))
-      .join('\n\n')
-
-    return (
-      <div className="champ">
-        <label htmlFor={id}>Texte{requis && <Requis />}</label>
-        <textarea
-          id={id}
-          rows={6}
-          value={texte}
-          onChange={(e) =>
-            onChange({
-              type: 'doc',
-              content: e.target.value
-                .split(/\n{2,}/)
-                .filter((p) => p.trim())
-                .map((p) => ({ type: 'paragraph', content: [{ type: 'text', text: p.trim() }] })),
-            })
-          }
-        />
-        <p className="aide">Une ligne vide sépare deux paragraphes.</p>
-      </div>
-    )
+    return <ChampTexteRiche id={id} requis={requis} valeur={valeur} onChange={onChange} />
   }
 
   if (schema.enum) {
@@ -173,6 +149,70 @@ function Champ({
           try { onChange(JSON.parse(e.target.value)) } catch { /* saisie invalide : ignorée */ }
         }}
       />
+    </div>
+  )
+}
+
+/** Le document tel qu'il est stocké : des paragraphes de texte nu. */
+type Doc = { type: 'doc'; content: { type: 'paragraph'; content: { type: 'text'; text: string }[] }[] }
+
+const docVersTexte = (valeur: unknown): string =>
+  ((valeur as { content?: { content?: { text?: string }[] }[] } | undefined)?.content ?? [])
+    .map((p) => (p.content ?? []).map((f) => f.text ?? '').join(''))
+    .join('\n\n')
+
+const texteVersDoc = (texte: string): Doc => ({
+  type: 'doc',
+  content: texte
+    .split(/\n{2,}/)
+    .filter((p) => p.trim())
+    .map((p) => ({ type: 'paragraph', content: [{ type: 'text', text: p.trim() }] })),
+})
+
+/**
+ * La saisie du texte riche.
+ *
+ * <p>Ce champ garde le texte SAISI, et non le texte reconstruit depuis le
+ * document. La différence n'est pas cosmétique : la zone était pilotée par la
+ * valeur reconstruite, si bien que chaque frappe repassait par `texteVersDoc`
+ * puis `docVersTexte`, et que tout ce que cette traversée normalise
+ * disparaissait sous les doigts.
+ *
+ * <p>Taper « Bonjour monde » donnait « Bonjourmonde » : l'espace final de
+ * « Bonjour » était retiré par le `trim` avant d'avoir été suivi d'une lettre.
+ * Et un deuxième paragraphe était tout simplement impossible à ouvrir — le
+ * premier saut de ligne, seul, ne survivait jamais jusqu'au second.
+ *
+ * <p>Le document, lui, reste normalisé : c'est ce qui part au serveur, et il
+ * n'a aucune raison de garder des espaces de bord ou des paragraphes vides.
+ */
+function ChampTexteRiche({
+  id, requis, valeur, onChange,
+}: { id: string; requis: boolean; valeur: unknown; onChange: (v: unknown) => void }) {
+  const venuDuParent = docVersTexte(valeur)
+  const [texte, setTexte] = useState(venuDuParent)
+  const [connu, setConnu] = useState(venuDuParent)
+
+  // Le document a changé ailleurs qu'ici (autre bloc, rechargement) : on
+  // repart de lui. Après NOTRE propre frappe, `connu` vaut déjà ce que le
+  // parent nous renvoie, donc rien ne réécrit la saisie en cours.
+  if (venuDuParent !== connu) {
+    setConnu(venuDuParent)
+    setTexte(venuDuParent)
+  }
+
+  const saisir = (brut: string) => {
+    setTexte(brut)
+    const doc = texteVersDoc(brut)
+    setConnu(docVersTexte(doc))
+    onChange(doc)
+  }
+
+  return (
+    <div className="champ">
+      <label htmlFor={id}>Texte{requis && <Requis />}</label>
+      <textarea id={id} rows={6} value={texte} onChange={(e) => saisir(e.target.value)} />
+      <p className="aide">Une ligne vide sépare deux paragraphes.</p>
     </div>
   )
 }
