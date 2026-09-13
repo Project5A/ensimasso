@@ -76,6 +76,14 @@ public class ServiceAdhesion {
         Mandat vendeur = mandats.mandatEnFonction(associationId).orElseThrow(() ->
                 new Erreurs.Conflit("aucun bureau en fonction : impossible d'ouvrir une campagne"));
 
+        // Une campagne par (association, année) : rappeler cette méthode sur une
+        // campagne existante en rouvre la fenêtre, il n'en naît pas une seconde.
+        // `ouverte_par_mandat_id` garde alors le bureau CRÉATEUR, et c'est
+        // voulu : la colonne est immuable et enregistre qui a ouvert, pas qui a
+        // rouvert en dernier. Ce qui doit suivre le bureau du jour, c'est
+        // l'attribution de chaque VENTE, et elle est lue à la vente — voir
+        // `adherer`. Tant qu'elle ne l'était pas, cette ligne figée décidait
+        // aussi de la comptabilité, ce qu'elle n'a jamais eu à faire.
         CampagneAdhesion campagne = campagnes
                 .findByAssociationIdAndCouvreAnneeCode(associationId, couvreAnneeCode)
                 .orElseGet(() -> campagnes.save(
@@ -145,14 +153,27 @@ public class ServiceAdhesion {
                 .orElseThrow(() -> new Erreurs.RequeteInvalide(
                         "aucun tarif « " + cible + " » pour cette campagne"));
 
+        // Le bureau qui ENCAISSE, lu MAINTENANT — c'est ce que la colonne dit
+        // d'elle-même : « vendue_par_mandat_id — l'audit : quel bureau a
+        // encaissé ». Le service y écrivait pourtant le bureau qui avait OUVERT
+        // la campagne. Les deux ne coïncident que si aucune passation n'a lieu
+        // entre l'ouverture et la vente, c'est-à-dire dans tous les cas SAUF
+        // celui pour lequel cette colonne existe : une campagne « early bird »
+        // ouverte en juillet par le bureau sortant reste ouverte à la rentrée,
+        // et chaque adhésion vendue en septembre était portée au compte d'un
+        // bureau qui n'était plus en fonction.
+        Mandat vendeur = mandats.mandatEnFonction(campagne.getAssociationId()).orElseThrow(() ->
+                new Erreurs.Conflit("aucun bureau en fonction : personne ne peut encaisser "
+                                  + "cette adhésion"));
+
         return adhesions.save(new Adhesion(
                 personneId,
                 campagne.getAssociationId(),
                 campagne.getCouvreAnneeCode(),
-                campagne.getOuvertePparMandatId(),
+                vendeur.getId(),
                 tarif.getId(),
                 tarif.getMontantCents(),
-                OffsetDateTime.now(horloge)));
+                maintenant));
     }
 
     /**

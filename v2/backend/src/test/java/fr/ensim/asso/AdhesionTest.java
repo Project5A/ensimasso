@@ -112,8 +112,11 @@ class AdhesionTest {
     @DisplayName("ce que l'adhésion couvre est distinct du bureau qui l'a vendue")
     void couvertureDistincteDuVendeur() {
         UUID bureau2025 = UUID.randomUUID();
-        // Campagne « early bird » : ouverte en juillet 2026 par le bureau
-        // 2025-2026, pour l'année 2026-2027.
+        // Vendue en juillet 2026, par le bureau 2025-2026 alors en fonction,
+        // pour l'année 2026-2027 : c'est l'« early bird ». Le bureau vendeur
+        // est ici passé à la main — quel bureau le SERVICE choisit, et pourquoi
+        // ce n'est pas celui qui a ouvert la campagne, est vérifié par
+        // VenteAdhesionTest.
         Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", bureau2025, TARIF, 1500, LE_JOUR);
 
         assertThat(a.getCouvreAnneeCode())

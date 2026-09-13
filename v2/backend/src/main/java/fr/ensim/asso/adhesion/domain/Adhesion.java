@@ -12,7 +12,10 @@ import java.util.UUID;
  *   <li>{@code couvreAnneeCode} — <strong>la vérité</strong>. C'est ce que lit
  *       le contrôle d'accès à l'entrée de la K-Fêt.</li>
  *   <li>{@code vendueParMandatId} — <strong>l'audit</strong>. Quel bureau a
- *       encaissé, ce qui n'est pas la même question.</li>
+ *       encaissé, ce qui n'est pas la même question. Lu au moment de la VENTE,
+ *       et non repris de la campagne : une campagne de juillet encore ouverte
+ *       à la rentrée est vendue par le bureau entrant, pas par celui qui
+ *       l'avait ouverte.</li>
  * </ul>
  *
  * <p>Confondre les deux rend l'« early bird » de juillet impossible à
