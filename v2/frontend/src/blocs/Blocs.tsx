@@ -8,6 +8,47 @@ import type { BlocRendu, MembreVue } from '../types'
 const texte = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 const liste = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 
+/** Les seuls schémas qu'un lien écrit par une association peut porter. */
+const SCHEMAS_SURS = new Set(['http:', 'https:', 'mailto:'])
+
+/**
+ * Rend une URL seulement si elle est sûre à mettre dans un `href`.
+ *
+ * Le registre de blocs a supprimé l'injection de HTML en décidant que
+ * RICH_TEXT stocke un document structuré et jamais une chaîne de balisage :
+ * « JSON Schema ne sait pas exprimer "cette chaîne est du HTML sûr" — on
+ * supprime le problème plutôt que de le filtrer ». Le raisonnement est juste,
+ * il n'avait simplement jamais été porté jusqu'aux champs d'URL. Le schéma du
+ * bloc HERO déclare `href` comme une chaîne de 512 caractères au plus, sans
+ * motif : `javascript:alert(document.cookie)` le traversait, et React écrit un
+ * href tel quel — vérifié, il arrivait intact dans le DOM d'une page PUBLIQUE.
+ * Il suffisait d'un responsable com' pour exécuter du code chez chaque
+ * visiteur.
+ *
+ * L'analyse passe par `URL` et non par une expression régulière : c'est elle
+ * qui connaît les échappatoires — tabulations et retours à la ligne au milieu
+ * du schéma, casse mélangée, espaces de tête.
+ */
+function lienSur(brut: unknown): string | undefined {
+  if (typeof brut !== 'string') return undefined
+  const valeur = brut.trim()
+  if (!valeur) return undefined
+
+  // Chemin interne : aucune origine, donc aucun schéma à interpréter.
+  // « // » et « /\ » sont exclus — les deux sont des URL relatives au
+  // protocole, que le navigateur résout vers un AUTRE domaine ; elles
+  // repassent donc par l'analyse ci-dessous comme n'importe quel lien externe.
+  if (valeur.startsWith('/') && !/^\/[/\\]/.test(valeur)) return valeur
+
+  try {
+    return SCHEMAS_SURS.has(new URL(valeur, 'https://interne.invalide').protocol)
+      ? valeur
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function Hero({ bloc }: { bloc: BlocRendu }) {
   const titre = texte(bloc.payload.titre) ?? ''
   const sousTitre = texte(bloc.payload.sousTitre)
@@ -24,17 +65,18 @@ export function Hero({ bloc }: { bloc: BlocRendu }) {
         {sousTitre && <p className="hero__sous-titre">{sousTitre}</p>}
         {actions.length > 0 && (
           <div className="hero__actions">
-            {actions.map((a, i) =>
-              a.libelle && a.href ? (
+            {actions.map((a, i) => {
+              const href = lienSur(a.href)
+              return a.libelle && href ? (
                 <a
                   key={i}
-                  href={a.href}
+                  href={href}
                   className={a.style === 'SECONDAIRE' ? 'bouton bouton--secondaire' : 'bouton'}
                 >
                   {a.libelle}
                 </a>
-              ) : null,
-            )}
+              ) : null
+            })}
           </div>
         )}
       </div>
@@ -316,10 +358,10 @@ export function EventList({
                 {/* Le lien de billetterie disparaît si l'évènement est annulé :
                     laisser vendre des places pour une soirée annulée serait pire
                     que de ne rien afficher. */}
-                {!annule && e.lien && (
+                {!annule && lienSur(e.lien) && (
                   <a
                     className="bouton bouton--secondaire"
-                    href={e.lien}
+                    href={lienSur(e.lien)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -377,8 +419,8 @@ export function Partners({ bloc }: { bloc: BlocRendu }) {
                 )
                 return (
                   <li key={p.nom}>
-                    {p.url ? (
-                      <a href={p.url} target="_blank" rel="noopener noreferrer sponsored">
+                    {lienSur(p.url) ? (
+                      <a href={lienSur(p.url)} target="_blank" rel="noopener noreferrer sponsored">
                         {contenu}
                       </a>
                     ) : (
@@ -543,8 +585,8 @@ export function Countdown({ bloc }: { bloc: BlocRendu }) {
           </li>
         ))}
       </ol>
-      {action?.libelle && action.href && (
-        <a className="bouton" href={action.href}>
+      {action?.libelle && lienSur(action.href) && (
+        <a className="bouton" href={lienSur(action.href)}>
           {action.libelle}
         </a>
       )}
