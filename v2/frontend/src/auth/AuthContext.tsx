@@ -1,6 +1,7 @@
 import { User, UserManager } from 'oidc-client-ts'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { parametresOidc } from './config'
 
 type EtatAuth = {
@@ -13,6 +14,23 @@ type EtatAuth = {
 
 const Contexte = createContext<EtatAuth | null>(null)
 
+/**
+ * L'échange du code d'autorisation, partagé entre les montages.
+ *
+ * React monte, démonte et remonte chaque composant sous StrictMode : l'effet
+ * partait deux fois, et un code d'autorisation OAuth ne s'échange qu'UNE fois.
+ * Le second appel échouait en `invalid_grant` ; comme le nettoyage de
+ * StrictMode avait entre-temps marqué le premier passage « plus vivant », son
+ * résultat — le bon — était jeté et c'est l'échec du second qui l'emportait.
+ * La connexion était impossible en développement.
+ *
+ * Une variable de module, et non une `ref` : les deux montages sont deux
+ * instances distinctes du composant, et il faut qu'ils attendent la MÊME
+ * promesse. Remise à zéro en cas d'échec, pour qu'un retour ultérieur avec un
+ * code neuf ne se voie pas resservir un rejet.
+ */
+let echangeDuCode: Promise<User> | null = null
+
 export function useAuth(): EtatAuth {
   const c = useContext(Contexte)
   if (!c) throw new Error('useAuth doit être utilisé dans <FournisseurAuth>')
@@ -21,6 +39,7 @@ export function useAuth(): EtatAuth {
 
 export function FournisseurAuth({ children }: { children: ReactNode }) {
   const gestionnaire = useMemo(() => new UserManager(parametresOidc), [])
+  const naviguer = useNavigate()
   const [utilisateur, setUtilisateur] = useState<User | null>(null)
   const [chargement, setChargement] = useState(true)
 
@@ -31,12 +50,21 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
       try {
         // Retour du fournisseur d'identité : on échange le code contre un jeton.
         if (window.location.pathname === '/connexion/retour') {
-          const u = await gestionnaire.signinRedirectCallback()
+          echangeDuCode ??= gestionnaire.signinRedirectCallback().catch((e) => {
+            echangeDuCode = null
+            throw e
+          })
+          const u = await echangeDuCode
           if (!vivant) return
           setUtilisateur(u)
           // On nettoie l'URL : le code d'autorisation n'a rien à faire dans
           // l'historique du navigateur.
-          window.history.replaceState({}, '', sessionStorage.getItem('retour') ?? '/tableau')
+          //
+          // `navigate` et non `window.history.replaceState` : ce dernier change
+          // la barre d'adresse sans prévenir React Router, qui continuait donc
+          // d'afficher la route /connexion/retour — une page vide — sous une
+          // URL qui annonçait le tableau de bord.
+          naviguer(sessionStorage.getItem('retour') ?? '/tableau', { replace: true })
           return
         }
         const u = await gestionnaire.getUser()
@@ -60,7 +88,7 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
       gestionnaire.events.removeAccessTokenExpired(surExpiration)
       gestionnaire.events.removeUserLoaded(surRenouvellement)
     }
-  }, [gestionnaire])
+  }, [gestionnaire, naviguer])
 
   const connecter = useCallback(async () => {
     sessionStorage.setItem('retour', window.location.pathname)
