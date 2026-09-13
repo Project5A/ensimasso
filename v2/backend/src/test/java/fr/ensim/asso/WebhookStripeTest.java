@@ -28,7 +28,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class WebhookStripeTest {
 
-    private static final String SECRET = "whsec_test_0123456789abcdef";
+    // Volontairement SANS la forme d'un secret Stripe (« whsec_… ») : la valeur
+    // ne sert que de clé HMAC pour signer les charges utiles du test, et une
+    // chaîne qui ressemble à une clé fait — à juste titre — sonner le détecteur
+    // de secrets de la chaîne d'intégration. Renommer le figurant coûte moins
+    // cher que d'apprendre au scanner à ignorer un fichier : un scanner de
+    // secrets avec une liste d'exceptions est un endroit où cacher un secret.
+    private static final String SECRET = "cle-de-signature-pour-les-tests";
     private final PaiementStripe stripe = new PaiementStripe("sk_test_bidon", SECRET);
 
     /** Reproduit le schéma de signature de Stripe : {@code t=<ts>,v1=<hmac>}. */
