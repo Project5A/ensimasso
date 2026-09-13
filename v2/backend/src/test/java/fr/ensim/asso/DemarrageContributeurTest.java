@@ -50,9 +50,17 @@ class DemarrageContributeurTest {
         Path racine = racine();
 
         List<String> introuvables = new ArrayList<>();
+        // « . ./.env » et « source ./x » lisent un fichier, ils n'exécutent
+        // rien : les retirer avant d'analyser, sinon le chargement de .env —
+        // absent d'un clone neuf par construction, puisque le .gitignore
+        // l'exclut — passerait pour un exécutable manquant. Le test qui suit
+        // vérifie que ce chargement, lui, est bien là.
+        String sansSource = makefile.replaceAll(
+                "(^|[;&|(\\s])(\\.|source)\\s+\\./[A-Za-z0-9_./-]+", "$1SOURCE");
+
         // Les appels de la forme ./chemin/outil, y compris à travers une
         // variable comme $(MVN) := ./backend/mvnw.
-        Matcher m = Pattern.compile("(\\./[A-Za-z0-9_./-]+)").matcher(makefile);
+        Matcher m = Pattern.compile("(\\./[A-Za-z0-9_./-]+)").matcher(sansSource);
         while (m.find()) {
             String chemin = m.group(1);
             if (chemin.endsWith("/")) {
@@ -66,6 +74,47 @@ class DemarrageContributeurTest {
         assertThat(introuvables)
                 .as("le Makefile appelle des exécutables absents : c'est OPS-02, "
                   + "et la CI ne le verra pas parce qu'elle n'utilise pas le Makefile")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("les cibles qui parlent à la pile chargent .env")
+    void ciblesApplicativesChargentEnv() throws IOException {
+        String makefile = makefile();
+
+        // `docker compose` lit .env tout seul : « make up » démarrait donc
+        // Postgres et MinIO avec les mots de passe du fichier, pendant que
+        // « make run » lançait l'API sans jamais le lire. Le secret S3
+        // arrivait vide et l'application mourait au démarrage. La séquence du
+        // README — « make up » puis « make run » — ne démarrait pas.
+        // Deux moitiés, parce qu'une seule ne prouverait rien : la variable
+        // doit réellement lire le fichier, ET chaque cible doit l'utiliser.
+        Matcher def = Pattern.compile("(?m)^ENV\\s*:?=(.*)$").matcher(makefile);
+        assertThat(def.find())
+                .as("aucune variable ENV ne charge .env dans le Makefile")
+                .isTrue();
+        assertThat(def.group(1))
+                .as("la variable ENV existe mais ne lit pas .env")
+                .contains(".env");
+
+        List<String> sansChargement = new ArrayList<>();
+        for (String cible : List.of("run", "run-delivery", "migrate", "seed")) {
+            Matcher m = Pattern.compile(
+                    "(?m)^" + Pattern.quote(cible) + ":.*?(?=\\n[a-zA-Z_.-]+:|\\z)",
+                    Pattern.DOTALL).matcher(makefile);
+            if (!m.find()) {
+                sansChargement.add(cible + " (cible absente du Makefile)");
+                continue;
+            }
+            if (!m.group().contains("$(ENV)")) {
+                sansChargement.add(cible);
+            }
+        }
+
+        assertThat(sansChargement)
+                .as("ces cibles lancent l'application sans charger .env : les "
+                  + "secrets définis par le contributeur ne l'atteindront pas, "
+                  + "et le démarrage échouera sur une configuration vide")
                 .isEmpty();
     }
 

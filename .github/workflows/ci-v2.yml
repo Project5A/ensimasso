@@ -310,8 +310,14 @@ jobs:
       # manifestes : un scanner de vulnérabilités doit connaître les failles
       # publiées hier, pas celles d'il y a un an. L'épingler reviendrait à
       # scanner avec une base périmée.
+      #
+      # Le `|| echo` n'est pas une indulgence : sans lui, `bash -e` arrête la
+      # boucle au premier scan rouge et la seconde image n'est jamais scannée.
+      # C'était le cas ici — le portail n'avait, de fait, jamais été analysé.
+      # On scanne les deux, puis on échoue à la fin si l'une des deux a échoué.
       - name: Trivy
         run: |
+          echoue=""
           for image in ensimasso-core ensimasso-portail; do
             echo "::group::$image"
             docker run --rm \
@@ -319,6 +325,11 @@ jobs:
               -v "$HOME/.cache/trivy:/root/.cache/trivy" \
               aquasec/trivy:latest image \
                 --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL \
-                --format table "$image:${{ github.sha }}"
+                --format table "$image:${{ github.sha }}" || echoue="$echoue $image"
             echo "::endgroup::"
           done
+          if [ -n "$echoue" ]; then
+            echo "::error::failles HIGH/CRITICAL corrigeables dans :$echoue"
+            exit 1
+          fi
+          echo "les deux images sont scannées et sans faille corrigeable HIGH/CRITICAL"

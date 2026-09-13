@@ -5,6 +5,20 @@ SHELL := /bin/bash
 COMPOSE := docker compose -f docker-compose.dev.yml
 MVN := ./backend/mvnw -f backend/pom.xml
 
+# Charge .env dans l'environnement des cibles qui parlent à la pile démarrée.
+#
+# Ce n'est pas un raffinement. `docker compose` lit .env tout seul, si bien que
+# `make up` démarrait Postgres avec DB_PASSWORD et MinIO avec MINIO_PASSWORD,
+# puis `make run` lançait l'API sans jamais lire ce fichier : le mot de passe
+# de la base arrivait vide (échec d'authentification) et le secret S3 aussi
+# — l'application mourait au démarrage sur un « Secret access key cannot be
+# blank » remonté du fond du SDK AWS. La séquence documentée dans le README,
+# `make up` puis `make run`, ne démarrait donc pas sur un clone neuf.
+#
+# `set -a` exporte ce que le fichier définit, sans polluer les variables de
+# make ni les cibles qui n'en ont pas besoin (test, lint, build).
+ENV := set -a; [ -f .env ] && . ./.env; set +a;
+
 .DEFAULT_GOAL := aide
 
 .PHONY: aide
@@ -43,12 +57,12 @@ reset: ## Repart d'une base vierge (DESTRUCTIF)
 	$(COMPOSE) up -d
 
 .PHONY: run
-run: ## Lance l'API en local (profil par défaut)
-	$(MVN) spring-boot:run
+run: init ## Lance l'API en local (profil par défaut)
+	@$(ENV) $(MVN) spring-boot:run
 
 .PHONY: run-delivery
-run-delivery: ## Lance le profil de lecture publique, en lecture seule
-	$(MVN) spring-boot:run -Dspring-boot.run.profiles=delivery
+run-delivery: init ## Lance le profil de lecture publique, en lecture seule
+	@$(ENV) $(MVN) spring-boot:run -Dspring-boot.run.profiles=delivery
 
 .PHONY: test
 test: ## Tests unitaires + architecture (aucun Docker requis)
@@ -59,12 +73,12 @@ verify: ## Tout, y compris les tests d'intégration Testcontainers (Docker requi
 	$(MVN) verify
 
 .PHONY: migrate
-migrate: ## Applique les migrations Flyway
-	$(MVN) flyway:migrate
+migrate: init ## Applique les migrations Flyway
+	@$(ENV) $(MVN) flyway:migrate
 
 .PHONY: seed
-seed: ## Charge un jeu de données réaliste (3 assos, 2 années)
-	@psql "$${DB_URL_PSQL:-postgresql://ensimasso:$${DB_PASSWORD:-dev_seulement}@localhost:5432/ensimasso}" \
+seed: init ## Charge un jeu de données réaliste (3 assos, 2 années)
+	@$(ENV) psql "$${DB_URL_PSQL:-postgresql://ensimasso:$${DB_PASSWORD:-dev_seulement}@localhost:5432/ensimasso}" \
 		-v ON_ERROR_STOP=1 -f infra/postgres/seed-dev.sql
 	@echo "→ jeu de données chargé"
 
@@ -81,9 +95,9 @@ front-test: ## Typage, tests et build du portail
 		&& npm run typecheck && npm test && npm run build
 
 .PHONY: verif-contraintes
-verif-contraintes: ## Prouve que les garanties sont bien portées par la base
+verif-contraintes: init ## Prouve que les garanties sont bien portées par la base
 	@echo "Chaque « doit etre REFUSE » doit produire une ERREUR : c'est le résultat attendu."
-	@psql "$${DB_URL_PSQL:-postgresql://ensimasso:$${DB_PASSWORD:-dev_seulement}@localhost:5432/ensimasso}" \
+	@$(ENV) psql "$${DB_URL_PSQL:-postgresql://ensimasso:$${DB_PASSWORD:-dev_seulement}@localhost:5432/ensimasso}" \
 		-f infra/postgres/verifier-contraintes.sql
 
 .PHONY: lint
@@ -96,9 +110,9 @@ build: ## Construit le jar
 	$(MVN) -DskipTests package
 
 .PHONY: sauvegarde
-sauvegarde: ## Sauvegarde chiffrée de la base et des objets (AGE_DESTINATAIRE requis)
-	@infra/sauvegarde/sauvegarder.sh
+sauvegarde: init ## Sauvegarde chiffrée de la base et des objets (AGE_DESTINATAIRE requis)
+	@$(ENV) infra/sauvegarde/sauvegarder.sh
 
 .PHONY: drill
-drill: ## Exercice de restauration complet, sur une base jetable
-	@infra/sauvegarde/drill-restauration.sh $${PGDATABASE:-ensimasso}
+drill: init ## Exercice de restauration complet, sur une base jetable
+	@$(ENV) infra/sauvegarde/drill-restauration.sh $${PGDATABASE:-ensimasso}

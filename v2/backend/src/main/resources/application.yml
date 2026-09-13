@@ -105,6 +105,17 @@ management:
   metrics:
     tags:
       application: ensimasso-core
+  health:
+    redis:
+      # Désactivée par défaut, et c'est un correctif, pas une préférence : la
+      # seule présence de spring-data-redis sur le classpath suffit à activer
+      # cette sonde, quel que soit le cache réellement configuré. Avec le cache
+      # « memoire » et aucun Valkey en face, /actuator/health répondait 503 et
+      # l'application sondait en boucle un serveur qu'elle n'utilise pas.
+      #
+      # Le profil delivery, qui utilise réellement Valkey, la réactive : là, un
+      # Valkey injoignable DOIT faire remonter une santé dégradée.
+      enabled: ${SONDE_VALKEY:false}
 
 logging:
   # Lisibles à l'œil en développement, structurés en production : « ecs »

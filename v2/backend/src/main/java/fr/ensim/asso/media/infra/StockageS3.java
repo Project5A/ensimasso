@@ -42,6 +42,7 @@ public class StockageS3 implements PortStockage, AutoCloseable {
                       @Value("${ensimasso.stockage.secret}") String secret,
                       @Value("${ensimasso.stockage.region:us-east-1}") String region,
                       @Value("${ensimasso.stockage.bucket}") String bucket) {
+        exigerConfiguration(endpoint, acces, secret, bucket);
         this.bucket = bucket;
         var credentials = StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(acces, secret));
@@ -60,6 +61,37 @@ public class StockageS3 implements PortStockage, AutoCloseable {
                 .region(Region.of(region))
                 .serviceConfiguration(config)
                 .build();
+    }
+
+    /**
+     * Refuse de démarrer sur une configuration incomplète, en nommant ce qui
+     * manque.
+     *
+     * <p>Sans cette garde, un secret absent remontait un
+     * {@code NullPointerException: Secret access key cannot be blank} jeté au
+     * fond du SDK AWS, au milieu de six « Error creating bean ». Le message ne
+     * disait ni quelle variable manquait, ni où la définir : le démarrage
+     * échouait et personne ne savait pourquoi. C'est ainsi que l'intégration
+     * continue est restée rouge quatorze fois de suite.
+     *
+     * <p>Échouer au démarrage reste le bon choix — un stockage mal configuré
+     * ne se découvre pas au premier dépôt d'affiche. Seul le message change.
+     */
+    private static void exigerConfiguration(String endpoint, String acces, String secret, String bucket) {
+        var manquants = new java.util.ArrayList<String>();
+        if (endpoint == null || endpoint.isBlank()) manquants.add("MINIO_ENDPOINT");
+        if (acces == null || acces.isBlank()) manquants.add("MINIO_USER");
+        if (secret == null || secret.isBlank()) manquants.add("MINIO_PASSWORD");
+        if (bucket == null || bucket.isBlank()) manquants.add("MINIO_BUCKET_ORIGINAUX");
+        if (!manquants.isEmpty()) {
+            throw new IllegalStateException(
+                    "stockage objet non configuré : " + String.join(", ", manquants)
+                    + (manquants.size() > 1
+                            ? " sont absentes. Renseignez-les"
+                            : " est absente. Renseignez-la")
+                    + " dans .env (voir .env.example) puis relancez ;"
+                    + " « make up » démarre le MinIO correspondant.");
+        }
     }
 
     @Override
