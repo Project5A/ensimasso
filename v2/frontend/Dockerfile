@@ -28,15 +28,31 @@ FROM nginx:1.30-alpine
 # Et un `apk upgrade` par-dessus, pour la même raison que dans l'image du
 # cœur : une étiquette de base, même récente, est toujours en retard sur les
 # correctifs publiés depuis sa construction.
-# Le `chown` sur conf.d n'est pas décoratif : le conteneur tourne en tant que
-# « nginx », et le point d'entrée doit pouvoir y écrire la directive `resolver`,
-# qui n'est connue qu'au démarrage. Sans lui, le script échoue en silence et
-# nginx démarre sans résolveur — donc sans pouvoir joindre l'API.
+# Trois choses, et chacune est VÉRIFIÉE après coup.
+#
+# Un `sed -i` qui ne trouve pas son motif ne dit rien : il sort à zéro, la
+# construction réussit, et le fichier est inchangé. C'est exactement ce qui
+# s'était produit ici — le motif visait `/var/run/nginx.pid` alors que cette
+# image écrit `pid /run/nginx.pid;`. La substitution ne faisait rien, nginx
+# tentait d'écrire son PID dans /run, que l'utilisateur « nginx » ne peut pas
+# écrire, et mourait au démarrage :
+#
+#     [emerg] open() "/run/nginx.pid" failed (13: Permission denied)
+#
+# Une modification d'image de base non vérifiée est une hypothèse sur une image
+# qu'on ne contrôle pas. On la vérifie donc, et la construction échoue si le
+# résultat n'est pas celui qu'on croit.
+#
+# Le `chown` sur conf.d n'est pas décoratif non plus : le point d'entrée doit
+# pouvoir y écrire la directive `resolver`, qui n'est connue qu'au démarrage.
 RUN apk upgrade --no-cache \
  && rm -rf /usr/share/nginx/html/* \
- && sed -i 's/user  nginx;//' /etc/nginx/nginx.conf \
- && sed -i 's#/var/run/nginx.pid#/tmp/nginx.pid#' /etc/nginx/nginx.conf \
- && chown -R nginx:nginx /etc/nginx/conf.d
+ && sed -i -E 's#^\s*user\s+nginx\s*;##' /etc/nginx/nginx.conf \
+ && sed -i -E 's#^(\s*)pid\s+\S+;#\1pid /tmp/nginx.pid;#' /etc/nginx/nginx.conf \
+ && chown -R nginx:nginx /etc/nginx/conf.d \
+ && grep -q 'pid /tmp/nginx.pid;' /etc/nginx/nginx.conf \
+ && ! grep -qE '^\s*user\s+nginx\s*;' /etc/nginx/nginx.conf \
+ && ! grep -qE 'pid\s+/(var/)?run/' /etc/nginx/nginx.conf
 
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

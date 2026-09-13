@@ -12,6 +12,7 @@ export function NavMandat({ mandatId, actif }: { mandatId: string; actif: string
     { cle: 'pages', libelle: 'Pages', vers: `/tableau/mandats/${mandatId}` },
     { cle: 'agenda', libelle: 'Agenda', vers: `/tableau/mandats/${mandatId}/agenda` },
     { cle: 'partenaires', libelle: 'Partenaires', vers: `/tableau/mandats/${mandatId}/partenaires` },
+    { cle: 'theme', libelle: 'Thème', vers: `/tableau/mandats/${mandatId}/theme` },
   ]
   return (
     <nav className="onglets" aria-label="Sections du mandat">

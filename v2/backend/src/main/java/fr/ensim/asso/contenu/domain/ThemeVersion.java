@@ -59,10 +59,21 @@ public class ThemeVersion {
 
     public void archiver() { this.statut = StatutVersion.ARCHIVEE; }
 
+    /**
+     * Réécrit les jetons de style. Réservé au BROUILLON : une version publiée
+     * ou archivée est figée, c'est ce qui rend l'archive d'une année fiable.
+     */
+    public void remplacerTokens(String tokens) {
+        if (statut != StatutVersion.BROUILLON) {
+            throw new IllegalStateException(
+                    "un thème " + statut + " ne se modifie plus : ouvrez un brouillon");
+        }
+        this.tokens = tokens;
+    }
+
     public UUID getId() { return id; }
     public UUID getMandatId() { return mandatId; }
     public int getNumero() { return numero; }
     public StatutVersion getStatut() { return statut; }
     public String getTokens() { return tokens; }
-    public void remplacerTokens(String t) { this.tokens = t; }
 }

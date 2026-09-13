@@ -25,9 +25,11 @@ import java.util.UUID;
 public class ContenuController {
 
     private final ServiceContenu service;
+    private final fr.ensim.asso.contenu.app.ServiceTheme themes;
     private final Clock horloge;
 
-    public ContenuController(ServiceContenu service, Clock horloge) {
+    public ContenuController(ServiceContenu service, Clock horloge, fr.ensim.asso.contenu.app.ServiceTheme themes) {
+        this.themes = themes;
         this.service = service;
         this.horloge = horloge;
     }
@@ -44,6 +46,38 @@ public class ContenuController {
                         t.getCategorie(), t.getComposantReact(), t.getJsonSchema(),
                         t.getPayloadDefaut()))
                 .toList();
+    }
+
+    // -------------------------------------------------------------- thème
+
+    /**
+     * Le thème d'un mandat : couleurs, polices, identité visuelle.
+     *
+     * <p>Ces trois routes manquaient, et elles seules. La table, l'index « une
+     * seule version publiée », les transitions du domaine, le clonage à la
+     * passation, le rendu par le portail et jusqu'à la permission
+     * THEME_EDITER : tout existait. Sans elles, un thème publié ne pouvait
+     * naître que d'un INSERT à la main, et le brouillon déposé par chaque
+     * passation restait à jamais impubliable — une association perdait donc son
+     * identité visuelle à chaque changement de bureau.
+     */
+    @GetMapping("/mandats/{mandatId}/theme")
+    public ThemeVue theme(@PathVariable UUID mandatId) {
+        return themes.aEditer(Utilisateur.idCourantObligatoire(), mandatId)
+                .map(ThemeVue::de)
+                .orElse(null);
+    }
+
+    @PutMapping("/mandats/{mandatId}/theme")
+    public ThemeVue enregistrerTheme(@PathVariable UUID mandatId,
+                                     @Valid @RequestBody EnregistrerTheme corps) {
+        return ThemeVue.de(themes.enregistrerBrouillon(
+                Utilisateur.idCourantObligatoire(), mandatId, corps.tokens().toString()));
+    }
+
+    @PostMapping("/mandats/{mandatId}/theme/publier")
+    public ThemeVue publierTheme(@PathVariable UUID mandatId) {
+        return ThemeVue.de(themes.publier(Utilisateur.idCourantObligatoire(), mandatId));
     }
 
     // -------------------------------------------------------------- pages
@@ -162,6 +196,17 @@ public class ContenuController {
      *        type. Elle envoyait un objet vide, que huit schémas sur onze
      *        refusaient : huit types de blocs étaient impossibles à créer.
      */
+    /** Les jetons de style sont un objet libre : c'est le portail qui les lit. */
+    public record EnregistrerTheme(
+            @jakarta.validation.constraints.NotNull com.fasterxml.jackson.databind.JsonNode tokens) { }
+
+    public record ThemeVue(UUID id, UUID mandatId, int numero, String statut, String tokens) {
+        static ThemeVue de(fr.ensim.asso.contenu.domain.ThemeVersion t) {
+            return new ThemeVue(t.getId(), t.getMandatId(), t.getNumero(),
+                    t.getStatut().name(), t.getTokens());
+        }
+    }
+
     public record TypeBlocVue(String type, int schemaVersion, String libelle,
                               String categorie, String composantReact, String jsonSchema,
                               String payloadDefaut) { }

@@ -85,6 +85,15 @@ export type TypeBlocVue = {
   payloadDefaut: string
 }
 
+export type ThemeVue = {
+  id: string
+  mandatId: string
+  numero: number
+  statut: 'BROUILLON' | 'PUBLIEE' | 'ARCHIVEE'
+  /** Jetons de style, sérialisés : le portail les relit tels quels. */
+  tokens: string
+}
+
 export type PosteVue = {
   associationId: string
   mandatId: string
@@ -218,6 +227,18 @@ export const apiDashboard = {
     authed<void>(`/api/agenda/evenements/${id}`, j, { method: 'DELETE' }),
 
   // -------------------------------------------------------- partenaires
+
+  // --- thème du mandat ---
+  theme: (j: string | null, mandatId: string) =>
+    authed<ThemeVue | null>(`/api/contenu/mandats/${mandatId}/theme`, j),
+
+  enregistrerTheme: (j: string | null, mandatId: string, tokens: Record<string, string>) =>
+    authed<ThemeVue>(`/api/contenu/mandats/${mandatId}/theme`, j, {
+      method: 'PUT', body: JSON.stringify({ tokens }),
+    }),
+
+  publierTheme: (j: string | null, mandatId: string) =>
+    authed<ThemeVue>(`/api/contenu/mandats/${mandatId}/theme/publier`, j, { method: 'POST' }),
 
   partenaires: (j: string | null, mandatId: string) =>
     authed<PartenaireDashboard[]>(`/api/partenaires/mandats/${mandatId}`, j),
