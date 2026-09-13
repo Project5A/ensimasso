@@ -237,9 +237,23 @@ jobs:
 
       # Les migrations sont du SQL pur : les rejouer sans Flyway garde ce job
       # indépendant de la chaîne Java, donc rapide et lisible quand il casse.
+      #
+      # `sort -V` et non le glob nu. Bash développe `V*.sql` en ordre
+      # LEXICOGRAPHIQUE : « V10 » y passe avant « V1__ », parce que « 0 » vient
+      # avant « _ ». L'ordre était juste tant qu'il y avait moins de dix
+      # migrations — par coïncidence — et la dixième a appliqué V10 en premier,
+      # sur une base vide. Flyway, lui, trie par version : ce job doit faire
+      # pareil, sans quoi il répète une séquence que la production ne joue
+      # jamais, et l'exercice de restauration ne prouve plus rien.
       - name: Migrations et jeu de données
         run: |
-          for f in v2/backend/src/main/resources/db/migration/V*.sql; do
+          ordre=$(ls v2/backend/src/main/resources/db/migration/V*.sql | sort -V)
+          premiere=$(echo "$ordre" | head -1)
+          case "$premiere" in
+            *V1__*) ;;
+            *) echo "::error::l'ordre des migrations est faux, première = $premiere"; exit 1 ;;
+          esac
+          for f in $ordre; do
             echo "→ $f"
             psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
@@ -338,6 +352,35 @@ jobs:
             docker logs portail
             exit 1
           fi
+
+          # nginx ne démarre plus si un amont d'API est introuvable — et il ne
+          # DOIT plus : les pages statiques n'ont besoin d'aucune API. Rien
+          # n'écoute ici sur ensimasso-core, donc l'API doit répondre 502 et la
+          # page rester servie. C'est la différence entre dégradé et mort.
+          api=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
+                http://localhost:8081/api/public/associations || echo 000)
+          echo "API sans amont : $api"
+          if [ "$api" = "000" ]; then
+            echo "::error::le portail est tombé au lieu de dégrader"
+            docker logs portail
+            exit 1
+          fi
+
+          # Les en-têtes de sécurité, sur la page elle-même. nginx n'hérite les
+          # `add_header` que si la `location` n'en déclare aucun : déclarés une
+          # seule fois au niveau serveur, ils ne s'appliquaient à AUCUNE
+          # réponse. Un fichier de configuration qui les annonce ne prouve rien,
+          # seule la réponse le prouve.
+          entetes=$(curl -s -D- -o /dev/null http://localhost:8081/)
+          manquants=""
+          for h in X-Frame-Options X-Content-Type-Options Referrer-Policy; do
+            echo "$entetes" | grep -qi "^$h:" || manquants="$manquants $h"
+          done
+          if [ -n "$manquants" ]; then
+            echo "::error::en-têtes de sécurité absents de la page :$manquants"
+            exit 1
+          fi
+          echo "en-têtes de sécurité présents sur la page servie"
           docker rm -f portail
 
       - name: Le cœur démarre et se déclare en bonne santé

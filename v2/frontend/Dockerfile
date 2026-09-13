@@ -28,13 +28,20 @@ FROM nginx:1.30-alpine
 # Et un `apk upgrade` par-dessus, pour la même raison que dans l'image du
 # cœur : une étiquette de base, même récente, est toujours en retard sur les
 # correctifs publiés depuis sa construction.
+# Le `chown` sur conf.d n'est pas décoratif : le conteneur tourne en tant que
+# « nginx », et le point d'entrée doit pouvoir y écrire la directive `resolver`,
+# qui n'est connue qu'au démarrage. Sans lui, le script échoue en silence et
+# nginx démarre sans résolveur — donc sans pouvoir joindre l'API.
 RUN apk upgrade --no-cache \
  && rm -rf /usr/share/nginx/html/* \
  && sed -i 's/user  nginx;//' /etc/nginx/nginx.conf \
- && sed -i 's#/var/run/nginx.pid#/tmp/nginx.pid#' /etc/nginx/nginx.conf
+ && sed -i 's#/var/run/nginx.pid#/tmp/nginx.pid#' /etc/nginx/nginx.conf \
+ && chown -R nginx:nginx /etc/nginx/conf.d
 
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Lancé par le point d'entrée officiel de l'image nginx, avant le démarrage.
+COPY --chown=nginx:nginx resolveur.sh /docker-entrypoint.d/05-resolveur.sh
 
 # Jamais root, et un système de fichiers racine que l'on peut monter en
 # lecture seule : nginx n'écrit que dans /tmp.
