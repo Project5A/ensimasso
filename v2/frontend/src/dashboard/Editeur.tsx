@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   apiDashboard, ErreurApi,
@@ -59,25 +59,39 @@ export default function Editeur() {
     [jeton],
   )
 
+  // Le jeton est lu à l'appel, à travers une référence, et l'amorçage ne dépend
+  // QUE de la page.
+  //
+  // `jeton` change d'identité à chaque renouvellement silencieux du jeton OIDC
+  // — `automaticSilentRenew` est actif et `addUserLoaded` remplace l'utilisateur
+  // toutes les quelques minutes. Tant qu'il figurait dans les dépendances,
+  // l'amorçage se rejouait donc tout seul, et `ouvrirBrouillon` est une
+  // ÉCRITURE : sur une page qu'on venait de publier, il créait une version que
+  // personne n'avait demandée, et l'écran retombait de « Version N publiée » à
+  // « Brouillon — version N+1 » sans qu'on y ait touché.
+  const refJeton = useRef(jeton)
+  useEffect(() => { refJeton.current = jeton }, [jeton])
+
   useEffect(() => {
     let vivant = true
     async function amorcer() {
+      const lire = refJeton.current
       try {
         const [v, c] = await Promise.all([
-          apiDashboard.ouvrirBrouillon(jeton(), pageId),
-          apiDashboard.catalogue(jeton()),
+          apiDashboard.ouvrirBrouillon(lire(), pageId),
+          apiDashboard.catalogue(lire()),
         ])
         if (!vivant) return
         setVersion(v)
         setCatalogue(c)
-        setBlocs(await apiDashboard.blocs(jeton(), v.id))
+        setBlocs(await apiDashboard.blocs(lire(), v.id))
       } catch (e: unknown) {
         if (vivant) setErreur(e instanceof ErreurApi ? e.message : 'Ouverture impossible')
       }
     }
     void amorcer()
     return () => { vivant = false }
-  }, [pageId, jeton])
+  }, [pageId])
 
   /**
    * Exécute une action, puis relit les blocs.

@@ -138,15 +138,57 @@ function Champ({
 
   // Type non pris en charge par ce générateur : on ne bloque pas l'édition,
   // on tombe sur une saisie JSON brute plutôt que de masquer le champ.
+  return <ChampJsonBrut id={id} libelle={libelle} valeur={valeur} onChange={onChange} />
+}
+
+/**
+ * La trappe de secours : éditer une valeur dont ce générateur ne connaît pas
+ * le type.
+ *
+ * <p>Elle était en {@code defaultValue} — non contrôlée — et ne suivait donc
+ * JAMAIS sa propriété. Deux conséquences, la seconde étant la mauvaise :
+ * quand le parent changeait la valeur, la zone continuait d'afficher
+ * l'ancienne ; et au premier {@code blur}, elle RÉÉCRIVAIT cette ancienne
+ * valeur par-dessus la nouvelle. Un champ qui défait en silence le changement
+ * de quelqu'un d'autre. Le même défaut faisait, dans une liste dont les
+ * éléments sont clés par index, qu'en retirer un laissait le JSON du
+ * précédent sur la ligne suivante.
+ *
+ * <p>Aucun schéma du registre n'atteint cette branche aujourd'hui — la seule
+ * propriété de type objet est {@code doc}, qui a son propre champ. C'est donc
+ * un défaut LATENT : il attend le premier type de bloc qui portera une
+ * propriété d'un autre type. Il est réparé maintenant parce qu'il coûte dix
+ * lignes, et qu'une valeur qui se réécrit toute seule se diagnostique très
+ * mal.
+ */
+function ChampJsonBrut({
+  id, libelle, valeur, onChange,
+}: { id: string; libelle: string; valeur: unknown; onChange: (v: unknown) => void }) {
+  const venuDuParent = JSON.stringify(valeur ?? null, null, 2)
+  const [texte, setTexte] = useState(venuDuParent)
+  const [connu, setConnu] = useState(venuDuParent)
+
+  if (venuDuParent !== connu) {
+    setConnu(venuDuParent)
+    setTexte(venuDuParent)
+  }
+
   return (
     <div className="champ">
       <label htmlFor={id}>{libelle} <span className="aide">(JSON)</span></label>
       <textarea
         id={id}
         rows={3}
-        defaultValue={JSON.stringify(valeur ?? null, null, 2)}
-        onBlur={(e) => {
-          try { onChange(JSON.parse(e.target.value)) } catch { /* saisie invalide : ignorée */ }
+        value={texte}
+        onChange={(e) => setTexte(e.target.value)}
+        onBlur={() => {
+          try {
+            const v: unknown = JSON.parse(texte)
+            // Ce que le parent nous renverra : sans ça, le réalignement
+            // ci-dessus reformaterait la saisie sous les doigts.
+            setConnu(JSON.stringify(v ?? null, null, 2))
+            onChange(v)
+          } catch { /* saisie invalide : ignorée, et laissée à l'écran */ }
         }}
       />
     </div>

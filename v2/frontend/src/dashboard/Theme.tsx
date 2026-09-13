@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiDashboard, ErreurApi, type ThemeVue } from '../api'
 import { useAuth } from '../auth/AuthContext'
@@ -56,15 +56,30 @@ export default function Theme() {
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
+  // Le jeton est lu à l'appel, pas capturé dans les dépendances.
+  //
+  // `jeton` change d'identité à chaque renouvellement silencieux du jeton OIDC
+  // — `automaticSilentRenew` est actif et `addUserLoaded` remplace
+  // l'utilisateur toutes les quelques minutes. Tant qu'il figurait dans les
+  // dépendances de `charger`, l'effet de chargement se rejouait tout seul et
+  // `setValeurs(lire(t))` écrasait les couleurs que le bureau était en train de
+  // choisir par celles enregistrées. Du travail perdu, sans un mot, sans une
+  // action de qui que ce soit.
+  //
+  // Recharger APRÈS une action reste juste : ce que le serveur a enregistré
+  // est alors la vérité, et c'est bien elle qu'il faut réafficher.
+  const refJeton = useRef(jeton)
+  useEffect(() => { refJeton.current = jeton }, [jeton])
+
   const charger = useCallback(async () => {
     try {
-      const t = await apiDashboard.theme(jeton(), mandatId)
+      const t = await apiDashboard.theme(refJeton.current(), mandatId)
       setTheme(t)
       setValeurs(lire(t))
     } catch (e) {
       setErreur(e instanceof ErreurApi ? e.message : 'Chargement impossible.')
     }
-  }, [jeton, mandatId])
+  }, [mandatId])
 
   useEffect(() => { void charger() }, [charger])
 

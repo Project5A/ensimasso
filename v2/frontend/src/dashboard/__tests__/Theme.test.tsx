@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ThemeVue } from '../../api'
@@ -14,10 +14,13 @@ vi.mock('../../api', async (original) => {
   return { ...reel, apiDashboard }
 })
 
-// Objet STABLE : le vrai fournisseur mémorise `jeton` avec useCallback. Un
-// mock qui rend un objet neuf à chaque rendu ferait repartir l'effet de
-// chargement sans fin — le test tournerait en boucle au lieu d'échouer.
-const auth = { jeton: () => 'jeton-de-test' }
+// Le vrai fournisseur remplace cet objet à CHAQUE renouvellement silencieux du
+// jeton OIDC : `jeton` est un useCallback sur `utilisateur`, et `addUserLoaded`
+// remplace l'utilisateur toutes les quelques minutes. `renouvelerLeJeton()`
+// reproduit exactement ça. (Le rendre neuf à CHAQUE rendu, en revanche, ferait
+// tourner la suite en boucle au lieu d'échouer.)
+let auth = { jeton: () => 'jeton-de-test' }
+const renouvelerLeJeton = () => { auth = { jeton: () => 'jeton-renouvele' } }
 vi.mock('../../auth/AuthContext', () => ({ useAuth: () => auth }))
 
 const { default: Theme } = await import('../Theme')
@@ -28,14 +31,19 @@ const vue = (p: Partial<ThemeVue> = {}): ThemeVue => ({
   ...p,
 })
 
-const monter = () =>
-  render(
-    <MemoryRouter initialEntries={['/tableau/mandats/m1/theme']}>
-      <Routes>
-        <Route path="/tableau/mandats/:mandatId/theme" element={<Theme />} />
-      </Routes>
-    </MemoryRouter>,
-  )
+// Une FONCTION, pas une constante : React abandonne le rendu quand on lui
+// repasse l'élément identique, et un `rerender` sur la même référence ne
+// rejouerait rien — le cas du renouvellement passerait au vert sans avoir rien
+// éprouvé.
+const arbre = () => (
+  <MemoryRouter initialEntries={['/tableau/mandats/m1/theme']}>
+    <Routes>
+      <Route path="/tableau/mandats/:mandatId/theme" element={<Theme />} />
+    </Routes>
+  </MemoryRouter>
+)
+
+const monter = () => render(arbre())
 
 /**
  * L'écran de thème.
@@ -48,6 +56,7 @@ const monter = () =>
 describe('thème du mandat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    auth = { jeton: () => 'jeton-de-test' }
     apiDashboard.theme.mockResolvedValue(null)
   })
   afterEach(cleanup)
@@ -101,6 +110,44 @@ describe('thème du mandat', () => {
     await waitFor(() =>
       expect((screen.getByLabelText('Couleur principale') as HTMLInputElement).value)
         .toBe('#123456'))
+  })
+
+  it('le renouvellement du jeton n’efface pas les couleurs en cours de choix', async () => {
+    apiDashboard.theme.mockResolvedValue(vue({
+      tokens: JSON.stringify({ couleurPrimaire: '#123456' }),
+    }))
+    const { rerender } = monter()
+    const champ = () => screen.getByLabelText('Couleur principale') as HTMLInputElement
+    await waitFor(() => expect(champ().value).toBe('#123456'))
+
+    fireEvent.change(champ(), { target: { value: '#00ff00' } })
+    expect(champ().value).toBe('#00ff00')
+
+    // Toutes les quelques minutes, en vrai, sans que personne ne touche à rien.
+    renouvelerLeJeton()
+    rerender(arbre())
+
+    // Le rechargement rejouait `setValeurs(lire(t))` et rendait au bureau la
+    // couleur enregistrée, en effaçant celle qu'il venait de choisir.
+    await waitFor(() => expect(apiDashboard.theme).toHaveBeenCalledTimes(1))
+    expect(champ().value).toBe('#00ff00')
+  })
+
+  it('le jeton utilisé reste celui du moment, pas celui du montage', async () => {
+    apiDashboard.theme.mockResolvedValue(vue({ statut: 'BROUILLON' }))
+    apiDashboard.publierTheme.mockResolvedValue(vue({ statut: 'PUBLIEE' }))
+    const { rerender } = monter()
+    await waitFor(() => expect(screen.getByText(/brouillon non publié/)).toBeTruthy())
+
+    renouvelerLeJeton()
+    rerender(arbre())
+
+    screen.getByRole('button', { name: /^Publier$/ }).click()
+
+    // La référence sert à ne pas RELANCER le chargement, pas à figer le jeton :
+    // un appel avec un jeton périmé partirait en 401.
+    await waitFor(() => expect(apiDashboard.publierTheme).toHaveBeenCalledTimes(1))
+    expect(apiDashboard.publierTheme.mock.calls[0]?.[0]).toBe('jeton-renouvele')
   })
 
   it('un thème aux jetons illisibles n’empêche pas d’en composer un nouveau', async () => {

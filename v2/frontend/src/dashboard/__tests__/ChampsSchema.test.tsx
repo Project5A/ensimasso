@@ -157,6 +157,31 @@ describe('ChampsSchema', () => {
         .toBe('Un\n\nDeux')
     })
 
+    it('un document poussé par le parent remplace bien la saisie', async () => {
+      // Sélectionner un autre bloc, recharger après enregistrement : le champ
+      // doit suivre. C'est l'autre moitié du contrat, et la garder exige un
+      // garde — sans lui, la zone resterait sur ce qu'on avait tapé.
+      function Hote() {
+        const [valeur, setValeur] = useState<Record<string, unknown>>({})
+        return (
+          <>
+            <button onClick={() => setValeur({ doc: { type: 'doc', content: [
+              { type: 'paragraph', content: [{ type: 'text', text: 'AUTRE BLOC' }] }] } })}>
+              Charger
+            </button>
+            <ChampsSchema schema={SCHEMA_DOC} valeur={valeur} onChange={setValeur} />
+          </>
+        )
+      }
+      render(<Hote />)
+      const zone = screen.getByLabelText('Texte *') as HTMLTextAreaElement
+      await userEvent.type(zone, 'en cours ')
+      expect(zone.value).toBe('en cours ')
+
+      await userEvent.click(screen.getByText('Charger'))
+      expect(zone.value).toBe('AUTRE BLOC')
+    })
+
     it('ce qui part au serveur reste normalisé', async () => {
       const recu: unknown[] = []
       function Espion() {
@@ -179,6 +204,75 @@ describe('ChampsSchema', () => {
           { type: 'paragraph', content: [{ type: 'text', text: 'Suite' }] },
         ],
       })
+    })
+  })
+
+  /**
+   * La trappe de secours JSON. Aucun schéma du registre ne l'atteint
+   * aujourd'hui — la seule propriété de type objet est `doc`, qui a son propre
+   * champ. Ces cas décrivent donc un défaut LATENT, et fixent le contrat avant
+   * que le premier type de bloc ne s'y appuie.
+   */
+  describe('champ JSON de secours', () => {
+    const SCHEMA_INCONNU = {
+      type: 'object', properties: { brut: { type: 'sait-pas' } },
+    }
+
+    it('suit la valeur quand le parent la change, et ne la réécrit pas au blur', async () => {
+      function Hote() {
+        const [valeur, setValeur] = useState<Record<string, unknown>>({ brut: { a: 1 } })
+        return (
+          <>
+            <button onClick={() => setValeur({ brut: { b: 2 } })}>Autre</button>
+            <ChampsSchema schema={SCHEMA_INCONNU} valeur={valeur} onChange={setValeur} />
+            <pre data-testid="etat">{JSON.stringify(valeur)}</pre>
+          </>
+        )
+      }
+      render(<Hote />)
+      const zone = screen.getByLabelText(/Brut/) as HTMLTextAreaElement
+      expect(JSON.parse(zone.value)).toEqual({ a: 1 })
+
+      await userEvent.click(screen.getByText('Autre'))
+      expect(JSON.parse(zone.value)).toEqual({ b: 2 })
+
+      // Le pire du champ non contrôlé : au premier blur, il réécrivait
+      // l'ANCIENNE valeur par-dessus la nouvelle. Un champ qui défait en
+      // silence le changement de quelqu'un d'autre.
+      await userEvent.click(zone)
+      await userEvent.tab()
+      expect(screen.getByTestId('etat').textContent).toBe(JSON.stringify({ brut: { b: 2 } }))
+    })
+
+    it('retirer un élément de liste ne laisse pas le JSON du précédent', async () => {
+      const schema = {
+        type: 'object',
+        properties: { items: { type: 'array', items: {
+          type: 'object', properties: { brut: { type: 'sait-pas' } } } } },
+      }
+      render(<Pilote schema={schema} initial={{ items: [{ brut: { n: 'UN' } }, { brut: { n: 'DEUX' } }] }} />)
+
+      expect((screen.getAllByLabelText(/Brut/) as HTMLTextAreaElement[])
+        .map((z) => JSON.parse(z.value))).toEqual([{ n: 'UN' }, { n: 'DEUX' }])
+
+      // Les éléments sont clés par index : retirer le premier fait glisser le
+      // second sur la ligne 0. Un champ non contrôlé y gardait « UN ».
+      await userEvent.click(screen.getAllByText('Retirer')[0] as HTMLElement)
+
+      expect((screen.getAllByLabelText(/Brut/) as HTMLTextAreaElement[])
+        .map((z) => JSON.parse(z.value))).toEqual([{ n: 'DEUX' }])
+    })
+
+    it('une saisie invalide est ignorée, et reste à l’écran', async () => {
+      render(<Pilote schema={SCHEMA_INCONNU} initial={{ brut: { a: 1 } }} />)
+      const zone = screen.getByLabelText(/Brut/) as HTMLTextAreaElement
+
+      await userEvent.clear(zone)
+      await userEvent.type(zone, '{{ ceci n est pas du JSON')
+      await userEvent.tab()
+
+      // L'effacer sous les doigts obligerait à tout retaper pour une virgule.
+      expect(zone.value).toContain('ceci n est pas du JSON')
     })
   })
 })

@@ -19,10 +19,12 @@ vi.mock('../../api', async (original) => {
   return { ...reel, apiDashboard }
 })
 
-// Objet STABLE : l'effet d'ouverture dépend de `jeton`. Un mock qui rend un
-// objet neuf à chaque rendu relancerait l'ouverture sans fin — la suite
-// tournerait en boucle au lieu d'échouer.
-const auth = { jeton: () => 'jeton-de-test' }
+// Le vrai fournisseur remplace cet objet à CHAQUE renouvellement silencieux du
+// jeton OIDC : `jeton` est un useCallback sur `utilisateur`, et `addUserLoaded`
+// remplace l'utilisateur toutes les quelques minutes. `renouvelerLeJeton()`
+// reproduit exactement ça.
+let auth = { jeton: () => 'jeton-de-test' }
+const renouvelerLeJeton = () => { auth = { jeton: () => 'jeton-renouvele' } }
 vi.mock('../../auth/AuthContext', () => ({ useAuth: () => auth }))
 
 const { default: Editeur } = await import('../Editeur')
@@ -52,14 +54,19 @@ const blocsDe = (v: string): BlocVue[] => [
   { id: `${v}-b`, ordre: 1, type: 'TEXTE', schemaVersion: 1, payload: '{}', visible: true },
 ]
 
-const monter = () =>
-  render(
-    <MemoryRouter initialEntries={['/tableau/pages/p1']}>
-      <Routes>
-        <Route path="/tableau/pages/:pageId" element={<Editeur />} />
-      </Routes>
-    </MemoryRouter>,
-  )
+// Une FONCTION, pas une constante : React abandonne le rendu quand on lui
+// repasse l'élément identique. Un `rerender` avec la même référence ne
+// rejouerait rien, et les deux cas de renouvellement plus bas passeraient au
+// vert sans avoir rien éprouvé.
+const arbre = () => (
+  <MemoryRouter initialEntries={['/tableau/pages/p1']}>
+    <Routes>
+      <Route path="/tableau/pages/:pageId" element={<Editeur />} />
+    </Routes>
+  </MemoryRouter>
+)
+
+const monter = () => render(arbre())
 
 const bouton = (nom: RegExp) => screen.getByRole('button', { name: nom }) as HTMLButtonElement
 const boutons = (nom: RegExp) =>
@@ -87,6 +94,7 @@ const descendreLaPremiere = () => boutons(/^Descendre$/)[0] as HTMLButtonElement
 describe('éditeur de page : ce qui change quand on publie', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    auth = { jeton: () => 'jeton-de-test' }
     apiDashboard.ouvrirBrouillon.mockResolvedValue(BROUILLON_4)
     apiDashboard.catalogue.mockResolvedValue([TEXTE])
     apiDashboard.blocs.mockImplementation(
@@ -163,5 +171,36 @@ describe('éditeur de page : ce qui change quand on publie', () => {
     boutons(/^Supprimer$/)[0]?.click()
     await waitFor(() => expect(apiDashboard.supprimerBloc).toHaveBeenCalledTimes(1))
     expect(apiDashboard.supprimerBloc.mock.calls[0]?.[1]).toBe('v5-a')
+  })
+
+  it('le renouvellement du jeton ne rouvre pas — et ne CRÉE pas — de brouillon', async () => {
+    const { rerender } = monter()
+    await attendreOuverture()
+    bouton(/^Publier$/).click()
+    await waitFor(() => expect(screen.getByText('Version 4 publiée')).toBeTruthy())
+
+    // Toutes les quelques minutes, en vrai, sans que personne ne touche à rien.
+    renouvelerLeJeton()
+    rerender(arbre())
+
+    // `ouvrirBrouillon` est une ÉCRITURE : rejouée ici, elle créait une version
+    // que personne n'avait demandée, et l'écran retombait de « Version 4
+    // publiée » à « Brouillon — version 5 » tout seul.
+    await waitFor(() => expect(screen.getByText('Version 4 publiée')).toBeTruthy())
+    expect(apiDashboard.ouvrirBrouillon).toHaveBeenCalledTimes(1)
+  })
+
+  it('le jeton utilisé reste celui du moment, pas celui du montage', async () => {
+    const { rerender } = monter()
+    await attendreOuverture()
+
+    renouvelerLeJeton()
+    rerender(arbre())
+
+    bouton(/^Publier$/).click()
+    await waitFor(() => expect(apiDashboard.publier).toHaveBeenCalledTimes(1))
+    // La référence sert à ne pas RELANCER l'amorçage, pas à figer le jeton :
+    // un appel avec un jeton périmé partirait en 401.
+    expect(apiDashboard.publier.mock.calls[0]?.[0]).toBe('jeton-renouvele')
   })
 })
