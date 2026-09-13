@@ -128,3 +128,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Dossier de travail de l'audit : constats intermédiaires, jamais du livrable.
+.revue/
