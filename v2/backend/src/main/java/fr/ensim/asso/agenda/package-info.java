@@ -16,5 +16,6 @@
         displayName = "Agenda",
         allowedDependencies = {
             "gouvernance :: domain", "gouvernance :: app",
+            "media :: domain",
             "shared"})
 package fr.ensim.asso.agenda;

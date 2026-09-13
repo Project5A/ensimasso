@@ -7,8 +7,8 @@ import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.Mandat;
 import fr.ensim.asso.gouvernance.domain.MandatRepository;
 import fr.ensim.asso.gouvernance.domain.Permission;
-import fr.ensim.asso.media.domain.MediaAsset;
 import fr.ensim.asso.media.domain.MediaAssetRepository;
+import fr.ensim.asso.media.domain.MediasPublicables;
 import fr.ensim.asso.shared.error.Erreurs;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -336,20 +336,7 @@ public class ServiceContenu {
                 .orElseThrow(() -> new Erreurs.Conflit(
                         "le mandat de cette page est introuvable"));
 
-        Map<String, MediaAsset> connus = new HashMap<>();
-        medias.findByCleIn(cles).forEach(m -> connus.put(m.getCle(), m));
-
-        List<String> refus = new ArrayList<>();
-        for (String cle : cles) {
-            MediaAsset media = connus.get(cle);
-            if (media == null) {
-                refus.add(cle + " (aucun média ne porte cette clé)");
-            } else if (!association.equals(media.getAssociationId())) {
-                refus.add(cle + " (ce média appartient à une autre association)");
-            } else if (!media.estDisponible()) {
-                refus.add(cle + " (média " + media.getStatut() + ")");
-            }
-        }
+        List<String> refus = MediasPublicables.refus(medias, association, cles);
         if (!refus.isEmpty()) {
             throw new Erreurs.Conflit(
                     "cette page référence des médias qu'elle ne peut pas publier : "

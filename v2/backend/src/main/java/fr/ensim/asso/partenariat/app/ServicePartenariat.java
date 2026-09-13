@@ -1,7 +1,11 @@
 package fr.ensim.asso.partenariat.app;
 
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
+import fr.ensim.asso.gouvernance.domain.Mandat;
+import fr.ensim.asso.gouvernance.domain.MandatRepository;
 import fr.ensim.asso.gouvernance.domain.Permission;
+import fr.ensim.asso.media.domain.MediaAssetRepository;
+import fr.ensim.asso.media.domain.MediasPublicables;
 import fr.ensim.asso.partenariat.domain.*;
 import fr.ensim.asso.shared.error.Erreurs;
 import org.springframework.stereotype.Service;
@@ -19,10 +23,15 @@ public class ServicePartenariat {
 
     private final PartenaireRepository partenaires;
     private final PolitiqueAcces politique;
+    private final MediaAssetRepository medias;
+    private final MandatRepository mandats;
 
-    public ServicePartenariat(PartenaireRepository partenaires, PolitiqueAcces politique) {
+    public ServicePartenariat(PartenaireRepository partenaires, PolitiqueAcces politique,
+                              MediaAssetRepository medias, MandatRepository mandats) {
         this.partenaires = partenaires;
         this.politique = politique;
+        this.medias = medias;
+        this.mandats = mandats;
     }
 
     @Transactional(readOnly = true)
@@ -40,7 +49,7 @@ public class ServicePartenariat {
     @Transactional
     public Partenaire creer(UUID demandeur, UUID mandatId, Description d) {
         politique.exigerSurMandat(demandeur, Permission.PARTENAIRE_GERER, mandatId);
-        verifier(d);
+        verifier(mandatId, d);
         if (partenaires.existsByMandatIdAndNom(mandatId, d.nom())) {
             throw new Erreurs.Conflit("« " + d.nom() + " » est déjà partenaire de ce mandat");
         }
@@ -53,7 +62,7 @@ public class ServicePartenariat {
     public Partenaire modifier(UUID demandeur, UUID partenaireId, Description d) {
         Partenaire p = charger(partenaireId);
         politique.exigerSurMandat(demandeur, Permission.PARTENAIRE_GERER, p.getMandatId());
-        verifier(d);
+        verifier(p.getMandatId(), d);
         p.decrire(d.nom(), d.niveau(), d.logoMediaKey(), d.url(), d.ordre(), d.visible());
         return p;
     }
@@ -77,7 +86,7 @@ public class ServicePartenariat {
                 .orElseThrow(() -> new Erreurs.Introuvable("partenaire", id));
     }
 
-    private void verifier(Description d) {
+    private void verifier(UUID mandatId, Description d) {
         if (d.nom() == null || d.nom().isBlank()) {
             throw new Erreurs.RequeteInvalide("le nom d'un partenaire est obligatoire");
         }
@@ -92,6 +101,27 @@ public class ServicePartenariat {
             throw new Erreurs.RequeteInvalide(
                     "le logo est une clé d'objet, pas une URL : " + d.logoMediaKey());
         }
+        // Et surtout : ce logo est-il à NOUS, et existe-t-il ?
+        //
+        // Le seul contrôle était « ça ne ressemble pas à une URL ». Le portail
+        // résout le logo d'un partenaire comme le reste de la page, par
+        // `medias.urlsDe(Collection)` — la surcharge SANS identité, qui ne
+        // vérifie aucun droit et n'a pas à le faire : une page publiée est
+        // publique. Il suffisait de connaître la clé d'un média d'une AUTRE
+        // association pour la poser ici et la faire servir, signée, depuis sa
+        // propre page.
+        List<String> refus = MediasPublicables.refus(
+                medias, association(mandatId),
+                java.util.Collections.singletonList(d.logoMediaKey()));
+        if (!refus.isEmpty()) {
+            throw new Erreurs.RequeteInvalide("logo impossible : " + refus.get(0));
+        }
+    }
+
+    private UUID association(UUID mandatId) {
+        return mandats.findById(mandatId)
+                .map(Mandat::getAssociationId)
+                .orElseThrow(() -> new Erreurs.Introuvable("mandat", mandatId));
     }
 
     public record Description(String nom, NiveauPartenaire niveau, String logoMediaKey,

@@ -220,7 +220,28 @@ describe('éditeur de page : ce qui change quand on publie', () => {
     // Les lignes affichées étaient celles de v4 — figées — sous un bandeau
     // annonçant v5. Chaque bouton de ces lignes repartait en 409.
     expect(screen.queryAllByRole('button', { name: /^Supprimer$/ })).toHaveLength(0)
-    expect(screen.getByText(/Aucun bloc/)).toBeTruthy()
+    // « On ne sait pas ce que contient cette page » et « cette page est vide »
+    // sont deux choses différentes, et les dire pareil serait mentir.
+    expect(screen.getByText(/Contenu inconnu/)).toBeTruthy()
+    expect(screen.queryByText(/Aucun bloc/)).toBeNull()
+    expect(palette().disabled).toBe(true)
+  })
+
+  it('une relecture ratée SANS changement de version garde les lignes', async () => {
+    monter()
+    await attendreOuverture()
+
+    // Supprimer réussit — il reste un bloc en base — puis la relecture échoue.
+    apiDashboard.blocs.mockRejectedValueOnce(new Error('réseau coupé'))
+    boutons(/^Supprimer$/)[0]?.click()
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+
+    // Vider ici faisait dire « Aucun bloc » d'une page qui n'est pas vide, et
+    // laissait la palette active : le bloc ajouté se rangeait derrière ceux
+    // qu'on croyait disparus.
+    expect(screen.queryByText(/Aucun bloc/)).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Supprimer$/ }).length).toBeGreaterThan(0)
+    expect(palette().disabled).toBe(true)
   })
 
   it('le renouvellement du jeton ne rouvre pas — et ne CRÉE pas — de brouillon', async () => {

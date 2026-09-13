@@ -297,6 +297,10 @@ public class ServiceMedia {
     private Map<String, String> urls(Collection<String> cles,
                                      java.util.function.Predicate<MediaAsset> visible) {
         Set<String> demandees = new LinkedHashSet<>(cles);
+        // Une clé vide n'est pas une clé : la demander ferait un aller-retour
+        // pour rien, et une ligne absente du résultat que l'appelant devrait
+        // interpréter.
+        demandees.removeIf(c -> c == null || c.isBlank());
         if (demandees.isEmpty()) {
             return Map.of();
         }

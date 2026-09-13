@@ -53,11 +53,15 @@ export default function Editeur() {
   const [info, setInfo] = useState<string | null>(null)
   const [selection, setSelection] = useState<string | null>(null)
   const [occupe, setOccupe] = useState(false)
+  // « La liste affichée est-elle celle de la base ? » — distincte de « la page
+  // est-elle vide ». Les confondre faisait dire « Aucun bloc » d'une page qui
+  // n'était pas vide.
+  const [listeSure, setListeSure] = useState(true)
 
-  const rafraichirBlocs = useCallback(
-    async (versionId: string) => setBlocs(await apiDashboard.blocs(jeton(), versionId)),
-    [jeton],
-  )
+  const rafraichirBlocs = useCallback(async (versionId: string) => {
+    setBlocs(await apiDashboard.blocs(jeton(), versionId))
+    setListeSure(true)
+  }, [jeton])
 
   // Le jeton est lu à l'appel, à travers une référence, et l'amorçage ne dépend
   // QUE de la page.
@@ -132,7 +136,17 @@ export default function Editeur() {
       await rafraichirBlocs(suivante.id)
       if (message) setInfo(message)
     } catch {
-      setBlocs([])
+      // Vider n'a de sens QUE si la version a changé : les lignes à l'écran
+      // appartiennent alors à celle qu'on vient de quitter, et chacun de leurs
+      // boutons repartirait en 409. Sur la MÊME version — supprimer, modifier,
+      // réordonner, ajouter — elles restent justes, seulement un peu en
+      // retard ; les effacer faisait dire « Aucun bloc. Ajoutez-en un
+      // ci-dessus. » d'une page qui n'était pas vide, palette active, et le
+      // bloc ajouté se rangeait derrière ceux qu'on croyait disparus.
+      if (suivante.id !== version.id) {
+        setBlocs([])
+      }
+      setListeSure(false)
       setErreur('Action effectuée, mais la liste des blocs n’a pas pu être '
               + 'relue. Rechargez la page pour la revoir.')
     } finally {
@@ -235,7 +249,10 @@ export default function Editeur() {
         <div className="palette">
           {catalogue.map((t) => (
             <button key={`${t.type}-${t.schemaVersion}`} type="button" className="palette__item"
-                    disabled={occupe || !estBrouillon}
+                    // Ajouter à une liste qu'on n'a pas pu relire, c'est
+                    // ajouter à l'aveugle : le serveur range le bloc derrière
+                    // ceux qui sont toujours là et que l'écran ne montre plus.
+                    disabled={occupe || !estBrouillon || !listeSure}
                     onClick={() =>
                       void agir(async () => {
                         await apiDashboard.ajouterBloc(
@@ -251,7 +268,14 @@ export default function Editeur() {
 
       <section>
         <h2>Contenu de la page</h2>
-        {blocs.length === 0 && <p className="vide">Aucun bloc. Ajoutez-en un ci-dessus.</p>}
+        {blocs.length === 0 && (
+          listeSure
+            ? <p className="vide">Aucun bloc. Ajoutez-en un ci-dessus.</p>
+            // Deux choses différentes, et les dire pareil serait mentir : on ne
+            // sait pas ce que contient cette page, on sait seulement qu'on n'a
+            // pas pu le relire.
+            : <p className="vide">Contenu inconnu : la liste n’a pas pu être relue.</p>
+        )}
 
         <ol className="blocs">
           {blocs.map((bloc, i) => {

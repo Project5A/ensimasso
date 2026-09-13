@@ -2,7 +2,11 @@ package fr.ensim.asso.agenda.app;
 
 import fr.ensim.asso.agenda.domain.*;
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
+import fr.ensim.asso.gouvernance.domain.Mandat;
+import fr.ensim.asso.gouvernance.domain.MandatRepository;
 import fr.ensim.asso.gouvernance.domain.Permission;
+import fr.ensim.asso.media.domain.MediaAssetRepository;
+import fr.ensim.asso.media.domain.MediasPublicables;
 import fr.ensim.asso.shared.error.Erreurs;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +37,16 @@ public class ServiceAgenda {
 
     private final EvenementRepository evenements;
     private final PolitiqueAcces politique;
+    private final MediaAssetRepository medias;
+    private final MandatRepository mandats;
     private final Clock horloge;
 
-    public ServiceAgenda(EvenementRepository evenements, PolitiqueAcces politique, Clock horloge) {
+    public ServiceAgenda(EvenementRepository evenements, PolitiqueAcces politique,
+                         MediaAssetRepository medias, MandatRepository mandats, Clock horloge) {
         this.evenements = evenements;
         this.politique = politique;
+        this.medias = medias;
+        this.mandats = mandats;
         this.horloge = horloge;
     }
 
@@ -64,7 +73,7 @@ public class ServiceAgenda {
         if (evenements.existsByMandatIdAndSlug(mandatId, slug)) {
             throw new Erreurs.Conflit("un évènement « " + slug + " » existe déjà pour ce mandat");
         }
-        verifier(d);
+        verifier(mandatId, d);
         Evenement e = new Evenement(mandatId, slug, d.titre(), d.debutLe());
         appliquer(e, d);
         return evenements.save(e);
@@ -74,7 +83,7 @@ public class ServiceAgenda {
     public Evenement modifier(UUID demandeur, UUID evenementId, Description d) {
         Evenement e = charger(evenementId);
         politique.exigerSurMandat(demandeur, Permission.EVENEMENT_GERER, e.getMandatId());
-        verifier(d);
+        verifier(e.getMandatId(), d);
         appliquer(e, d);
         return e;
     }
@@ -122,7 +131,7 @@ public class ServiceAgenda {
                 .orElseThrow(() -> new Erreurs.Introuvable("évènement", id));
     }
 
-    private void verifier(Description d) {
+    private void verifier(UUID mandatId, Description d) {
         if (d.titre() == null || d.titre().isBlank()) {
             throw new Erreurs.RequeteInvalide("le titre d'un évènement est obligatoire");
         }
@@ -137,6 +146,26 @@ public class ServiceAgenda {
             throw new Erreurs.RequeteInvalide(
                     "media_key est une clé d'objet, pas une URL : " + d.mediaKey());
         }
+        // Et surtout : cette affiche est-elle à NOUS, et existe-t-elle ?
+        //
+        // Le seul contrôle était « ça ne ressemble pas à une URL ». Or le
+        // portail résout l'affiche d'un évènement comme le reste de la page,
+        // par `medias.urlsDe(Collection)` — la surcharge SANS identité, qui ne
+        // vérifie aucun droit, et qui n'a pas à le faire : une page publiée est
+        // publique. Il suffisait donc de connaître la clé d'un média d'une
+        // AUTRE association pour la poser ici et la faire servir, signée,
+        // depuis sa propre page.
+        List<String> refus = MediasPublicables.refus(
+                medias, association(mandatId), java.util.Collections.singletonList(d.mediaKey()));
+        if (!refus.isEmpty()) {
+            throw new Erreurs.RequeteInvalide("affiche impossible : " + refus.get(0));
+        }
+    }
+
+    private UUID association(UUID mandatId) {
+        return mandats.findById(mandatId)
+                .map(Mandat::getAssociationId)
+                .orElseThrow(() -> new Erreurs.Introuvable("mandat", mandatId));
     }
 
     private void appliquer(Evenement e, Description d) {
