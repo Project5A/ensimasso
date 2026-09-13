@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.ensim.asso.contenu.domain.*;
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
+import fr.ensim.asso.gouvernance.domain.Mandat;
+import fr.ensim.asso.gouvernance.domain.MandatRepository;
 import fr.ensim.asso.gouvernance.domain.Permission;
+import fr.ensim.asso.media.domain.MediaAsset;
+import fr.ensim.asso.media.domain.MediaAssetRepository;
 import fr.ensim.asso.shared.error.Erreurs;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,8 @@ public class ServiceContenu {
     private final PageVersionRepository versions;
     private final BlocRepository blocs;
     private final MediaUsageRepository mediaUsages;
+    private final MediaAssetRepository medias;
+    private final MandatRepository mandats;
     private final TypeBlocRepository typesBlocs;
     private final ValidationBloc validation;
     private final PolitiqueAcces politique;
@@ -34,6 +40,7 @@ public class ServiceContenu {
 
     public ServiceContenu(PageRepository pages, PageVersionRepository versions,
                           BlocRepository blocs, MediaUsageRepository mediaUsages,
+                          MediaAssetRepository medias, MandatRepository mandats,
                           TypeBlocRepository typesBlocs,
                           ValidationBloc validation, PolitiqueAcces politique,
                           ObjectMapper mapper) {
@@ -41,6 +48,8 @@ public class ServiceContenu {
         this.versions = versions;
         this.blocs = blocs;
         this.mediaUsages = mediaUsages;
+        this.medias = medias;
+        this.mandats = mandats;
         this.typesBlocs = typesBlocs;
         this.validation = validation;
         this.politique = politique;
@@ -163,11 +172,16 @@ public class ServiceContenu {
         // Revalider chaque bloc contre SA version de schéma avant de figer.
         contenu.forEach(b -> validation.valider(b.getType(), b.getSchemaVersion(), b.getPayload()));
 
+        // Les médias AVANT de figer quoi que ce soit : une page publiée est
+        // immuable, et une image manquante y resterait manquante pour toujours.
+        Set<String> clesMedias = clesMediasDe(contenu);
+        verifierMedias(page, clesMedias);
+
         versions.versionPubliee(page.getId()).ifPresent(PageVersion::archiver);
         versions.flush();                       // libère l'index unique partiel
 
         brouillon.publier(auteur, maintenant);
-        indexerMedias(brouillon.getId(), contenu);
+        clesMedias.forEach(c -> mediaUsages.save(new MediaUsage(c, brouillon.getId())));
         return brouillon;
     }
 
@@ -276,7 +290,7 @@ public class ServiceContenu {
      * JSONB, donc sans intégrité référentielle : cette table est ce qui permet
      * ensuite de refuser la suppression d'une image encore utilisée.
      */
-    private void indexerMedias(UUID versionId, List<Bloc> contenu) {
+    private Set<String> clesMediasDe(List<Bloc> contenu) {
         Set<String> cles = new LinkedHashSet<>();
         for (Bloc b : contenu) {
             try {
@@ -286,7 +300,61 @@ public class ServiceContenu {
                 // faire échouer une publication par ailleurs valide
             }
         }
-        cles.forEach(c -> mediaUsages.save(new MediaUsage(c, versionId)));
+        return cles;
+    }
+
+    /**
+     * Cette page a-t-elle le droit de servir les médias qu'elle référence ?
+     *
+     * <p>La clé étrangère de {@code media_usage} refusait déjà une clé
+     * inconnue. Elle le faisait au COMMIT, en PostgreSQL, et sans dire
+     * laquelle : la publication sortait en 500 avec un message de contrainte,
+     * sur une page que son bureau ne pouvait pas réparer sans deviner.
+     *
+     * <p>Et elle est plus faible qu'elle n'en a l'air. Un média SUPPRIMÉ garde
+     * sa ligne — volontairement, pour que les archives restent explicables —
+     * donc la clé étrangère accepte encore une image effacée du stockage : la
+     * page figée l'aurait affichée cassée, définitivement. De même pour un
+     * média encore en ATTENTE_DEPOT ou REJETÉ.
+     *
+     * <p>Le contrôle ajoute enfin ce que la clé étrangère ne pouvait pas voir :
+     * le média doit appartenir à l'association de la page. Rien n'empêchait un
+     * bureau d'écrire dans un payload la clé d'un média d'une AUTRE association
+     * et de la faire servir par le portail public — qui, sur une page publiée,
+     * ne vérifie aucun droit sur les clés, et n'a pas à le faire.
+     *
+     * <p>Toutes les clés fautives sont nommées d'un coup : corriger une page à
+     * raison d'un aller-retour par image serait une punition, pas un message
+     * d'erreur.
+     */
+    private void verifierMedias(Page page, Set<String> cles) {
+        if (cles.isEmpty()) {
+            return;
+        }
+        UUID association = mandats.findById(page.getMandatId())
+                .map(Mandat::getAssociationId)
+                .orElseThrow(() -> new Erreurs.Conflit(
+                        "le mandat de cette page est introuvable"));
+
+        Map<String, MediaAsset> connus = new HashMap<>();
+        medias.findByCleIn(cles).forEach(m -> connus.put(m.getCle(), m));
+
+        List<String> refus = new ArrayList<>();
+        for (String cle : cles) {
+            MediaAsset media = connus.get(cle);
+            if (media == null) {
+                refus.add(cle + " (aucun média ne porte cette clé)");
+            } else if (!association.equals(media.getAssociationId())) {
+                refus.add(cle + " (ce média appartient à une autre association)");
+            } else if (!media.estDisponible()) {
+                refus.add(cle + " (média " + media.getStatut() + ")");
+            }
+        }
+        if (!refus.isEmpty()) {
+            throw new Erreurs.Conflit(
+                    "cette page référence des médias qu'elle ne peut pas publier : "
+                  + String.join(" ; ", refus));
+        }
     }
 
     private void collecterMediaKeys(JsonNode noeud, Set<String> sortie) {
