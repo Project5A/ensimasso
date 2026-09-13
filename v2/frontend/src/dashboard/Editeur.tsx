@@ -79,12 +79,23 @@ export default function Editeur() {
     return () => { vivant = false }
   }, [pageId, jeton])
 
-  async function agir(action: () => Promise<unknown>, message?: string) {
+  /**
+   * Exécute une action, puis relit les blocs.
+   *
+   * <p>L'action peut rendre la version sur laquelle l'éditeur doit CONTINUER :
+   * publier fige la version courante, reprendre l'édition en ouvre une neuve.
+   * Sans ça, `agir` relisait toujours `version.id` — celui capturé au rendu —
+   * et affichait donc les blocs de la version qu'on venait de quitter, dont les
+   * identifiants appartiennent à une version figée. Chaque bouton d'une ligne
+   * ainsi affichée visait une ligne intouchable : 409.
+   */
+  async function agir(action: () => Promise<VersionVue | void>, message?: string) {
     if (occupe || !version) return
     setOccupe(true); setErreur(null); setInfo(null)
     try {
-      await action()
-      await rafraichirBlocs(version.id)
+      const suivante = (await action()) ?? version
+      setVersion(suivante)
+      await rafraichirBlocs(suivante.id)
       if (message) setInfo(message)
     } catch (e: unknown) {
       setErreur(e instanceof ErreurApi ? e.message : 'Opération impossible')
@@ -113,6 +124,13 @@ export default function Editeur() {
       </main>
     )
   }
+  // Publier FIGE la version. L'éditeur gardait pourtant la même dans son état :
+  // le bandeau continuait d'annoncer un brouillon, et toute action suivante —
+  // ajouter un bloc, réordonner, republier — visait une version publiée, que le
+  // domaine et le trigger bloc_fige refusent. On obtenait un 409 par clic, sans
+  // que rien n'explique pourquoi.
+  const estBrouillon = version?.statut === 'BROUILLON'
+
   if (!version) {
     return <main className="page page--centree"><p aria-live="polite">Ouverture du brouillon…</p></main>
   }
@@ -123,9 +141,15 @@ export default function Editeur() {
 
       <header className="editeur__entete">
         <div>
-          <h1>Brouillon — version {version.numero}</h1>
+          <h1>
+            {estBrouillon
+              ? `Brouillon — version ${version.numero}`
+              : `Version ${version.numero} publiée`}
+          </h1>
           <p className="aide">
-            Le site public ne change pas tant que vous n'avez pas publié.
+            {estBrouillon
+              ? "Le site public ne change pas tant que vous n'avez pas publié."
+              : 'Cette version est figée. Reprendre l’édition ouvre un nouveau brouillon, copié depuis celle-ci.'}
           </p>
         </div>
         <div className="editeur__actions">
@@ -134,18 +158,36 @@ export default function Editeur() {
         <Link className="bouton bouton--secondaire" to={`/tableau/apercu/${version.id}`}>
           Aperçu
         </Link>
-        <button
-          className="bouton"
-          disabled={occupe || blocs.length === 0}
-          onClick={() =>
-            void agir(
-              () => apiDashboard.publier(jeton(), version.id),
-              'Page publiée. Elle est désormais visible du public.',
-            )
-          }
-        >
-          Publier
-        </button>
+        {estBrouillon ? (
+          <button
+            className="bouton"
+            disabled={occupe || blocs.length === 0}
+            onClick={() =>
+              void agir(
+                () => apiDashboard.publier(jeton(), version.id),
+                'Page publiée. Elle est désormais visible du public.',
+              )
+            }
+          >
+            Publier
+          </button>
+        ) : (
+          // Reprendre l'édition n'est pas « revenir en arrière » : c'est ouvrir
+          // un NOUVEAU brouillon, copié depuis la version publiée. Le service
+          // est idempotent — s'il en existe déjà un, il le rend.
+          <button
+            className="bouton"
+            disabled={occupe}
+            onClick={() =>
+              void agir(
+                () => apiDashboard.ouvrirBrouillon(jeton(), pageId),
+                'Nouveau brouillon ouvert.',
+              )
+            }
+          >
+            Reprendre l’édition
+          </button>
+        )}
         </div>
       </header>
 
@@ -157,11 +199,12 @@ export default function Editeur() {
         <div className="palette">
           {catalogue.map((t) => (
             <button key={`${t.type}-${t.schemaVersion}`} type="button" className="palette__item"
-                    disabled={occupe}
+                    disabled={occupe || !estBrouillon}
                     onClick={() =>
-                      void agir(() =>
-                        apiDashboard.ajouterBloc(jeton(), version.id, t.type, payloadDeDepart(t)),
-                      )
+                      void agir(async () => {
+                        await apiDashboard.ajouterBloc(
+                          jeton(), version.id, t.type, payloadDeDepart(t))
+                      })
                     }>
               <span>{t.libelle}</span>
               <small>{t.categorie}</small>
@@ -188,12 +231,15 @@ export default function Editeur() {
                     {type?.libelle ?? bloc.type}
                   </button>
                   <div className="bloc-edit__actions">
-                    <button type="button" aria-label="Monter" disabled={i === 0 || occupe}
+                    <button type="button" aria-label="Monter"
+                            disabled={i === 0 || occupe || !estBrouillon}
                             onClick={() => deplacer(i, -1)}>↑</button>
-                    <button type="button" aria-label="Descendre" disabled={i === blocs.length - 1 || occupe}
+                    <button type="button" aria-label="Descendre"
+                            disabled={i === blocs.length - 1 || occupe || !estBrouillon}
                             onClick={() => deplacer(i, +1)}>↓</button>
-                    <button type="button" className="lien-danger" disabled={occupe}
-                            onClick={() => void agir(() => apiDashboard.supprimerBloc(jeton(), bloc.id))}>
+                    <button type="button" className="lien-danger" disabled={occupe || !estBrouillon}
+                            onClick={() =>
+                              void agir(() => apiDashboard.supprimerBloc(jeton(), bloc.id))}>
                       Supprimer
                     </button>
                   </div>
@@ -205,7 +251,9 @@ export default function Editeur() {
                     type={type}
                     occupe={occupe}
                     onEnregistrer={(payload) =>
-                      agir(() => apiDashboard.modifierBloc(jeton(), bloc.id, payload), 'Bloc enregistré.')
+                      agir(async () => {
+                        await apiDashboard.modifierBloc(jeton(), bloc.id, payload)
+                      }, 'Bloc enregistré.')
                     }
                   />
                 )}
