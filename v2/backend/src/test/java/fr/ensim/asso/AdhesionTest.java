@@ -19,6 +19,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class AdhesionTest {
 
+    private static final java.time.OffsetDateTime LE_JOUR =
+            java.time.OffsetDateTime.parse("2026-09-01T10:00:00Z");
+
     private static final UUID PERSONNE = UUID.randomUUID();
     private static final UUID ASSO = UUID.randomUUID();
     private static final UUID MANDAT = UUID.randomUUID();
@@ -29,7 +32,7 @@ class AdhesionTest {
     }
 
     private Adhesion payante() {
-        return new Adhesion(PERSONNE, ASSO, "2026-2027", MANDAT, TARIF, 1500);
+        return new Adhesion(PERSONNE, ASSO, "2026-2027", MANDAT, TARIF, 1500, LE_JOUR);
     }
 
     @Test
@@ -45,10 +48,12 @@ class AdhesionTest {
     @Test
     @DisplayName("une adhésion gratuite est active immédiatement")
     void adhesionGratuite() {
-        Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", MANDAT, TARIF, 0);
+        Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", MANDAT, TARIF, 0, LE_JOUR);
 
         assertThat(a.getStatut()).isEqualTo(StatutAdhesion.ACTIVE);
-        assertThat(a.getActiveeLe()).isNotNull();
+        // Datée de l'horloge FOURNIE, pas de celle de la machine : c'était le
+        // seul chemin du module à appeler OffsetDateTime.now() directement.
+        assertThat(a.getActiveeLe()).isEqualTo(LE_JOUR);
     }
 
     @Test
@@ -109,7 +114,7 @@ class AdhesionTest {
         UUID bureau2025 = UUID.randomUUID();
         // Campagne « early bird » : ouverte en juillet 2026 par le bureau
         // 2025-2026, pour l'année 2026-2027.
-        Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", bureau2025, TARIF, 1500);
+        Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", bureau2025, TARIF, 1500, LE_JOUR);
 
         assertThat(a.getCouvreAnneeCode())
                 .as("la vérité pour le contrôle d'accès")

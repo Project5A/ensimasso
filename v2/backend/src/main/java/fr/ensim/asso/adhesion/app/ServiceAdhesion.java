@@ -132,7 +132,8 @@ public class ServiceAdhesion {
                 campagne.getCouvreAnneeCode(),
                 campagne.getOuvertePparMandatId(),
                 tarif.getId(),
-                tarif.getMontantCents()));
+                tarif.getMontantCents(),
+                OffsetDateTime.now(horloge)));
     }
 
     /**

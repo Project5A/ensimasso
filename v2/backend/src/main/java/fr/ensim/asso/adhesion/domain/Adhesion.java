@@ -71,8 +71,16 @@ public class Adhesion {
 
     protected Adhesion() { }
 
+    /**
+     * @param quand l'instant de création, lu de l'horloge INJECTÉE par
+     *        l'appelant. Le constructeur appelait {@code OffsetDateTime.now()}
+     *        pour dater une adhésion gratuite : c'était le seul chemin du
+     *        module à ignorer l'horloge, et donc le seul qu'un test à horloge
+     *        fixe ne pouvait pas vérifier.
+     */
     public Adhesion(UUID personneId, UUID associationId, String couvreAnneeCode,
-                    UUID vendueParMandatId, UUID tarifId, int montantPayeCents) {
+                    UUID vendueParMandatId, UUID tarifId, int montantPayeCents,
+                    OffsetDateTime quand) {
         this.personneId = personneId;
         this.associationId = associationId;
         this.couvreAnneeCode = couvreAnneeCode;
@@ -81,7 +89,12 @@ public class Adhesion {
         this.montantPayeCents = montantPayeCents;
         this.statut = montantPayeCents == 0 ? StatutAdhesion.ACTIVE : StatutAdhesion.EN_ATTENTE_PAIEMENT;
         if (this.statut == StatutAdhesion.ACTIVE) {
-            this.activeeLe = OffsetDateTime.now();
+            // `quand` et non OffsetDateTime.now() : c'était le seul chemin du
+            // module à ignorer l'horloge injectée. Une adhésion gratuite se
+            // datait donc à l'heure de la machine, sans qu'aucun test à horloge
+            // fixe puisse le voir — et l'adhésion gratuite est précisément le
+            // seul cas qui s'active sans repasser par le webhook.
+            this.activeeLe = quand;
         }
     }
 

@@ -39,6 +39,10 @@ public class PaiementStripe implements PortPaiement {
 
     private static final Logger log = LoggerFactory.getLogger(PaiementStripe.class);
 
+    /** Défauts du SDK : 30 000 et 80 000 ms. Voir init(). */
+    private static final int CONNEXION_MS = 3_000;
+    private static final int LECTURE_MS = 8_000;
+
     private final String cleSecrete;
     private final String secretWebhook;
 
@@ -48,9 +52,31 @@ public class PaiementStripe implements PortPaiement {
         this.secretWebhook = secretWebhook;
     }
 
+    /**
+     * Délais bornés, et ce n'est pas un réglage de confort.
+     *
+     * <p>Les appels au prestataire partent DEPUIS des méthodes transactionnelles
+     * — créer une intention, rembourser — donc en tenant une connexion du pool.
+     * Le pool fait dix connexions, choisi bas volontairement parce que
+     * plusieurs répliques passent derrière PgBouncer. Les délais par défaut du
+     * SDK sont de 30 s pour l'établissement et 80 s pour la lecture : dix
+     * requêtes de paiement qui traînent suffisent à assécher le pool, et
+     * c'est alors TOUTE l'application qui s'arrête, pas seulement le paiement.
+     * La revue d'architecture désignait déjà l'épuisement des connexions comme
+     * la panne la plus probable un soir de gala.
+     *
+     * <p>Ce qui reste à faire, et qui n'est pas un réglage : sortir l'appel
+     * distant de la transaction. Tant qu'il est dedans, borner le délai ne fait
+     * que borner les dégâts.
+     */
     @PostConstruct
     void init() {
         Stripe.apiKey = cleSecrete;
+        Stripe.setConnectTimeout(CONNEXION_MS);
+        Stripe.setReadTimeout(LECTURE_MS);
+        // Une seule reprise : le SDK en fait trois par défaut, ce qui multiplie
+        // d'autant le temps passé à tenir une connexion de base de données.
+        Stripe.setMaxNetworkRetries(1);
     }
 
     @Override

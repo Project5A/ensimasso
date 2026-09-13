@@ -76,6 +76,45 @@ public class GestionnaireErreurs {
         return probleme(HttpStatus.CONFLICT, "Opération impossible", e.getMessage(), "regle-metier");
     }
 
+    /**
+     * Les fautes de la REQUÊTE, que Spring signale avant d'atteindre le
+     * contrôleur : corps JSON malformé, identifiant illisible dans le chemin,
+     * paramètre obligatoire absent, type de contenu inattendu.
+     *
+     * <p>Sans ces déclarations, elles tombaient dans l'attrape-tout et
+     * sortaient en 500. Vérifié en les provoquant : les trois répondaient
+     * « Erreur interne ». C'est faux et c'est coûteux — un 500 remonte dans les
+     * alertes d'astreinte, fait réessayer l'appelant sur une requête qui ne
+     * passera jamais, et n'apprend rien à celui qui s'est trompé.
+     *
+     * <p>Le détail reste générique : {@code getMessage()} de ces exceptions
+     * contient des noms de classes et de paquets.
+     */
+    @ExceptionHandler({
+            org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.bind.MissingRequestHeaderException.class,
+            org.springframework.web.bind.ServletRequestBindingException.class})
+    public ProblemDetail requeteMalFormee(Exception e) {
+        log.debug("requête mal formée : {}", e.toString());
+        return probleme(HttpStatus.BAD_REQUEST, "Requête invalide",
+                "La requête est mal formée : vérifiez le corps, les paramètres "
+              + "et les identifiants transmis.", "requete-invalide");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ProblemDetail methodeNonSupportee(Exception e) {
+        return probleme(HttpStatus.METHOD_NOT_ALLOWED, "Méthode non autorisée",
+                "Cette méthode HTTP n'est pas acceptée sur cette route.", "methode-non-autorisee");
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ProblemDetail typeNonSupporte(Exception e) {
+        return probleme(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Type de contenu non accepté",
+                "Cette route attend un autre type de contenu.", "type-non-accepte");
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail imprevu(Exception e) {
         // Seul endroit qui journalise une stacktrace ; le client n'en voit rien.
