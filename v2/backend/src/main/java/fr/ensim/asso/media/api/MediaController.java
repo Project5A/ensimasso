@@ -63,7 +63,7 @@ public class MediaController {
      */
     @PostMapping("/urls")
     public Map<String, String> urls(@Valid @RequestBody ResoudreUrls corps) {
-        return service.urlsDe(corps.cles());
+        return service.urlsDe(Utilisateur.idCourantObligatoire(), corps.cles());
     }
 
     @PutMapping("/{mediaId}/description")

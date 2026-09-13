@@ -203,13 +203,42 @@ public class ServiceContenu {
         return versions.versionPubliee(pageId);
     }
 
+    /**
+     * Les blocs d'une version, SANS contrôle d'accès.
+     *
+     * <p>Réservé au rendu public, qui n'a pas d'utilisateur et qui a déjà
+     * établi son droit autrement : il ne résout jamais qu'une version PUBLIEE,
+     * du mandat demandé, d'une association publique. Toute lecture faite AU NOM
+     * de quelqu'un passe par {@link #blocsPourEdition}.
+     */
     @Transactional(readOnly = true)
     public List<Bloc> blocsDe(UUID versionId) {
         return blocs.findByPageVersionIdOrderByOrdreAsc(versionId);
     }
 
+    /**
+     * Les blocs d'une version, pour le tableau de bord.
+     *
+     * <p>Cette lecture-ci n'exerçait AUCUNE autorisation, et elle sert les
+     * BROUILLONS : tout compte authentifié — n'importe quel étudiant de
+     * l'école — pouvait lire le contenu non publié de n'importe quelle
+     * association, y compris celui d'un mandat en PREPARATION, c'est-à-dire le
+     * site que le bureau entrant prépare avant l'assemblée générale.
+     */
     @Transactional(readOnly = true)
-    public List<Page> pagesDuMandat(UUID mandatId) {
+    public List<Bloc> blocsPourEdition(UUID demandeur, UUID versionId) {
+        PageVersion version = versions.findById(versionId)
+                .orElseThrow(() -> new Erreurs.Introuvable("version", versionId));
+        Page page = pages.findById(version.getPageId())
+                .orElseThrow(() -> new Erreurs.Introuvable("page", version.getPageId()));
+        politique.exigerMembre(demandeur, page.getMandatId());
+        return blocs.findByPageVersionIdOrderByOrdreAsc(versionId);
+    }
+
+    /** Les pages d'un mandat, brouillons compris : réservé à son bureau. */
+    @Transactional(readOnly = true)
+    public List<Page> pagesDuMandat(UUID demandeur, UUID mandatId) {
+        politique.exigerMembre(demandeur, mandatId);
         return pages.findByMandatIdOrderByOrdreMenuAsc(mandatId);
     }
 

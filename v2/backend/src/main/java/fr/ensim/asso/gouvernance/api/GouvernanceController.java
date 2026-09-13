@@ -1,5 +1,6 @@
 package fr.ensim.asso.gouvernance.api;
 
+import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.*;
 import fr.ensim.asso.shared.security.Utilisateur;
 import jakarta.validation.Valid;
@@ -19,12 +20,14 @@ public class GouvernanceController {
     private final AssociationRepository associations;
     private final MandatRepository mandats;
     private final MembreBureauRepository membres;
+    private final PolitiqueAcces politique;
 
     public GouvernanceController(AssociationRepository associations, MandatRepository mandats,
-                                 MembreBureauRepository membres) {
+                                 MembreBureauRepository membres, PolitiqueAcces politique) {
         this.associations = associations;
         this.mandats = mandats;
         this.membres = membres;
+        this.politique = politique;
     }
 
     /** Créer une association est une action de plateforme, pas d'association :
@@ -54,9 +57,20 @@ public class GouvernanceController {
                 .map(MandatVue::de).toList();
     }
 
-    /** Le bureau d'un mandat : la même donnée sert les droits et l'affichage. */
+    /**
+     * Le bureau d'un mandat : la même donnée sert les droits et l'affichage.
+     *
+     * <p>Réservé à ce bureau-là. Cette route n'exerçait aucune autorisation :
+     * elle rendait à tout compte authentifié le {@code personneId} — le sujet
+     * Keycloak — de chaque membre, les membres explicitement marqués non
+     * publics, et la composition d'un mandat en PREPARATION, c'est-à-dire le
+     * bureau entrant avant son annonce en assemblée générale. Le portail
+     * public, lui, filtre {@code visiblePublic} et ne rend jamais d'identifiant
+     * de personne : le trombinoscope passe par là, pas par ici.
+     */
     @GetMapping("/mandats/{mandatId}/bureau")
     public List<MembreVue> bureau(@PathVariable UUID mandatId) {
+        politique.exigerMembre(Utilisateur.idCourantObligatoire(), mandatId);
         return membres.membresActifs(mandatId).stream().map(MembreVue::de).toList();
     }
 

@@ -251,6 +251,34 @@ public class ServiceMedia {
         return resultat;
     }
 
+    /**
+     * Les mêmes URL, mais seulement pour les médias que le demandeur peut voir.
+     *
+     * <p>La route du tableau de bord appelait la version sans identité : elle
+     * signait une URL de lecture pour n'importe quelle clé, de n'importe quelle
+     * association et de n'importe quelle année, pour tout compte authentifié.
+     * Les objets sont pourtant privés et les URL présignées existent
+     * précisément pour que l'accès reste contrôlé — le contrôle manquait juste
+     * ici. La médiathèque, deux méthodes plus bas, l'exerçait bien : c'est la
+     * résolution en lot qui y avait échappé.
+     *
+     * <p>Une clé refusée est simplement ABSENTE du résultat, comme une clé
+     * inconnue : le contrat de la méthode est déjà « je rends ce que je peux
+     * résoudre », et distinguer « interdit » de « inexistant » renseignerait un
+     * appelant sur ce qu'il n'a pas le droit de voir.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, String> urlsDe(UUID demandeur, Collection<String> cles) {
+        Map<String, String> resultat = new LinkedHashMap<>();
+        for (String cle : cles) {
+            medias.findByCle(cle)
+                    .filter(MediaAsset::estDisponible)
+                    .filter(m -> politique.peut(demandeur, Permission.MEDIA_DEPOSER, m.getAssociationId()))
+                    .ifPresent(m -> resultat.put(cle, stockage.urlLecture(cle, VALIDITE_LECTURE)));
+        }
+        return resultat;
+    }
+
     @Transactional(readOnly = true)
     public List<MediaAsset> mediatheque(UUID demandeur, UUID associationId, String anneeCode) {
         politique.exiger(demandeur, Permission.MEDIA_DEPOSER, associationId);

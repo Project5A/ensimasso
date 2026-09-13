@@ -68,6 +68,30 @@ public class PolitiqueAcces {
                 .orElse(false);
     }
 
+    /**
+     * Cette personne siège-t-elle au bureau de ce mandat ?
+     *
+     * <p>Distinct d'une permission : il s'agit d'appartenance, pas de droit
+     * d'agir. C'est le contrôle qui manquait aux routes de LECTURE du tableau
+     * de bord, lesquelles n'en exerçaient aucun — n'importe quel compte
+     * authentifié pouvait lire les brouillons de n'importe quelle association,
+     * et la composition d'un bureau entrant avant son annonce en assemblée.
+     */
+    @Transactional(readOnly = true)
+    public boolean estMembre(UUID personneId, UUID mandatId) {
+        if (personneId == null || mandatId == null) {
+            return false;
+        }
+        return membres.posteActif(mandatId, personneId).isPresent();
+    }
+
+    public void exigerMembre(UUID personneId, UUID mandatId) {
+        if (!estMembre(personneId, mandatId)) {
+            throw new Erreurs.AccesRefuse(
+                    "il faut siéger au bureau de ce mandat pour en lire le contenu");
+        }
+    }
+
     /** Lance une exception si l'action n'est pas permise. */
     public void exigerSurMandat(UUID personneId, Permission permission, UUID mandatId) {
         if (!peutSurMandat(personneId, permission, mandatId)) {

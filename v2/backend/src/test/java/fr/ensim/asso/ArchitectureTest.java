@@ -11,6 +11,9 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+import java.util.ArrayList;
+import java.util.List;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
@@ -77,6 +80,67 @@ class ArchitectureTest {
                 .because("l'autorisation vit dans le service : court-circuiter la "
                        + "couche applicative contournerait PolitiqueAcces")
                 .check(CLASSES);
+    }
+
+    /**
+     * Routes qui n'ont légitimement pas besoin de savoir QUI appelle.
+     *
+     * <p>La liste est volontairement courte et nominative. Chaque entrée est
+     * une décision, pas un oubli : c'est précisément la différence qui
+     * manquait — quatre routes de lecture n'exerçaient aucune autorisation,
+     * sans que rien ni personne n'ait jamais décidé qu'elles n'en avaient pas
+     * besoin.
+     */
+    private static final java.util.Map<String, String> ROUTES_SANS_IDENTITE = java.util.Map.of(
+            "PortailController", "chemin public : ne sert que du contenu PUBLIÉ",
+            "ApercuController", "aperçu signé : le droit vient du jeton d'aperçu, pas de l'identité",
+            "WebhookController", "l'identité est prouvée par la signature cryptographique de Stripe",
+            "ContenuController.catalogue", "catalogue des types de blocs : aucune donnée d'association",
+            "GouvernanceController.lister", "annuaire des associations, déjà public sur le portail",
+            "GouvernanceController.mandatsDe", "liste des mandats d'une association, déjà publique",
+            "GouvernanceController.creer", "création d'association : rôle global de plateforme",
+            "AdhesionController.tarifs", "grille tarifaire d'une campagne : c'est ce qu'on montre "
+                    + "à qui s'apprête à adhérer, la cacher au futur adhérent n'aurait pas de sens");
+
+    @Test
+    @DisplayName("toute route qui agit ou lit au nom de quelqu'un sait qui c'est")
+    void routesConnaissentLeurAppelant() {
+        List<String> aveugles = new ArrayList<>();
+
+        for (JavaClass classe : CLASSES) {
+            if (!classe.getSimpleName().endsWith("Controller")
+                    || ROUTES_SANS_IDENTITE.containsKey(classe.getSimpleName())) {
+                continue;
+            }
+            for (JavaMethod methode : classe.getMethods()) {
+                boolean estUneRoute = methode.getAnnotations().stream()
+                        .anyMatch(a -> a.getRawType().getSimpleName().endsWith("Mapping"));
+                if (!estUneRoute
+                        || ROUTES_SANS_IDENTITE.containsKey(
+                                classe.getSimpleName() + "." + methode.getName())) {
+                    continue;
+                }
+                boolean connaitLAppelant = methode.getMethodCallsFromSelf().stream()
+                        .anyMatch(appel -> appel.getTarget().getOwner()
+                                        .getSimpleName().equals("Utilisateur")
+                                || appel.getTarget().getName().startsWith("idCourant"));
+                if (!connaitLAppelant) {
+                    aveugles.add(classe.getSimpleName() + "." + methode.getName());
+                }
+            }
+        }
+
+        // Quatre routes de lecture n'exerçaient AUCUNE autorisation : la liste
+        // des pages d'un mandat et les blocs d'une version — brouillons du
+        // bureau entrant compris —, la signature d'une URL de lecture pour
+        // n'importe quelle clé de média, et la composition d'un bureau avec les
+        // identifiants Keycloak de ses membres. Tout compte authentifié y avait
+        // accès, pour n'importe quelle association.
+        assertThat(aveugles)
+                .as("ces routes ne savent pas au nom de qui elles répondent : "
+                  + "soit elles exigent une identité, soit elles rejoignent "
+                  + "ROUTES_SANS_IDENTITE avec la raison écrite")
+                .isEmpty();
     }
 
     @Test

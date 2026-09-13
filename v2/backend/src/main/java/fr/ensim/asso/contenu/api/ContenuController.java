@@ -58,7 +58,8 @@ public class ContenuController {
 
     @GetMapping("/mandats/{mandatId}/pages")
     public List<PageVue> pages(@PathVariable UUID mandatId) {
-        return service.pagesDuMandat(mandatId).stream().map(PageVue::de).toList();
+        return service.pagesDuMandat(Utilisateur.idCourantObligatoire(), mandatId)
+                .stream().map(PageVue::de).toList();
     }
 
     @PostMapping("/pages/{pageId}/brouillon")
@@ -78,7 +79,8 @@ public class ContenuController {
 
     @GetMapping("/versions/{versionId}/blocs")
     public List<BlocVue> blocs(@PathVariable UUID versionId) {
-        return service.blocsDe(versionId).stream().map(BlocVue::de).toList();
+        return service.blocsPourEdition(Utilisateur.idCourantObligatoire(), versionId)
+                .stream().map(BlocVue::de).toList();
     }
 
     @PutMapping("/blocs/{blocId}")
