@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -106,7 +107,18 @@ public class ServiceAdhesion {
      * attente jusqu'à confirmation du paiement par le module trésorerie.
      */
     @Transactional
-    public Adhesion adherer(UUID personneId, UUID campagneId, PublicCible cible) {
+    public Adhesion adherer(UUID personneId, Set<String> rolesVerifies,
+                            UUID campagneId, PublicCible cible) {
+        // Choisir son public, c'est choisir son prix. Le corps de la requête ne
+        // contient aucun montant — c'était la correction de la faille PAY de la
+        // v1 — mais il contenait le sélecteur qui le détermine, et rien ne
+        // vérifiait que l'appelant avait droit au tarif réclamé. Un extérieur
+        // demandait le tarif étudiant et le payait.
+        if (!cible.estOuvertA(rolesVerifies)) {
+            throw new Erreurs.AccesRefuse(
+                    "le tarif « " + cible + " » demande le statut "
+                  + cible.roleRequis().orElse("") + ", que votre compte ne porte pas");
+        }
         CampagneAdhesion campagne = campagne(campagneId);
         OffsetDateTime maintenant = OffsetDateTime.now(horloge);
 

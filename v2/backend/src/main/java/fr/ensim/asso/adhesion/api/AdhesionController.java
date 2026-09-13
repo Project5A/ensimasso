@@ -66,7 +66,7 @@ public class AdhesionController {
     @ResponseStatus(HttpStatus.CREATED)
     public AdhesionVue adherer(@PathVariable UUID campagneId, @Valid @RequestBody Adherer corps) {
         return AdhesionVue.de(service.adherer(
-                Utilisateur.idCourantObligatoire(), campagneId,
+                Utilisateur.idCourantObligatoire(), Utilisateur.rolesGlobaux(), campagneId,
                 PublicCible.valueOf(corps.publicCible())));
     }
 

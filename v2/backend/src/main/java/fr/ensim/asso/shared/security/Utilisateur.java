@@ -24,6 +24,28 @@ public final class Utilisateur {
         }
     }
 
+    /**
+     * Les rôles GLOBAUX portés par le jeton vérifié, sans le préfixe « ROLE_ ».
+     *
+     * <p>Lire des droits dans le jeton est proscrit partout ailleurs : les
+     * droits par association vivent en base, pour être révocables
+     * immédiatement. Ces rôles-ci sont d'une autre nature — « est étudiant »,
+     * « est ancien » — et l'application ne les connaît pas et ne peut pas les
+     * connaître : c'est l'annuaire de l'école qui les détient, et le jeton est
+     * ce qui les transporte, signé.
+     */
+    public static java.util.Set<String> rolesGlobaux() {
+        Authentication a = SecurityContextHolder.getContext().getAuthentication();
+        if (a == null || !a.isAuthenticated()) {
+            return java.util.Set.of();
+        }
+        return a.getAuthorities().stream()
+                .map(Object::toString)
+                .filter(r -> r.startsWith("ROLE_"))
+                .map(r -> r.substring("ROLE_".length()))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
     /** L'identité courante, ou une exception : à utiliser sur les routes authentifiées. */
     public static UUID idCourantObligatoire() {
         return idCourant().orElseThrow(() ->

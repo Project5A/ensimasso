@@ -38,7 +38,7 @@ public class TresorerieController {
     @ResponseStatus(HttpStatus.CREATED)
     public CommandeVue commanderAdhesion(@Valid @RequestBody CommanderAdhesion corps) {
         return CommandeVue.de(service.commanderAdhesion(
-                Utilisateur.idCourantObligatoire(), corps.campagneId(),
+                Utilisateur.idCourantObligatoire(), Utilisateur.rolesGlobaux(), corps.campagneId(),
                 PublicCible.valueOf(corps.publicCible())));
     }
 
