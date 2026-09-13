@@ -43,9 +43,11 @@ class DepotMediaTest {
     private MediaAssetRepository medias;
     private PortStockage stockage;
     private PolitiqueAcces politique;
+    private fr.ensim.asso.media.app.RejetMedia rejet;
     private io.micrometer.core.instrument.simple.SimpleMeterRegistry metriques;
     private ServiceMedia service;
     private MediaAsset media;
+    private static final UUID MEDIA_ID = UUID.randomUUID();
 
     private static final byte[] PNG = new byte[] {
         (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13 };
@@ -61,12 +63,22 @@ class DepotMediaTest {
         politique = mock(PolitiqueAcces.class);
 
         metriques = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        rejet = mock(fr.ensim.asso.media.app.RejetMedia.class);
         service = new ServiceMedia(medias, stockage,
                 mock(AssociationRepository.class), mock(AnneeUniversitaireRepository.class),
-                politique, metriques,
+                politique, rejet, metriques,
                 Clock.fixed(Instant.parse("2026-09-12T12:00:00Z"), ZoneOffset.UTC));
 
         media = new MediaAsset(ASSO, "2025-2026", CLE, "logo.png", "image/png", DEPOSANT);
+        // Avec son identifiant, comme il revient du dépôt : le service le
+        // transmet à RejetMedia, et une vérification sur `null` ne dirait rien.
+        try {
+            var champ = MediaAsset.class.getDeclaredField("id");
+            champ.setAccessible(true);
+            champ.set(media, MEDIA_ID);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
         when(medias.findById(any())).thenReturn(Optional.of(media));
     }
 
@@ -101,7 +113,10 @@ class DepotMediaTest {
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("contenu refusé");
 
-        assertThat(media.getStatut()).isEqualTo(StatutMedia.REJETE);
+        // Le rejet est enregistré par RejetMedia, dans une transaction à part :
+        // l'exception qui produit le 409 annulerait sinon le passage en REJETE,
+        // alors que la suppression dans le stockage, elle, tiendrait bon.
+        verify(rejet).enregistrer(MEDIA_ID);
         // Laisser l'objet en place servirait une page hostile depuis l'origine
         // du stockage, que le rejet en base n'empêche pas.
         verify(stockage).supprimer(CLE);
@@ -141,7 +156,7 @@ class DepotMediaTest {
         assertThatThrownBy(() -> service.confirmerDepot(DEPOSANT, UUID.randomUUID()))
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("vérifier le format");
-        assertThat(media.getStatut()).isEqualTo(StatutMedia.REJETE);
+        verify(rejet).enregistrer(MEDIA_ID);
     }
 
     @Test
@@ -152,7 +167,7 @@ class DepotMediaTest {
 
         assertThatThrownBy(() -> service.confirmerDepot(DEPOSANT, UUID.randomUUID()))
                 .isInstanceOf(Erreurs.Conflit.class);
-        assertThat(media.getStatut()).isEqualTo(StatutMedia.REJETE);
+        verify(rejet).enregistrer(MEDIA_ID);
     }
 
     @Test
@@ -182,5 +197,44 @@ class DepotMediaTest {
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("volumineux");
         verify(stockage, never()).lireDebut(anyString(), anyInt());
+    }
+
+    @Test
+    @DisplayName("une panne du stockage ne fait PAS effacer un dépôt légitime")
+    void panneDuStockageNEffacePas() {
+        // L'adaptateur rendait un Optional vide pour toute erreur S3 — un 500
+        // de MinIO, un délai dépassé — exactement comme pour un objet absent.
+        // Le service en concluait « illisible » et supprimait : une panne
+        // passagère détruisait l'affiche qu'on venait de déposer. Il doit
+        // maintenant remonter une indisponibilité, que rien n'attrape ici.
+        when(stockage.metadonnees(CLE))
+                .thenReturn(Optional.of(new PortStockage.MetadonneesObjet(1024, "image/png")));
+        when(stockage.lireDebut(anyString(), anyInt()))
+                .thenThrow(new IllegalStateException("stockage objet indisponible"));
+
+        assertThatThrownBy(() -> service.confirmerDepot(DEPOSANT, MEDIA_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("indisponible");
+
+        verify(stockage, never()).supprimer(anyString());
+        verify(rejet, never()).enregistrer(any());
+    }
+
+    @Test
+    @DisplayName("un objet RÉELLEMENT absent reste, lui, un dépôt illisible")
+    void objetAbsentResteRefuse() {
+        // La distinction doit couper dans les deux sens : sans ce cas, rendre
+        // « indisponible » pour tout ferait passer un dépôt jamais abouti pour
+        // une panne, et le média resterait en attente indéfiniment.
+        when(stockage.metadonnees(CLE))
+                .thenReturn(Optional.of(new PortStockage.MetadonneesObjet(1024, "image/png")));
+        when(stockage.lireDebut(anyString(), anyInt())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.confirmerDepot(DEPOSANT, MEDIA_ID))
+                .isInstanceOf(Erreurs.Conflit.class)
+                .hasMessageContaining("impossible de relire");
+
+        verify(rejet).enregistrer(MEDIA_ID);
+        verify(stockage).supprimer(CLE);
     }
 }

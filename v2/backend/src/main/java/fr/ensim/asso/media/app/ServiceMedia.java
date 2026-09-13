@@ -51,6 +51,7 @@ public class ServiceMedia {
     private final AssociationRepository associations;
     private final AnneeUniversitaireRepository annees;
     private final PolitiqueAcces politique;
+    private final RejetMedia rejet;
     private final Clock horloge;
 
     /**
@@ -63,12 +64,14 @@ public class ServiceMedia {
 
     public ServiceMedia(MediaAssetRepository medias, PortStockage stockage,
                         AssociationRepository associations, AnneeUniversitaireRepository annees,
-                        PolitiqueAcces politique, MeterRegistry metriques, Clock horloge) {
+                        PolitiqueAcces politique, RejetMedia rejet,
+                        MeterRegistry metriques, Clock horloge) {
         this.medias = medias;
         this.stockage = stockage;
         this.associations = associations;
         this.annees = annees;
         this.politique = politique;
+        this.rejet = rejet;
         this.metriques = metriques;
         this.horloge = horloge;
     }
@@ -192,9 +195,17 @@ public class ServiceMedia {
         rejeter(media, "contenu refusé : " + explication);
     }
 
-    /** Rejette, efface l'objet, et échoue. Ne rend jamais la main. */
+    /**
+     * Rejette, efface l'objet, et échoue. Ne rend jamais la main.
+     *
+     * <p>L'ordre et la transaction comptent. Le passage en REJETE est validé
+     * dans une transaction à part AVANT la suppression : sans cela, l'exception
+     * qui produit le 409 annulait le statut, tandis que la suppression dans le
+     * stockage — qui n'a pas de rollback — tenait bon. Il restait une ligne
+     * ATTENTE_DEPOT désignant un objet disparu, indéfiniment.
+     */
     private void rejeter(MediaAsset media, String raison) {
-        media.rejeter();
+        rejet.enregistrer(media.getId());
         stockage.supprimer(media.getCle());
         throw new Erreurs.Conflit(raison);
     }

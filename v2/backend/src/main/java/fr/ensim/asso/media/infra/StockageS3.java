@@ -37,6 +37,12 @@ public class StockageS3 implements PortStockage, AutoCloseable {
     private final S3Presigner presigner;
     private final String bucket;
 
+    // @Autowired explicite : ce composant a deux constructeurs — celui-ci et
+    // celui d'essai — et sans désignation Spring ne sait pas choisir. C'est
+    // exactement la panne de CacheMemoire, qui empêchait l'application de
+    // démarrer sur son profil par défaut ; la règle d'architecture écrite à
+    // cette occasion vient de rattraper la même erreur ici.
+    @org.springframework.beans.factory.annotation.Autowired
     public StockageS3(@Value("${ensimasso.stockage.endpoint}") String endpoint,
                       @Value("${ensimasso.stockage.acces}") String acces,
                       @Value("${ensimasso.stockage.secret}") String secret,
@@ -94,6 +100,21 @@ public class StockageS3 implements PortStockage, AutoCloseable {
         }
     }
 
+    /**
+     * Constructeur d'essai : les clients sont fournis plutôt que construits.
+     *
+     * <p>Cet adaptateur est la frontière de sécurité du dépôt de fichiers — il
+     * décide notamment ce qui compte comme « illisible », et donc ce qui sera
+     * effacé. Il n'avait aucun test : tous mockaient le port, si bien qu'une
+     * régression ici ne faisait rien échouer. Vérifié en remettant l'ancien
+     * comportement fautif : la suite restait verte.
+     */
+    StockageS3(S3Client client, S3Presigner presigner, String bucket) {
+        this.client = client;
+        this.presigner = presigner;
+        this.bucket = bucket;
+    }
+
     @Override
     public UrlPresignee preparerDepot(String cle, String contentType, long tailleMaxOctets, Duration validite) {
         PutObjectRequest put = PutObjectRequest.builder()
@@ -131,9 +152,27 @@ public class StockageS3 implements PortStockage, AutoCloseable {
             HeadObjectResponse head = client.headObject(
                     HeadObjectRequest.builder().bucket(bucket).key(cle).build());
             return Optional.of(new MetadonneesObjet(head.contentLength(), head.contentType()));
-        } catch (S3Exception e) {
+        } catch (NoSuchKeyException e) {
             return Optional.empty();
+        } catch (S3Exception e) {
+            throw indisponible(cle, e);
         }
+    }
+
+    /**
+     * « Absent » et « je n'ai pas pu regarder » ne sont pas la même chose.
+     *
+     * <p>Les deux lectures rendaient un {@code Optional} vide pour TOUTE erreur
+     * S3 — un 500 de MinIO, un délai dépassé, une coupure réseau — comme pour
+     * un objet réellement absent. En face, {@code ServiceMedia} en conclut « ce
+     * dépôt est illisible » et SUPPRIME l'objet : une panne passagère du
+     * stockage détruisait définitivement l'affiche que quelqu'un venait de
+     * déposer. Une indisponibilité doit remonter, pour que l'appelant réessaie.
+     */
+    private static IllegalStateException indisponible(String cle, S3Exception e) {
+        return new IllegalStateException(
+                "stockage objet indisponible pour la clé " + cle
+              + " (" + e.statusCode() + ") : dépôt conservé, réessayez", e);
     }
 
     /**
@@ -151,8 +190,12 @@ public class StockageS3 implements PortStockage, AutoCloseable {
                     .range("bytes=0-" + (octets - 1))
                     .build());
             return Optional.of(reponse.asByteArray());
-        } catch (S3Exception e) {
+        } catch (NoSuchKeyException e) {
             return Optional.empty();
+        } catch (S3Exception e) {
+            // Surtout pas un Optional vide : l'appelant en conclurait que le
+            // fichier est illisible et l'effacerait. Voir indisponible().
+            throw indisponible(cle, e);
         }
     }
 
