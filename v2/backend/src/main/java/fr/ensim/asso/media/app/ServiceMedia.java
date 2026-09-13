@@ -250,16 +250,19 @@ public class ServiceMedia {
         return stockage.urlLecture(cle, VALIDITE_LECTURE);
     }
 
-    /** Résolution en lot : une page de galerie ne doit pas faire N requêtes. */
+    /**
+     * Résolution en lot : une page de galerie ne doit pas faire N requêtes.
+     *
+     * <p>C'est ce que disait déjà ce commentaire, et c'est exactement ce que la
+     * méthode ne faisait pas : elle bouclait sur {@code findByCle}, une requête
+     * par clé. Le portail l'appelait de surcroît une fois PAR BLOC — une page
+     * de dix blocs illustrés partait en quarante allers-retours pour afficher
+     * quarante images. Une seule requête, maintenant, et le portail n'appelle
+     * plus qu'une fois par page.
+     */
     @Transactional(readOnly = true)
     public Map<String, String> urlsDe(Collection<String> cles) {
-        Map<String, String> resultat = new LinkedHashMap<>();
-        for (String cle : cles) {
-            medias.findByCle(cle)
-                    .filter(MediaAsset::estDisponible)
-                    .ifPresent(m -> resultat.put(cle, stockage.urlLecture(cle, VALIDITE_LECTURE)));
-        }
-        return resultat;
+        return urls(cles, m -> true);
     }
 
     /**
@@ -280,12 +283,32 @@ public class ServiceMedia {
      */
     @Transactional(readOnly = true)
     public Map<String, String> urlsDe(UUID demandeur, Collection<String> cles) {
+        return urls(cles, m -> politique.peut(demandeur, Permission.MEDIA_DEPOSER, m.getAssociationId()));
+    }
+
+    /**
+     * Le corps commun aux deux résolutions : UNE requête, puis un filtrage en
+     * mémoire.
+     *
+     * <p>L'ordre demandé est conservé et les clés inconnues, indisponibles ou
+     * interdites sont simplement absentes — c'est le contrat des deux méthodes
+     * publiques, et il ne change pas.
+     */
+    private Map<String, String> urls(Collection<String> cles,
+                                     java.util.function.Predicate<MediaAsset> visible) {
+        Set<String> demandees = new LinkedHashSet<>(cles);
+        if (demandees.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, MediaAsset> parCle = new HashMap<>();
+        medias.findByCleIn(demandees).forEach(m -> parCle.put(m.getCle(), m));
+
         Map<String, String> resultat = new LinkedHashMap<>();
-        for (String cle : cles) {
-            medias.findByCle(cle)
-                    .filter(MediaAsset::estDisponible)
-                    .filter(m -> politique.peut(demandeur, Permission.MEDIA_DEPOSER, m.getAssociationId()))
-                    .ifPresent(m -> resultat.put(cle, stockage.urlLecture(cle, VALIDITE_LECTURE)));
+        for (String cle : demandees) {
+            MediaAsset media = parCle.get(cle);
+            if (media != null && media.estDisponible() && visible.test(media)) {
+                resultat.put(cle, stockage.urlLecture(cle, VALIDITE_LECTURE));
+            }
         }
         return resultat;
     }

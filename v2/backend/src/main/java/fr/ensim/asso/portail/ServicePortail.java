@@ -295,8 +295,22 @@ public class ServicePortail {
         List<Partenaire> tousPartenaires = blocs.stream().anyMatch(b -> "PARTNERS".equals(b.getType()))
                 ? partenariats.visiblesDuMandat(mandat.getId()) : List.of();
 
-        List<PageRendue.BlocRendu> rendus = blocs.stream()
-                .map(b -> rendreBloc(b, equipe, tousEvenements, tousPartenaires, estCourant))
+        // Ce que chaque bloc montre est arrêté AVANT qu'aucun média ne soit
+        // résolu. C'est ce qui permet de connaître d'un coup les clés de toute
+        // la page, et donc de les résoudre en une fois : `rendreBloc` appelait
+        // `medias.urlsDe` par bloc, et `urlsDe` faisait alors une requête par
+        // clé. Une page de dix blocs illustrés partait en quarante allers-retours.
+        List<Selection> selections = blocs.stream()
+                .map(b -> selectionner(b, tousEvenements, tousPartenaires, estCourant))
+                .toList();
+
+        Set<String> clesDeLaPage = new LinkedHashSet<>();
+        selections.forEach(sel -> clesDeLaPage.addAll(clesDe(sel)));
+        Map<String, String> urlsDeLaPage =
+                clesDeLaPage.isEmpty() ? Map.of() : medias.urlsDe(clesDeLaPage);
+
+        List<PageRendue.BlocRendu> rendus = selections.stream()
+                .map(sel -> rendreBloc(sel, equipe, urlsDeLaPage))
                 .toList();
 
         List<PageRendue.PageLien> menu = pages.findByMandatIdOrderByOrdreMenuAsc(mandat.getId())
@@ -327,37 +341,60 @@ public class ServicePortail {
                 theme, rendus, menu, anneesPubliees, anneeCourante);
     }
 
-    private PageRendue.BlocRendu rendreBloc(Bloc bloc, List<PageRendue.MembreVue> equipe,
-                                           List<Evenement> tousEvenements,
-                                           List<Partenaire> tousPartenaires,
-                                           boolean estCourant) {
+    /** Ce qu'un bloc montre, avant que le moindre média ne soit résolu. */
+    private record Selection(Bloc bloc, Map<String, Object> payload,
+                             List<Evenement> evenements, List<Partenaire> partenaires) { }
+
+    private Selection selectionner(Bloc bloc, List<Evenement> tousEvenements,
+                                   List<Partenaire> tousPartenaires, boolean estCourant) {
         Map<String, Object> payload = lireJson(bloc.getPayload());
+        return new Selection(bloc, payload,
+                "EVENT_LIST".equals(bloc.getType())
+                        ? SelectionBlocs.agenda(payload, tousEvenements, estCourant,
+                                                OffsetDateTime.now(horloge))
+                        : List.of(),
+                "PARTNERS".equals(bloc.getType())
+                        ? SelectionBlocs.partenaires(payload, tousPartenaires) : List.of());
+    }
 
-        List<Evenement> evenements = "EVENT_LIST".equals(bloc.getType())
-                ? SelectionBlocs.agenda(payload, tousEvenements, estCourant,
-                                        OffsetDateTime.now(horloge))
-                : List.of();
-        List<Partenaire> partenaires = "PARTNERS".equals(bloc.getType())
-                ? SelectionBlocs.partenaires(payload, tousPartenaires) : List.of();
-
-        // Les clés de médias sont résolues MAINTENANT. Rien de périssable
-        // n'est jamais écrit en base : c'est toute la correction de STOR-01.
-        // Les affiches d'évènements et les logos de partenaires suivent la même
-        // règle, et sont donc résolus ici comme le reste.
+    /**
+     * Les clés de médias d'un bloc : celles de son payload, plus les affiches
+     * des évènements et les logos des partenaires qu'il montre.
+     */
+    private Set<String> clesDe(Selection sel) {
         Set<String> cles = new LinkedHashSet<>();
-        collecterCles(payload, cles);
-        evenements.stream().map(Evenement::getMediaKey).filter(Objects::nonNull).forEach(cles::add);
-        partenaires.stream().map(Partenaire::getLogoMediaKey).filter(Objects::nonNull).forEach(cles::add);
-        Map<String, String> urls = cles.isEmpty() ? Map.of() : medias.urlsDe(cles);
+        collecterCles(sel.payload(), cles);
+        sel.evenements().stream().map(Evenement::getMediaKey)
+                .filter(Objects::nonNull).forEach(cles::add);
+        sel.partenaires().stream().map(Partenaire::getLogoMediaKey)
+                .filter(Objects::nonNull).forEach(cles::add);
+        return cles;
+    }
+
+    private PageRendue.BlocRendu rendreBloc(Selection sel, List<PageRendue.MembreVue> equipe,
+                                            Map<String, String> urlsDeLaPage) {
+        Bloc bloc = sel.bloc();
+
+        // Les URL ont été fabriquées MAINTENANT, pour toute la page. Rien de
+        // périssable n'est jamais écrit en base : c'est toute la correction de
+        // STOR-01. Chaque bloc ne porte que SES clés — une page mémorisée ne
+        // doit pas répéter sur chaque bloc les médias de tous les autres.
+        Map<String, String> urls = new LinkedHashMap<>();
+        for (String cle : clesDe(sel)) {
+            String url = urlsDeLaPage.get(cle);
+            if (url != null) {
+                urls.put(cle, url);
+            }
+        }
 
         // Seul un bloc trombinoscope reçoit l'équipe : inutile de la répéter.
         List<PageRendue.MembreVue> equipeDuBloc =
                 "TEAM_GRID".equals(bloc.getType()) ? equipe : List.of();
 
         return new PageRendue.BlocRendu(bloc.getId(), bloc.getType(), bloc.getSchemaVersion(),
-                payload, urls, equipeDuBloc,
-                evenements.stream().map(e -> vue(e, urls)).toList(),
-                partenaires.stream().map(pa -> vue(pa, urls)).toList());
+                sel.payload(), urls, equipeDuBloc,
+                sel.evenements().stream().map(e -> vue(e, urls)).toList(),
+                sel.partenaires().stream().map(pa -> vue(pa, urls)).toList());
     }
 
     private PageRendue.EvenementVue vue(Evenement e, Map<String, String> urls) {
