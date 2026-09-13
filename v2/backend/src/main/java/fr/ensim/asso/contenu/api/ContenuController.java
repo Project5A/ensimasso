@@ -41,7 +41,8 @@ public class ContenuController {
     public List<TypeBlocVue> catalogue() {
         return service.catalogueDesBlocs().stream()
                 .map(t -> new TypeBlocVue(t.getType(), t.getSchemaVersion(), t.getLibelle(),
-                        t.getCategorie(), t.getComposantReact(), t.getJsonSchema()))
+                        t.getCategorie(), t.getComposantReact(), t.getJsonSchema(),
+                        t.getPayloadDefaut()))
                 .toList();
     }
 
@@ -154,6 +155,12 @@ public class ContenuController {
         }
     }
 
+    /**
+     * @param payloadDefaut le payload avec lequel la palette crée un bloc de ce
+     *        type. Elle envoyait un objet vide, que huit schémas sur onze
+     *        refusaient : huit types de blocs étaient impossibles à créer.
+     */
     public record TypeBlocVue(String type, int schemaVersion, String libelle,
-                              String categorie, String composantReact, String jsonSchema) { }
+                              String categorie, String composantReact, String jsonSchema,
+                              String payloadDefaut) { }
 }

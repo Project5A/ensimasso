@@ -79,6 +79,10 @@ export type TypeBlocVue = {
   categorie: string
   composantReact: string
   jsonSchema: string
+  /** Payload avec lequel la palette crée un bloc de ce type. Vient du registre,
+   *  pas d'une table écrite en dur ici : c'est ce qui permet d'ajouter un type
+   *  de bloc sans toucher au portail. */
+  payloadDefaut: string
 }
 
 export type PosteVue = {

@@ -20,6 +20,28 @@ import { ChampsSchema } from './ChampsSchema'
  * PUBLIEE → BROUILLON. L'éditeur ne peut pas réécrire l'histoire même s'il
  * était bogué.
  */
+
+/**
+ * Le payload avec lequel un bloc est créé.
+ *
+ * La palette envoyait `{}` pour tous les types. Huit schémas sur onze
+ * déclarent des propriétés requises : la bannière, le texte, le trombinoscope,
+ * la galerie, la FAQ, les chiffres, l'intégration et le compte à rebours
+ * étaient refusés en 422 et ne pouvaient pas être créés du tout. Vérifié en
+ * passant le validateur réel sur le registre réel : 8 types sur 11.
+ *
+ * Le défaut vient du registre, à côté du schéma qu'il doit respecter — sinon
+ * ajouter un type de bloc demanderait de penser à venir modifier ce fichier.
+ */
+function payloadDeDepart(t: TypeBlocVue): Record<string, unknown> {
+  try {
+    const p = JSON.parse(t.payloadDefaut) as unknown
+    return p && typeof p === 'object' && !Array.isArray(p) ? (p as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function Editeur() {
   const { pageId = '' } = useParams()
   const { jeton } = useAuth()
@@ -136,7 +158,11 @@ export default function Editeur() {
           {catalogue.map((t) => (
             <button key={`${t.type}-${t.schemaVersion}`} type="button" className="palette__item"
                     disabled={occupe}
-                    onClick={() => void agir(() => apiDashboard.ajouterBloc(jeton(), version.id, t.type, {}))}>
+                    onClick={() =>
+                      void agir(() =>
+                        apiDashboard.ajouterBloc(jeton(), version.id, t.type, payloadDeDepart(t)),
+                      )
+                    }>
               <span>{t.libelle}</span>
               <small>{t.categorie}</small>
             </button>

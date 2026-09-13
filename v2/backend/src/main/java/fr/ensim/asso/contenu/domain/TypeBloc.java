@@ -32,6 +32,20 @@ public class TypeBloc {
     @Column(name = "json_schema", nullable = false)
     private String jsonSchema;
 
+    /**
+     * Le payload avec lequel un bloc de ce type est CRÉÉ.
+     *
+     * <p>Il vit ici, à côté du schéma qu'il doit respecter, et non dans le code
+     * du portail : sinon « ajouter un type de bloc = une ligne au registre + un
+     * composant React » deviendrait « … + une entrée à ne pas oublier dans un
+     * objet du front ». La palette envoyait un objet vide pour tous les types,
+     * et huit schémas sur onze le refusaient : huit types de blocs sur onze ne
+     * pouvaient pas être créés du tout.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload_defaut", nullable = false)
+    private String payloadDefaut;
+
     @Column(name = "composant_react", nullable = false)
     private String composantReact;
 
@@ -49,6 +63,7 @@ public class TypeBloc {
     public String getType() { return type; }
     public int getSchemaVersion() { return schemaVersion; }
     public String getJsonSchema() { return jsonSchema; }
+    public String getPayloadDefaut() { return payloadDefaut; }
     public String getComposantReact() { return composantReact; }
     public String getCategorie() { return categorie; }
     public String getLibelle() { return libelle; }

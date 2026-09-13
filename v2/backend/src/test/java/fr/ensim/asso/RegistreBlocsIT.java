@@ -2,6 +2,8 @@ package fr.ensim.asso;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +54,37 @@ class RegistreBlocsIT extends BaseIT {
         assertThat(nus)
                 .as("un champ d'URL sans motif ni énumération accepte javascript: "
                   + "et data:, que le navigateur exécute depuis un href")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("le payload de départ de chaque type est valide pour SON schéma")
+    void payloadsDeDepartValides() throws Exception {
+        List<Map<String, Object>> types = jdbc.queryForList(
+                "SELECT type, schema_version, json_schema::text AS schema, "
+              + "payload_defaut::text AS defaut FROM type_bloc");
+
+        assertThat(types).isNotEmpty();
+
+        var factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+        List<String> invalides = new ArrayList<>();
+        for (Map<String, Object> t : types) {
+            var schema = factory.getSchema(MAPPER.readTree((String) t.get("schema")));
+            var erreurs = schema.validate(MAPPER.readTree((String) t.get("defaut")));
+            if (!erreurs.isEmpty()) {
+                invalides.add(t.get("type") + "@" + t.get("schema_version") + " : "
+                        + erreurs.iterator().next().getMessage());
+            }
+        }
+
+        // La palette créait tout bloc avec un payload vide. Huit schémas sur
+        // onze déclarent des propriétés requises : huit types de blocs — dont
+        // la bannière, le texte et le trombinoscope — étaient refusés en 422 et
+        // ne pouvaient pas être créés. Personne ne s'en apercevait parce que
+        // rien ne confrontait jamais le payload de création au schéma.
+        assertThat(invalides)
+                .as("un type dont le payload de départ ne passe pas son propre "
+                  + "schéma est un type que personne ne peut ajouter à une page")
                 .isEmpty();
     }
 
