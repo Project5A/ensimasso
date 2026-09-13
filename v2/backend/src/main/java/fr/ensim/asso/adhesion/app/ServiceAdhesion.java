@@ -4,6 +4,7 @@ import fr.ensim.asso.adhesion.domain.*;
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.*;
 import fr.ensim.asso.shared.error.Erreurs;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +28,16 @@ import java.util.UUID;
 @Service
 public class ServiceAdhesion {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(ServiceAdhesion.class);
+
     private final CampagneAdhesionRepository campagnes;
     private final TarifAdhesionRepository tarifs;
     private final AdhesionRepository adhesions;
     private final MandatRepository mandats;
     private final AnneeUniversitaireRepository annees;
     private final PolitiqueAcces politique;
+    private final MeterRegistry metriques;
     private final Clock horloge;
 
     public ServiceAdhesion(CampagneAdhesionRepository campagnes,
@@ -41,6 +46,7 @@ public class ServiceAdhesion {
                            MandatRepository mandats,
                            AnneeUniversitaireRepository annees,
                            PolitiqueAcces politique,
+                           MeterRegistry metriques,
                            Clock horloge) {
         this.campagnes = campagnes;
         this.tarifs = tarifs;
@@ -48,6 +54,7 @@ public class ServiceAdhesion {
         this.mandats = mandats;
         this.annees = annees;
         this.politique = politique;
+        this.metriques = metriques;
         this.horloge = horloge;
     }
 
@@ -237,9 +244,33 @@ public class ServiceAdhesion {
 
     // ------------------------------------------------------------- interne
 
+    /**
+     * L'année universitaire qui couvre aujourd'hui, s'il y en a une.
+     *
+     * <p>Quand il n'y en a pas, {@code estAdherent} répond « non » — à tout le
+     * monde, et sans rien dire. Ce n'est pas une réponse : c'est une panne de
+     * configuration qui a l'apparence d'une réponse. Le 1er septembre, si
+     * personne n'a inscrit l'année suivante, tous les adhérents de toutes les
+     * associations cessent d'en être, les portes du gala se ferment, et rien
+     * dans les journaux ne distingue cela d'un non-adhérent ordinaire.
+     *
+     * <p>On ne peut pas lever : ce serait faire tomber le portail public pour
+     * une ligne manquante dans un calendrier. On le dit donc, fort et à chaque
+     * fois. Le bruit est délibéré — la condition dure jusqu'à ce qu'un humain
+     * inscrive l'année, et elle prive TOUTE l'école de son adhésion pendant ce
+     * temps-là.
+     */
     private java.util.Optional<String> anneeCourante() {
-        return annees.anneeCouvrant(LocalDate.now(horloge))
+        LocalDate jour = LocalDate.now(horloge);
+        java.util.Optional<String> annee = annees.anneeCouvrant(jour)
                 .map(AnneeUniversitaire::getCode);
+        if (annee.isEmpty()) {
+            log.warn("aucune année universitaire ne couvre le {} : toute vérification "
+                   + "d'adhésion répondra « non ». Inscrivez l'année dans "
+                   + "annee_universitaire.", jour);
+            metriques.counter("ensimasso.adhesion.calendrier_absent").increment();
+        }
+        return annee;
     }
 
     private CampagneAdhesion campagne(UUID id) {
