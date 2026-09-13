@@ -250,6 +250,23 @@ public class ServicePortail {
         }
     }
 
+    /**
+     * La durée au-delà de laquelle une page mémorisée afficherait des images
+     * mortes — cache serveur comme cache du navigateur.
+     *
+     * <p>Le plafond était appliqué ici et nulle part ailleurs. Le contrôleur
+     * posait, lui, un {@code Cache-Control} de son cru : cinq minutes pour la
+     * page vivante, <em>une heure</em> pour les archives, au motif qu'une
+     * archive ne change plus. Sauf que ce qui expire n'est pas la page, ce sont
+     * les URL signées qu'elle contient : le navigateur gardait une heure une
+     * page dont les images mouraient au bout de trente minutes. C'est STOR-01
+     * qui revenait par la porte de derrière — exactement ce que ce plafond
+     * existe pour empêcher.
+     */
+    public Duration dureeCachePublic() {
+        return dureeCache;
+    }
+
     static Duration plafonner(Duration demandee, Duration validiteDesUrls) {
         Duration maximum = validiteDesUrls.dividedBy(2);
         return demandee.compareTo(maximum) > 0 ? maximum : demandee;

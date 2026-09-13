@@ -165,38 +165,4 @@ class TresorerieTest {
                 .isEqualTo(adhesionId);
     }
 
-    @Test
-    @DisplayName("un webhook illisible est rejeté en 400, jamais en 500")
-    void webhookIllisible() {
-        // Régression : le SDK Stripe analyse le JSON AVANT de vérifier la
-        // signature, donc un corps malformé remontait en JsonSyntaxException et
-        // devenait un 500. Stripe aurait alors réessayé indéfiniment un
-        // évènement qui ne passera jamais.
-        PortPaiement prestataire = new PortPaiement() {
-            @Override public Intention creerIntention(int m, String d, String r) {
-                throw new UnsupportedOperationException();
-            }
-            @Override public EvenementRecu verifierEtLire(String charge, String signature) {
-                if (signature == null || signature.isBlank()) {
-                    throw new SignatureInvalideException("en-tête de signature absent");
-                }
-                try {
-                    throw new com.google.gson.JsonSyntaxException("corps malformé");
-                } catch (SignatureInvalideException e) {
-                    throw e;
-                } catch (RuntimeException e) {
-                    throw new SignatureInvalideException("charge utile de webhook illisible");
-                }
-            }
-            @Override public void rembourser(String ref, int m) { }
-        };
-
-        assertThatThrownBy(() -> prestataire.verifierEtLire("{pas du json", "t=1,v1=deadbeef"))
-                .isInstanceOf(PortPaiement.SignatureInvalideException.class)
-                .hasMessageContaining("illisible");
-
-        assertThatThrownBy(() -> prestataire.verifierEtLire("{}", null))
-                .isInstanceOf(PortPaiement.SignatureInvalideException.class)
-                .hasMessageContaining("absent");
-    }
 }

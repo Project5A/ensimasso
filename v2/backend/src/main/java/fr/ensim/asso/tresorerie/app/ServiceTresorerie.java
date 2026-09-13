@@ -101,19 +101,36 @@ public class ServiceTresorerie {
         return commande;
     }
 
+    /**
+     * Le secret client de l'intention DÉJÀ créée pour cette commande.
+     *
+     * <p>Cette méthode créait une nouvelle intention à chaque appel. Trois
+     * conséquences, toutes réelles : chaque rafraîchissement de la page de
+     * paiement laissait une intention ouverte de plus chez Stripe, toutes
+     * portant la même métadonnée de commande et donc toutes payables — une
+     * commande pouvait être encaissée deux fois ; la commande ne pointait que
+     * vers la première ; et une commande déjà payée ouvrait quand même un
+     * nouveau moyen de la repayer. Le tout sous {@code readOnly = true}, qui
+     * annonçait une lecture.
+     */
     @Transactional(readOnly = true)
     public String secretClientDe(UUID personneId, UUID commandeId) {
         Commande c = commande(commandeId);
         if (!c.getPersonneId().equals(personneId)) {
             throw new Erreurs.AccesRefuse("cette commande n'est pas la vôtre");
         }
+        if (c.getStatut() != StatutCommande.OUVERTE) {
+            throw new Erreurs.Conflit(
+                    "commande " + c.getStatut() + " : il n'y a plus rien à payer");
+        }
         if (c.getIntentionRef() == null) {
             throw new Erreurs.Conflit("aucune intention de paiement pour cette commande");
         }
-        // Le secret client est re-demandé au prestataire plutôt que stocké :
-        // c'est un jeton de courte durée, il n'a rien à faire en base.
-        return prestataire.creerIntention(c.getMontantTotalCents(), c.getDevise(),
-                c.getId().toString()).secretClient();
+        // Le secret n'est pas stocké — c'est un jeton de courte durée, il n'a
+        // rien à faire en base — mais il est RELU, pas refabriqué.
+        return prestataire.secretClientDe(c.getIntentionRef())
+                .orElseThrow(() -> new Erreurs.Conflit(
+                        "l'intention de paiement de cette commande n'existe plus chez le prestataire"));
     }
 
     // ------------------------------------------------------------- webhook
@@ -144,6 +161,20 @@ public class ServiceTresorerie {
             trace.marquerTraite("ignoré : " + evenement.type(), OffsetDateTime.now(horloge));
             return ResultatWebhook.IGNORE;
         }
+
+        // Un évènement dont l'objet n'a pas pu être lu n'est PAS un évènement
+        // sans intérêt : c'est un évènement qu'on n'a pas compris. Le marquer
+        // traité l'enterrait pour toujours — l'argent était encaissé chez
+        // Stripe, le droit acheté n'était jamais accordé, et la déduplication
+        // par identifiant d'évènement interdisait tout rejeu. Lever annule la
+        // transaction, donc la ligne de déduplication elle-même : Stripe
+        // réessaiera, et un humain verra passer l'échec.
+        if (!evenement.objetLisible()) {
+            throw new IllegalStateException(
+                    "objet de données illisible pour l'évènement " + evenement.id()
+                  + " : refus d'acquitter un paiement qu'on n'a pas su lire");
+        }
+
         if (evenement.referenceCommande() == null) {
             trace.marquerTraite("aucune référence de commande", OffsetDateTime.now(horloge));
             return ResultatWebhook.IGNORE;
@@ -204,6 +235,23 @@ public class ServiceTresorerie {
                     EcritureLedger.Sens.SORTIE, p.getMontantCents(), "Remboursement : " + motif));
         }
         commande.rembourser();
+
+        // Et, dans la MÊME transaction, le droit acheté est repris. Symétrique
+        // de accorderDroits() : l'encaissement ouvre le droit, la restitution
+        // le ferme. Sans cela, une adhésion intégralement remboursée restait
+        // ACTIVE — l'association rendait l'argent et gardait l'adhérent, dont
+        // la carte passait encore à l'entrée du gala.
+        revoquerDroits(commande);
+    }
+
+    private void revoquerDroits(Commande commande) {
+        for (LigneCommande ligne : lignes.findByCommandeId(commande.getId())) {
+            switch (ligne.getTypeLigne()) {
+                case ADHESION -> adhesions.revoquerPourRemboursement(ligne.getReferenceId());
+                case BILLET -> throw new UnsupportedOperationException(
+                        "la billetterie n'est pas encore implémentée : voir v2/README.md");
+            }
+        }
     }
 
     // ------------------------------------------------------------- lectures

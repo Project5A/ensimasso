@@ -1,6 +1,7 @@
 package fr.ensim.asso.tresorerie.infra;
 
 import com.stripe.Stripe;
+import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -11,11 +12,14 @@ import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
 import fr.ensim.asso.tresorerie.domain.PortPaiement;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Adaptateur Stripe.
@@ -32,6 +36,8 @@ import java.util.Map;
 @Component
 @ConditionalOnProperty(name = "ensimasso.paiement.type", havingValue = "stripe", matchIfMissing = true)
 public class PaiementStripe implements PortPaiement {
+
+    private static final Logger log = LoggerFactory.getLogger(PaiementStripe.class);
 
     private final String cleSecrete;
     private final String secretWebhook;
@@ -64,6 +70,23 @@ public class PaiementStripe implements PortPaiement {
         }
     }
 
+    /**
+     * Relit une intention existante plutôt que d'en créer une.
+     *
+     * <p>Le chemin de lecture en créait une NOUVELLE à chaque appel : rafraîchir
+     * la page de paiement laissait derrière elle une traînée d'intentions
+     * ouvertes, toutes payables, sur une seule commande.
+     */
+    @Override
+    public Optional<String> secretClientDe(String referenceIntention) {
+        try {
+            return Optional.ofNullable(
+                    PaymentIntent.retrieve(referenceIntention).getClientSecret());
+        } catch (StripeException e) {
+            return Optional.empty();
+        }
+    }
+
     @Override
     public EvenementRecu verifierEtLire(String charge, String signature) {
         if (signature == null || signature.isBlank()) {
@@ -83,14 +106,35 @@ public class PaiementStripe implements PortPaiement {
             throw new SignatureInvalideException("charge utile de webhook illisible");
         }
 
-        Object objet = evenement.getDataObjectDeserializer().getObject().orElse(null);
+        var deserialiseur = evenement.getDataObjectDeserializer();
+        Object objet = deserialiseur.getObject().orElse(null);
+        if (objet == null) {
+            // getObject() rend vide dès que le compte Stripe est sur une
+            // version d'API différente de celle que le SDK épingle — ce qui
+            // finit toujours par arriver, sans prévenir et sans rien changer
+            // dans le dépôt. deserializeUnsafe() force la lecture du JSON tel
+            // qu'il est arrivé. « Unsafe » vise la compatibilité des champs,
+            // pas la sécurité : la signature, elle, a déjà été vérifiée.
+            try {
+                objet = deserialiseur.deserializeUnsafe();
+            } catch (EventDataObjectDeserializationException | RuntimeException e) {
+                objet = null;
+            }
+        }
+
         if (!(objet instanceof PaymentIntent intent)) {
-            // Évènement qui ne nous concerne pas : identifié, mais sans paiement.
-            return new EvenementRecu(evenement.getId(), evenement.getType(), null, null, 0, null);
+            // Ici on ne SAIT PAS ce qu'on vient de recevoir. Le dire, plutôt
+            // que de rendre un évènement aux champs vides que le domaine
+            // prendrait pour « compris, sans intérêt » — et classerait traité
+            // définitivement. Un paiement encaissé disparaissait ainsi sans
+            // jamais accorder le droit acheté, sans rejeu possible.
+            log.warn("objet de données illisible pour l'évènement {} ({})",
+                    evenement.getId(), evenement.getType());
+            return EvenementRecu.illisible(evenement.getId(), evenement.getType());
         }
 
         Map<String, String> meta = intent.getMetadata();
-        return new EvenementRecu(
+        return EvenementRecu.lu(
                 evenement.getId(),
                 evenement.getType(),
                 intent.getId(),

@@ -90,7 +90,25 @@ server:
     include-message: never       # rien d'interne ne fuit : voir GestionnaireErreurs
     include-stacktrace: never
   shutdown: graceful
-  forward-headers-strategy: framework
+  # « native » et non « framework », et c'est un correctif de sécurité.
+  #
+  # La stratégie « framework » installe le ForwardedHeaderFilter de Spring, qui
+  # découpe X-Forwarded-For et retient le PREMIER élément — celui que le client
+  # a écrit lui-même. getRemoteAddr() rendait donc une valeur choisie par
+  # l'appelant, et le limiteur de débit, qui s'en sert comme clé de seau, était
+  # contournable sur une seule connexion : vérifié en le faisant tourner, huit
+  # requêtes passent avec huit X-Forwarded-For inventés là où trois suffisent à
+  # déclencher un 429. Un proxy réel AJOUTE la vraie adresse en queue ; avec
+  # « framework », c'est tout de même la valeur forgée en tête qui l'emportait.
+  #
+  # « native » délègue à la RemoteIpValve de Tomcat, qui remonte l'en-tête par
+  # la DROITE en sautant les proxys de confiance : elle rend la première adresse
+  # qui n'en est pas un, c'est-à-dire celle qu'un client ne peut pas choisir.
+  # Sa liste de proxys internes par défaut (10/8, 172.16/12, 192.168/16, 127/8,
+  # 169.254/16) couvre les réseaux de pods : on ne la redéfinit pas ici, une
+  # expression régulière recopiée à la main est une occasion de plus de se
+  # tromper — et de l'oublier.
+  forward-headers-strategy: native
 
 management:
   endpoints:

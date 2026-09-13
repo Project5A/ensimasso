@@ -95,6 +95,7 @@ public class ServicePassation {
     @Transactional
     public MembreBureau designer(UUID demandeur, UUID passationId, UUID personneId, Poste poste, int ordre) {
         Passation p = passation(passationId);
+        exigerOuverte(p);
 
         boolean sortantAutorise = p.getMandatSortantId() != null
                 && membres.posteActif(p.getMandatSortantId(), demandeur)
@@ -166,6 +167,25 @@ public class ServicePassation {
                 mandats.delete(m);      // cascade : pages et blocs du brouillon
             }
         });
+    }
+
+    /**
+     * Désigner quelqu'un n'a de sens que tant que la passation est en cours.
+     *
+     * <p>Sans cette garde, la même route servait à deux choses très
+     * différentes : composer le bureau entrant avant l'AG, et — une fois la
+     * passation ACTIVEE — ajouter des membres à un bureau déjà investi, en
+     * contournant les règles de gouvernance. Sur une passation ANNULEE, le
+     * mandat entrant n'existe plus : l'appel produisait une violation de
+     * contrainte remontée en 500.
+     */
+    private static void exigerOuverte(Passation p) {
+        if (p.getStatut() != Passation.StatutPassation.PREPAREE
+                && p.getStatut() != Passation.StatutPassation.BUREAU_COMPLETE) {
+            throw new Erreurs.Conflit(
+                    "cette passation est " + p.getStatut()
+                    + " : on ne peut plus y désigner de membre");
+        }
     }
 
     private Passation passation(UUID id) {

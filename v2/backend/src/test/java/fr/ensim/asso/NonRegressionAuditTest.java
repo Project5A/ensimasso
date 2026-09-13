@@ -10,7 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -92,13 +94,78 @@ class NonRegressionAuditTest {
         assertThat(sourcesJava()).noneMatch(s -> s.contains("SECRET_KEY"));
     }
 
+    /**
+     * Un mot de passe écrit en clair, quel que soit le format de configuration.
+     *
+     * <p>Sont exclus, et ce sont des absences de secret, pas des secrets :
+     * les substitutions {@code ${VAR}} et leur valeur de repli {@code :-...},
+     * les valeurs à remplacer d'un fichier d'exemple, et les clés de TEST des
+     * prestataires, que Stripe publie lui-même.
+     */
+    private static final Pattern MOTDEPASSE_EN_DUR = Pattern.compile(
+            "(?i)(?<![a-zA-Z0-9${])(password|passwd|secret|motdepasse)\\s*[=:]\\s*"
+          + "[\"']?(?!\\$\\{)(?!-)(?!changez_moi)(?!dev_seulement)(?!votre_)"
+          + "(?!whsec_test_)(?!sk_test_)(?!pk_test_)"
+          + "[^\"'\\s#$]{8,}");
+
+    @Test
+    @DisplayName("SEC-04 — le détecteur de mot de passe reconnaît les formats réellement utilisés")
+    void detecteurDeMotDePasseOperant() {
+        // Le motif précédent exigeait un « = » PUIS un guillemet. Il ne pouvait
+        // matcher ni le YAML de la v2 ni le .properties de la v1 — c'est-à-dire
+        // aucun des deux formats de configuration du projet. Le seul motif censé
+        // rattraper un mot de passe en dur n'en rattrapait aucun, et personne ne
+        // s'en apercevait puisqu'un test qui ne trouve rien est vert.
+        //
+        // Ce cas-ci teste le détecteur lui-même, pour que le prochain qui le
+        // resserre voie tout de suite ce qu'il vient d'aveugler.
+        // Les exemples sont assemblés morceau par morceau, et ce n'est pas une
+        // coquetterie : écrits d'un seul tenant, ils ressembleraient à des
+        // secrets en dur et le balayage du cas suivant les signalerait — dans
+        // CE fichier. On refuse de s'ajouter à une liste d'exclusions : un
+        // scanner de secrets qui ignore un fichier est un endroit où cacher un
+        // secret.
+        String cle = "pass" + "word";
+        String valeur = "Ensim2025" + "SecretDb";
+
+        assertThat(List.of(
+                "spring.datasource." + cle + "=" + valeur,          // format v1
+                "    " + cle + ": " + valeur,                        // format v2
+                "    " + cle + ": \"" + valeur + "\"",
+                "MINIO_" + cle.toUpperCase(java.util.Locale.ROOT) + "=" + valeur))
+                .allSatisfy(ligne -> assertThat(MOTDEPASSE_EN_DUR.matcher(ligne).find())
+                        .as("non détecté : %s", ligne).isTrue());
+
+        assertThat(List.of(
+                "    " + cle + ": ${DB_PASSWORD:}",                  // substitution
+                "      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_seulement}",
+                "DB_PASSWORD=changez_moi",                           // fichier d'exemple
+                "    " + cle + ": \"\"",
+                "static final String SECRET = \"whsec_" + "test_0123456789\""))
+                .allSatisfy(ligne -> assertThat(MOTDEPASSE_EN_DUR.matcher(ligne).find())
+                        .as("faux positif : %s", ligne).isFalse());
+    }
+
     @Test
     @DisplayName("SEC-04 — aucun secret dans le dépôt, et aucune valeur par défaut de secret")
     void aucunSecretVersionne() throws IOException {
+        // Le motif de mot de passe exigeait un « = » PUIS un guillemet :
+        //     password\\s*=\\s*["'][^"'$\\s]{8,}
+        // Il ne pouvait donc matcher ni « password: valeur » (YAML, le format de
+        // la v2), ni « spring.datasource.password=valeur » (properties, le
+        // format de la v1 — celui-là même où le mot de passe Azure SQL a vécu
+        // committé pendant un an). Il ne reconnaissait que « password="..." »,
+        // qui n'apparaît nulle part dans le dépôt. Vérifié : le seul motif censé
+        // rattraper un mot de passe en dur n'en rattrapait aucun.
+        //
+        // Les deux séparateurs sont désormais acceptés, les guillemets sont
+        // facultatifs, et les substitutions ${VAR} comme les valeurs à
+        // remplacer sont exclues — ce sont des absences de secret, pas des
+        // secrets.
         List<Pattern> interdits = List.of(
                 Pattern.compile("sk_live_[A-Za-z0-9]"),
                 Pattern.compile("AccountKey=[A-Za-z0-9+/]{20}"),
-                Pattern.compile("password\\s*=\\s*[\"'][^\"'$\\s]{8,}"),
+                MOTDEPASSE_EN_DUR,
                 Pattern.compile("BEGIN (RSA |EC )?PRIVATE KEY"));
 
         List<String> trouvailles = new ArrayList<>();
@@ -120,6 +187,25 @@ class NonRegressionAuditTest {
         // par défaut. Une clé absente doit faire échouer bruyamment.
         String yml = lire("backend/src/main/resources/application.yml");
         assertThat(yml).contains("cle-secrete: ${STRIPE_CLE_SECRETE:}");
+    }
+
+    @Test
+    @DisplayName("SEC-06 — l'adresse du client ne vient jamais d'un en-tête que le client choisit")
+    void adresseClientNonForgeable() throws IOException {
+        String yml = sansCommentaires(lire("backend/src/main/resources/application.yml"));
+
+        // « framework » installe le ForwardedHeaderFilter de Spring, qui retient
+        // le PREMIER élément de X-Forwarded-For — celui écrit par l'appelant.
+        // Le limiteur de débit s'en sert comme clé de seau : vérifié en le
+        // faisant tourner, huit requêtes passent avec huit en-têtes inventés là
+        // où trois déclenchent un 429. « native » délègue à la RemoteIpValve de
+        // Tomcat, qui remonte l'en-tête par la droite en sautant les proxys de
+        // confiance.
+        assertThat(yml)
+                .as("forward-headers-strategy: framework rend getRemoteAddr() "
+                  + "contrôlable par le client, et avec lui toute limite de débit")
+                .contains("forward-headers-strategy: native")
+                .doesNotContain("forward-headers-strategy: framework");
     }
 
     @Test
@@ -282,26 +368,58 @@ class NonRegressionAuditTest {
     @Test
     @DisplayName("PERF-01 — aucun octet d'image dupliqué entre deux dossiers")
     void aucunActifDuplique() throws IOException {
-        Path publics = RACINE.resolve("frontend/public");
-        Path sources = RACINE.resolve("frontend/src/assets");
-        if (!Files.isDirectory(publics) || !Files.isDirectory(sources)) {
-            return;    // rien à comparer : le portail n'embarque pas d'images
-        }
-        List<String> doublons = new ArrayList<>();
-        try (Stream<Path> flux = Files.walk(publics)) {
-            for (Path p : flux.filter(Files::isRegularFile).toList()) {
-                Path jumeau = sources.resolve(publics.relativize(p));
-                if (Files.exists(jumeau)
-                        && Files.mismatch(p, jumeau) == -1) {
-                    doublons.add(p.getFileName().toString());
+        // Ce test comparait deux dossiers nommément, frontend/public et
+        // frontend/src/assets, et sortait par un `return` si l'un des deux
+        // manquait. Aucun des deux n'existe : il ne vérifiait rien, et comptait
+        // pourtant comme un constat couvert. Un test qui ne peut pas échouer
+        // est pire qu'un test absent — il occupe la place.
+        //
+        // La question réelle n'était jamais « ces deux dossiers-là se
+        // recopient-ils », mais « le portail embarque-t-il deux fois les mêmes
+        // octets ». On la pose telle quelle, sur tout le portail, et elle reste
+        // vraie quelle que soit l'arborescence de demain.
+        Path portail = RACINE.resolve("frontend");
+        assertThat(portail).as("le portail doit exister").isDirectory();
+
+        Map<String, List<String>> parEmpreinte = new LinkedHashMap<>();
+        try (Stream<Path> flux = Files.walk(portail)) {
+            for (Path f : flux.filter(Files::isRegularFile).toList()) {
+                String chemin = portail.relativize(f).toString().replace('\\', '/');
+                if (chemin.startsWith("node_modules/") || chemin.startsWith("dist/")
+                        || !chemin.matches(".*\\.(png|jpe?g|gif|svg|webp|avif|ico|woff2?)$")) {
+                    continue;
                 }
+                if (Files.size(f) == 0) {
+                    continue;
+                }
+                String empreinte = java.util.HexFormat.of().formatHex(
+                        java.security.MessageDigest.getInstance("SHA-256")
+                                .digest(Files.readAllBytes(f)));
+                parEmpreinte.computeIfAbsent(empreinte, c -> new ArrayList<>()).add(chemin);
             }
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
+
+        List<String> doublons = parEmpreinte.values().stream()
+                .filter(l -> l.size() > 1)
+                .map(l -> String.join(" == ", l))
+                .toList();
+
         // La v1 avait 24 fichiers identiques dans les deux dossiers, 1,5 Mo.
-        assertThat(doublons).isEmpty();
+        assertThat(doublons)
+                .as("des octets identiques livrés deux fois : c'est PERF-01")
+                .isEmpty();
     }
 
     // ------------------------------------------------------------- interne
+
+    /** Retire les commentaires : un test ne doit pas se satisfaire lui-même. */
+    private static String sansCommentaires(String texte) {
+        return texte.lines()
+                .map(l -> l.replaceAll("(^|\\s)#.*$", ""))
+                .collect(java.util.stream.Collectors.joining("\n"));
+    }
 
     private List<Path> migrations() throws IOException {
         try (Stream<Path> flux = Files.list(

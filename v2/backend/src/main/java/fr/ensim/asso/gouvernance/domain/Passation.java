@@ -20,7 +20,11 @@ public class Passation {
     @Column(name = "mandat_sortant_id", updatable = false)
     private UUID mandatSortantId;
 
-    @Column(name = "mandat_entrant_id", nullable = false, updatable = false)
+    // Nullable, et seulement après annulation : supprimer le mandat entrant
+    // libère l'année (mandat_un_seul_par_annee), et la ligne passation reste
+    // pour dire qui avait préparé quoi. Un CHECK en base interdit ce détachement
+    // sur toute passation qui n'est pas ANNULEE. Voir V8__passation_annulable.
+    @Column(name = "mandat_entrant_id", updatable = false)
     private UUID mandatEntrantId;
 
     @Enumerated(EnumType.STRING)

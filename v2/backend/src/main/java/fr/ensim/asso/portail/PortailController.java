@@ -52,7 +52,7 @@ public class PortailController {
                                               @PathVariable String slugPage) {
         PageRendue rendue = service.pageArchivee(slug, anneeCode, slugPage);
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic())
+                .cacheControl(CacheControl.maxAge(bornee(Duration.ofHours(1))).cachePublic())
                 .body(rendue);
     }
 
@@ -64,7 +64,22 @@ public class PortailController {
 
     private <T> ResponseEntity<T> avecCache(T corps) {
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(5)).cachePublic())
+                .cacheControl(CacheControl.maxAge(bornee(Duration.ofMinutes(5))).cachePublic())
                 .body(corps);
+    }
+
+    /**
+     * Aucune réponse n'est mémorisable plus longtemps que les URL signées
+     * qu'elle transporte.
+     *
+     * <p>La même règle vaut pour le cache serveur et pour celui du navigateur :
+     * une page gardée au-delà de la validité de ses URL de médias affiche des
+     * images mortes. Le service plafonnait son propre cache ; le
+     * {@code Cache-Control} y échappait, et l'archive était annoncée
+     * mémorisable une heure alors que ses images meurent en trente minutes.
+     */
+    private Duration bornee(Duration souhaitee) {
+        Duration plafond = service.dureeCachePublic();
+        return souhaitee.compareTo(plafond) > 0 ? plafond : souhaitee;
     }
 }

@@ -162,6 +162,28 @@ public class ServiceAdhesion {
         return adhesion;
     }
 
+    /**
+     * Reprend le droit acheté lorsque la commande est remboursée.
+     *
+     * <p>{@code Adhesion.rembourser()} existait depuis le premier jour et
+     * n'était appelée de nulle part : la trésorerie remboursait l'argent,
+     * écrivait la sortie au journal, passait la commande en REMBOURSEE — et
+     * laissait l'adhésion ACTIVE. L'association rendait l'argent et gardait
+     * l'adhérent.
+     *
+     * <p>Idempotente sur une adhésion déjà remboursée : rembourser deux fois
+     * est une erreur d'exploitation, pas une raison de casser la transaction.
+     */
+    @Transactional
+    public Adhesion revoquerPourRemboursement(UUID adhesionId) {
+        Adhesion adhesion = adhesions.findById(adhesionId)
+                .orElseThrow(() -> new Erreurs.Introuvable("adhésion", adhesionId));
+        if (adhesion.estActive()) {
+            adhesion.rembourser();
+        }
+        return adhesion;
+    }
+
     // ------------------------------------------------------------ lectures
 
     /**
