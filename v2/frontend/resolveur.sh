@@ -12,7 +12,7 @@
 # requête. Il lui faut pour cela un résolveur, et celui-ci n'est connu qu'ici :
 # il vit dans /etc/resolv.conf, écrit par le moteur de conteneurs.
 set -e
-serveurs=$(awk '/^nameserver/ { printf "%s ", $2 }' /etc/resolv.conf)
+serveurs=$(awk '/^nameserver/ { printf "%s%s", sep, $2; sep=" " }' /etc/resolv.conf)
 # 127.0.0.11 est le résolveur intégré de Docker : le dernier filet si
 # /etc/resolv.conf est vide ou illisible.
 [ -n "$serveurs" ] || serveurs="127.0.0.11"
