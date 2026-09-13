@@ -271,6 +271,20 @@ jobs:
     name: Image conteneur
     needs: [build, secrets, frontend]
     runs-on: ubuntu-latest
+    services:
+      # Le cœur ne démarre pas sans base : pour vérifier que l'IMAGE démarre,
+      # il en faut donc une ici aussi.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci_seulement
+          POSTGRES_DB: ensimasso
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -298,6 +312,54 @@ jobs:
           tags: ensimasso-portail:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Construire une image ne prouve pas qu'elle démarre.
+      #
+      # Le Dockerfile du portail a passé des mois sans être construit une seule
+      # fois ; une fois construit, il restait sans être exécuté une seule fois.
+      # Or c'est là que se logent les pannes qui ne se voient qu'au déploiement :
+      # une configuration nginx dont le chemin a bougé d'une version de base à
+      # l'autre, un utilisateur non privilégié qui ne peut pas écrire son fichier
+      # de PID, une variable d'environnement absente. Aucune ne fait échouer une
+      # construction ; toutes font échouer un déploiement.
+      #
+      # Les deux images sont donc démarrées et interrogées pour de bon.
+      - name: Le portail démarre et sert la page
+        run: |
+          docker run -d --name portail -p 8081:8080 ensimasso-portail:${{ github.sha }}
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/ || echo 000)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "code HTTP du portail : $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::le portail ne sert pas la page"
+            docker logs portail
+            exit 1
+          fi
+          docker rm -f portail
+
+      - name: Le cœur démarre et se déclare en bonne santé
+        run: |
+          docker run -d --name coeur --network host \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/ensimasso \
+            -e SPRING_DATASOURCE_USERNAME=postgres \
+            -e SPRING_DATASOURCE_PASSWORD=ci_seulement \
+            -e MINIO_PASSWORD=ci_seulement_12 \
+            ensimasso-core:${{ github.sha }}
+          for i in $(seq 1 45); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health || echo 000)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "santé du cœur : $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::le cœur ne démarre pas, ou se déclare en mauvaise santé"
+            docker logs coeur
+            exit 1
+          fi
+          docker rm -f coeur
 
       # Une image qui part en production sans être scannée est un pari.
       #

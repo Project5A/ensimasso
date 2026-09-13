@@ -20,7 +20,20 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests package \
 # JRE, pas JDK : moins de surface d'attaque et une image bien plus petite.
 FROM eclipse-temurin:21-jre-alpine
 
-RUN addgroup -S app && adduser -S -G app app \
+# `apk upgrade` avant tout le reste, et ce n'est pas une précaution de style.
+# Les images de base sont reconstruites moins souvent que les correctifs
+# Alpine ne sortent : au moment du scan, celle-ci traînait cinq failles HIGH
+# corrigées en amont (openssl 3.5.7-r0, libexpat 2.8.3-r0) simplement parce
+# qu'elle datait de quelques semaines. Aucune n'était dans notre code — le jar
+# lui-même est scanné à zéro — et aucune ne pouvait être corrigée par une
+# dépendance Maven.
+#
+# Le prix est assumé : deux constructions du même Dockerfile à deux dates ne
+# donnent plus exactement la même image. C'est le bon sens du compromis pour
+# une couche système, et les manifestes déploient de toute façon par empreinte,
+# pas par étiquette.
+RUN apk upgrade --no-cache \
+ && addgroup -S app && adduser -S -G app app \
  && apk add --no-cache curl
 
 WORKDIR /app

@@ -18,9 +18,18 @@ COPY . .
 RUN npm run typecheck && npm run build
 
 # ---------- exécution ----------
-FROM nginx:1.27-alpine
+# 1.30 et non 1.27 : cette étiquette-là était restée sur Alpine 3.21, et le
+# scan y relevait 36 failles corrigeables — dont la seule CRITICAL des deux
+# images, un dépassement de tampon OpenSSL sur les grands certificats X.509.
+# Toutes venaient de la couche système : l'image finale ne contient que des
+# fichiers statiques, aucun node_modules, donc rien à corriger côté npm.
+FROM nginx:1.30-alpine
 
-RUN rm -rf /usr/share/nginx/html/* \
+# Et un `apk upgrade` par-dessus, pour la même raison que dans l'image du
+# cœur : une étiquette de base, même récente, est toujours en retard sur les
+# correctifs publiés depuis sa construction.
+RUN apk upgrade --no-cache \
+ && rm -rf /usr/share/nginx/html/* \
  && sed -i 's/user  nginx;//' /etc/nginx/nginx.conf \
  && sed -i 's#/var/run/nginx.pid#/tmp/nginx.pid#' /etc/nginx/nginx.conf
 
