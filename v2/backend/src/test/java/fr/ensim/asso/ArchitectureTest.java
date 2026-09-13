@@ -51,24 +51,61 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("aucune méthode d'API ne renvoie une entité JPA")
+    @DisplayName("aucune méthode d'API ne renvoie une entité JPA, même enveloppée")
     void pasDEntiteSerialisee() {
+        // Deux angles morts, tous deux vérifiés en les provoquant.
+        //
+        // 1. La règle ne regardait que le type de retour BRUT. `List<Entite>`
+        //    a pour type brut `List` : une collection d'entités passait donc
+        //    sans être vue, et c'est la forme la plus courante d'un contrôleur.
+        //    `ResponseEntity<List<Entite>>` de même.
+        //
+        // 2. Elle ne visait que le paquet `..api..`. Quatre classes qui
+        //    sérialisent des réponses vivent ailleurs — PortailController,
+        //    ApercuController, PassationController et GestionnaireErreurs — et
+        //    PortailController est précisément le chemin PUBLIC, celui où une
+        //    entité fuitée ferait le plus de dégâts. C'est là qu'était la
+        //    faille de la v1 : des entités JPA sérialisées publiquement, avec
+        //    les empreintes de mots de passe.
+        //
+        // Vérifié en posant une fuite `List<ThemeVersion>` dans le paquet du
+        // portail : l'ancienne règle restait VERTE, la nouvelle la signale.
+        //
+        // On vise donc ce qu'on veut réellement couvrir — tout ce qui répond à
+        // une requête HTTP — et on descend dans les types génériques.
         methods()
-                .that().areDeclaredInClassesThat().resideInAPackage("..api..")
+                .that().areDeclaredInClassesThat()
+                        .areAnnotatedWith(org.springframework.web.bind.annotation.RestController.class)
+                .or().areDeclaredInClassesThat()
+                        .areAnnotatedWith(org.springframework.web.bind.annotation.RestControllerAdvice.class)
                 .and().arePublic()
-                .should(new ArchCondition<JavaMethod>("ne pas renvoyer d'entité JPA") {
+                .should(new ArchCondition<JavaMethod>("ne pas renvoyer d'entité JPA, même enveloppée") {
                     @Override
                     public void check(JavaMethod methode, ConditionEvents events) {
-                        JavaClass retour = methode.getRawReturnType();
-                        if (retour.isAnnotatedWith(jakarta.persistence.Entity.class)) {
-                            events.add(SimpleConditionEvent.violated(methode,
-                                    methode.getFullName() + " renvoie l'entité " + retour.getName()));
+                        for (JavaClass type : typesTraverses(methode.getReturnType())) {
+                            if (type.isAnnotatedWith(jakarta.persistence.Entity.class)) {
+                                events.add(SimpleConditionEvent.violated(methode,
+                                        methode.getFullName() + " renvoie l'entité "
+                                      + type.getName()));
+                            }
                         }
                     }
                 })
                 .because("c'est la faille ARCH-01/SEC-03 de la v1 : sérialiser des "
                        + "entités JPA a exposé publiquement les empreintes de mots de passe")
                 .check(CLASSES);
+    }
+
+    /** Le type lui-même et tous ses arguments génériques, en profondeur. */
+    private static List<JavaClass> typesTraverses(com.tngtech.archunit.core.domain.JavaType type) {
+        List<JavaClass> trouves = new ArrayList<>();
+        trouves.add(type.toErasure());
+        if (type instanceof com.tngtech.archunit.core.domain.JavaParameterizedType parametre) {
+            for (var argument : parametre.getActualTypeArguments()) {
+                trouves.addAll(typesTraverses(argument));
+            }
+        }
+        return trouves;
     }
 
     @Test
