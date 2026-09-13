@@ -144,7 +144,9 @@ public class ServicePortail {
         Association asso = association(slugAsso);
         Mandat mandat = mandats.mandatEnFonction(asso.getId()).orElseThrow(() ->
                 new Erreurs.Introuvable("mandat en fonction pour", slugAsso));
-        return rendre(asso, mandat, slugPage, true);
+        // `true` par construction — le mandat vient de `mandatEnFonction` — mais
+        // la règle est écrite une seule fois, et c'est elle qui décide.
+        return rendre(asso, mandat, slugPage, estPageCourante(mandat));
     }
 
     /**
@@ -167,7 +169,7 @@ public class ServicePortail {
         // archive, et le dire faisait apparaître le bandeau « vous consultez
         // l'archive » sur la page vivante, et intituler son agenda comme celui
         // d'une année révolue.
-        return rendre(asso, mandat, slugPage, mandat.getStatut() == StatutMandat.EN_FONCTION);
+        return rendre(asso, mandat, slugPage, estPageCourante(mandat));
     }
 
     // ------------------------------------------------------------- interne
@@ -198,7 +200,27 @@ public class ServicePortail {
         Association asso = associations.findById(mandat.getAssociationId())
                 .orElseThrow(() -> new Erreurs.Introuvable("association", mandat.getAssociationId()));
 
-        return rendre(asso, mandat, page, version, mandat.getStatut() == StatutMandat.EN_FONCTION);
+        return rendre(asso, mandat, page, version, estPageCourante(mandat));
+    }
+
+    /**
+     * Cette page est-elle une page vivante, ou une archive ?
+     *
+     * <p>Ce n'est pas la même question que « ce mandat est-il en fonction », et
+     * les confondre trompait le seul écran qui existe pour ne pas tromper.
+     * L'aperçu écrivait {@code statut == EN_FONCTION} : un mandat EN
+     * PRÉPARATION — c'est-à-dire un bureau entrant en train de composer le site
+     * qu'il servira — voyait donc son brouillon rendu <em>comme une archive</em>.
+     * Concrètement, son bloc agenda perdait le filtre qu'il venait de régler,
+     * remplacé de force par « TOUS » du plus récent au plus ancien : avec une
+     * limite de trois, il montrait les trois DERNIERS évènements de l'année au
+     * lieu des trois prochains. Ce que l'aperçu affichait n'était pas ce que la
+     * page servirait.
+     *
+     * <p>Une archive, c'est un mandat CLOS. Rien d'autre.
+     */
+    static boolean estPageCourante(Mandat mandat) {
+        return mandat.getStatut() != StatutMandat.CLOS;
     }
 
     private PageRendue rendre(Association asso, Mandat mandat, String slugPage, boolean estCourant) {
