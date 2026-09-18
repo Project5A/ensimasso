@@ -169,4 +169,58 @@ describe('retour du fournisseur d’identité', () => {
     await waitFor(() => expect(screen.getByText('connecté')).toBeTruthy())
     expect(sessionStorage.getItem('retour')).toBeNull()
   })
+
+  it('une destination de retour qui SORT du site est refusée', async () => {
+    // react-router 6 porte GHSA-wrjc-x8rr-h8h6 : « open redirect via
+    // backslash dans Link et useNavigate ». Mais la garde est ici, et non
+    // dans l'attente d'un correctif tiers : une redirection ouverte sert à
+    // faire passer une page de phishing pour la nôtre, juste après que
+    // l'utilisateur a cliqué « se connecter ».
+    for (const hostile of [
+      '//evil.example/x',
+      '/\\\\evil.example/x',
+      'https://evil.example/x',
+      'javascript:alert(1)',
+    ]) {
+      sessionStorage.clear()
+      sessionStorage.setItem('retour', hostile)
+      appels.callback = 0
+
+      const vue = render(
+        <MemoryRouter initialEntries={['/connexion/retour?code=abc&state=xyz']}>
+          <FournisseurAuth>
+            <Sonde />
+            <Routes>
+              <Route path="*" element={<RouteCourante />} />
+            </Routes>
+          </FournisseurAuth>
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => expect(screen.getByText('connecté')).toBeTruthy())
+      await waitFor(() => expect(screen.getByTestId('route').textContent).toBe('/tableau'))
+      vue.unmount()
+    }
+  })
+
+  it('mais un chemin interne normal est bien suivi', async () => {
+    sessionStorage.setItem('retour', '/tableau/mandats/m1/agenda')
+
+    render(
+      <MemoryRouter initialEntries={['/connexion/retour?code=abc&state=xyz']}>
+        <FournisseurAuth>
+          <Sonde />
+          <Routes>
+            <Route path="*" element={<RouteCourante />} />
+          </Routes>
+        </FournisseurAuth>
+      </MemoryRouter>,
+    )
+
+    // Sans ce cas, la garde ci-dessus serait satisfaite par un code qui
+    // renverrait TOUJOURS vers /tableau, et l'écran d'où l'on vient serait
+    // perdu à chaque connexion.
+    await waitFor(() =>
+      expect(screen.getByTestId('route').textContent).toBe('/tableau/mandats/m1/agenda'))
+  })
 })

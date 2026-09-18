@@ -27,7 +27,26 @@ type EtatAuth = {
 const CHEMIN_RETOUR = '/connexion/retour'
 
 /**
- * Où revenir après connexion — jamais la page de retour elle-même.
+ * Un chemin INTERNE, et rien d'autre.
+ *
+ * <p>Le motif ne se contente pas d'exiger un « / » initial. `//evil.example`
+ * et `/\\evil.example` sont des URL protocole-relatives : le navigateur les
+ * comprend comme un autre HÔTE, et une redirection ouverte est exactement ce
+ * qu'on offre à qui veut faire passer sa page de phishing pour la nôtre —
+ * l'utilisateur vient de cliquer « se connecter », il s'attend à être renvoyé
+ * chez nous.
+ *
+ * <p>Ce n'est pas théorique ici : react-router 6 porte l'avis
+ * GHSA-wrjc-x8rr-h8h6, « open redirect via backslash dans Link et
+ * useNavigate ». Cette garde tient indépendamment de la version de la
+ * bibliothèque, ce qui est le point : on ne veut pas que la sûreté d'une
+ * redirection dépende d'un correctif tiers.
+ */
+const CHEMIN_INTERNE = /^\/(?![/\\])[A-Za-z0-9\-._~!$&'()*+,;=:@%/]*$/
+
+/**
+ * Où revenir après connexion — jamais la page de retour elle-même, et jamais
+ * ailleurs que chez nous.
  *
  * `connecter()` enregistrait `window.location.pathname` sans le regarder. Or
  * le bouton « Se connecter » est aussi celui qu'on voit APRÈS un retour raté,
@@ -37,6 +56,7 @@ const CHEMIN_RETOUR = '/connexion/retour'
  * n'étant jamais effacée, la boucle tenait toute la session.
  */
 function destinationApresConnexion(chemin: string): string {
+  if (!CHEMIN_INTERNE.test(chemin)) return '/tableau'
   return chemin.startsWith(CHEMIN_RETOUR) ? '/tableau' : chemin
 }
 

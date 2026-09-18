@@ -147,6 +147,25 @@ jobs:
         working-directory: v2/frontend
         run: npm ci
 
+      # Les dépendances qui PARTENT chez le visiteur, et elles seules.
+      #
+      # Rien n'auditait l'arbre npm : la chaîne vérifie les images de
+      # conteneur avec Trivy, le code avec semgrep, les secrets avec
+      # gitleaks — et laissait entrer n'importe quelle bibliothèque
+      # vulnérable dans le bundle. Au moment d'ajouter cette étape,
+      # react-router 6 portait GHSA-wrjc-x8rr-h8h6, « open redirect via
+      # backslash dans Link et useNavigate », sur une application qui
+      # redirige justement après connexion.
+      #
+      # `--omit=dev` est délibéré, et ce n'est pas une indulgence : vite et
+      # vitest ne sont pas servis à un visiteur, et leurs avis concernent un
+      # serveur de développement à l'écoute. Les mélanger rendrait cette
+      # étape rouge en permanence pour des raisons qui ne menacent personne
+      # — et une étape qu'on apprend à ignorer ne protège plus de rien.
+      - name: Dépendances servies au public
+        working-directory: v2/frontend
+        run: npm audit --omit=dev --audit-level=moderate
+
       # TypeScript strict : appeler une route qui n'existe pas doit devenir
       # une erreur de compilation, pas un 405 découvert en production comme
       # dans la v1 (trois endpoints appelés et jamais implémentés).
