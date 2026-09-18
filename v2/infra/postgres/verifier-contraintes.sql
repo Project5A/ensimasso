@@ -276,10 +276,47 @@ INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
 INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
  ('aaaa0000-0000-4000-8000-000000000002','Platine SA','PLATINE');
 
-\echo '--- 37. supprimer un mandat emporte son agenda et ses partenaires ---'
+\echo '--- 37. supprimer un mandat CLOS doit etre REFUSE (il porte une archive) ---'
+-- Ce bloc affirmait l'inverse, et il avait raison : la suppression passait.
+-- C'etait la porte par laquelle l'archive s'effacait — bloc_fige interdit de
+-- modifier un bloc publie, mais bloc -> page_version -> page -> mandat est une
+-- chaine d'ON DELETE CASCADE, et dans une cascade la ligne parente est deja
+-- supprimee quand le trigger de l'enfant s'execute. Voir V13.
 DELETE FROM mandat WHERE id='aaaa0000-0000-4000-8000-000000000001';
+
+\echo '--- 38. un mandat en PREPARATION, lui, s annule avec tout ce qu il a prepare ---'
+-- C'est ServicePassation.annuler() : un bureau entrant qui ne prendra pas ses
+-- fonctions. Rien de public n'y est perdu — le portail ne rend que le mandat
+-- EN_FONCTION, et les archives excluent PREPARATION.
+INSERT INTO annee_universitaire (code, debut, fin) VALUES
+ ('2027-2028','2027-09-01','2028-08-31');
+INSERT INTO mandat (id, association_id, annee_code, debut_le, statut) VALUES
+ ('aaaa0000-0000-4000-8000-000000000009','11111111-1111-1111-1111-111111111111',
+  '2027-2028','2027-04-10 18:00+00','PREPARATION');
+INSERT INTO evenement (mandat_id, slug, titre, debut_le) VALUES
+ ('aaaa0000-0000-4000-8000-000000000009','gala','Gala prepare','2027-11-23 20:00+00');
+INSERT INTO partenaire (mandat_id, nom, niveau) VALUES
+ ('aaaa0000-0000-4000-8000-000000000009','Le Mans Metropole','BRONZE');
+DELETE FROM mandat WHERE id='aaaa0000-0000-4000-8000-000000000009';
 SELECT 'evenements orphelins : ' || count(*)::text
-  FROM evenement WHERE mandat_id='aaaa0000-0000-4000-8000-000000000001';
+  FROM evenement WHERE mandat_id='aaaa0000-0000-4000-8000-000000000009';
 SELECT 'partenaires orphelins : ' || count(*)::text
-  FROM partenaire WHERE mandat_id='aaaa0000-0000-4000-8000-000000000001';
+  FROM partenaire WHERE mandat_id='aaaa0000-0000-4000-8000-000000000009';
 \echo '(les deux doivent valoir 0 : rien ne survit a son mandat)'
+
+\echo '--- 39. un theme PUBLIE ne se reecrit plus (doit etre REFUSE) ---'
+INSERT INTO theme_version (id, mandat_id, numero, statut, tokens) VALUES
+ ('bbbb0000-0000-4000-8000-000000000001','aaaa0000-0000-4000-8000-000000000002',
+  1,'BROUILLON','{"couleurPrimaire":"#123456"}');
+UPDATE theme_version SET statut='PUBLIEE' WHERE id='bbbb0000-0000-4000-8000-000000000001';
+UPDATE theme_version SET tokens='{"couleurPrimaire":"#ff0000"}'
+ WHERE id='bbbb0000-0000-4000-8000-000000000001';
+
+\echo '--- 40. ... et ne se depublie pas non plus (doit etre REFUSE) ---'
+UPDATE theme_version SET statut='BROUILLON' WHERE id='bbbb0000-0000-4000-8000-000000000001';
+
+\echo '--- 41. mais l archiver reste possible, jetons inchanges ---'
+UPDATE theme_version SET statut='ARCHIVEE', tokens='{"couleurPrimaire":"#123456"}'
+ WHERE id='bbbb0000-0000-4000-8000-000000000001';
+SELECT 'statut du theme : ' || statut FROM theme_version
+ WHERE id='bbbb0000-0000-4000-8000-000000000001';

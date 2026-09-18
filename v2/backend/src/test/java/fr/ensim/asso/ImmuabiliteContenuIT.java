@@ -17,6 +17,14 @@ import static org.assertj.core.api.Assertions.*;
  * changer. Dans la première version de cette conception, cette garantie
  * reposait sur une convention : « le code ne fait pas d'UPDATE ». Ces tests
  * vérifient qu'elle est désormais portée par la base.
+ *
+ * <p>Elle ne l'était qu'à moitié : la garantie tenait contre la MODIFICATION et
+ * pas contre l'EFFACEMENT. bloc → page_version → page → mandat est une chaîne
+ * d'ON DELETE CASCADE, et dans une cascade la ligne parente est déjà supprimée
+ * quand le trigger de l'enfant s'exécute — le SELECT de {@code bloc_fige} ne
+ * trouvait alors plus la version et laissait passer. Supprimer la page suffisait
+ * à effacer l'archive. V13 ferme chaque porte à son étage ; les cas ci-dessous
+ * les essaient une par une.
  */
 class ImmuabiliteContenuIT extends BaseIT {
 
@@ -177,5 +185,109 @@ class ImmuabiliteContenuIT extends BaseIT {
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM type_bloc WHERE type = 'RICH_TEXT'", Integer.class))
                 .isEqualTo(1);
+    }
+
+    // ------------------------------------------- effacer, plutôt que modifier
+
+    /** Une version publiée portant un bloc, construite comme le fait le code. */
+    private UUID versionPublieeAvecBloc(int numero) {
+        UUID v = version(numero, "BROUILLON");
+        bloc(v, 0);
+        jdbc.update("UPDATE page_version SET statut='PUBLIEE', publie_le=now(), "
+                  + "publie_par=? WHERE id=?", UUID.randomUUID(), v);
+        return v;
+    }
+
+    @Test
+    @DisplayName("une version publiée ne s'efface pas : c'est l'archive")
+    void versionPublieeNonSupprimable() {
+        UUID v = versionPublieeAvecBloc(1);
+
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM page_version WHERE id = ?", v))
+                .as("la modification était refusée, l'effacement passait — et efface "
+                  + "le même contenu")
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("c'est l'archive");
+    }
+
+    @Test
+    @DisplayName("ni par le dessus : supprimer la page qui la porte est refusé aussi")
+    void pagePortantUneVersionPublieeNonSupprimable() {
+        versionPublieeAvecBloc(1);
+
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM page WHERE id = ?", page))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("version publiée ou archivée");
+    }
+
+    @Test
+    @DisplayName("ni par le dessus du dessus : un mandat qui a gouverné ne se supprime pas")
+    void mandatEnFonctionNonSupprimable() {
+        versionPublieeAvecBloc(1);
+
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM mandat WHERE id = ?", mandat))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("porte une archive");
+    }
+
+    @Test
+    @DisplayName("un brouillon, lui, s'abandonne : on n'a pas remplacé un défaut par une paralysie")
+    void brouillonSupprimable() {
+        UUID brouillon = version(1, "BROUILLON");
+        bloc(brouillon, 0);
+
+        assertThatCode(() -> jdbc.update("DELETE FROM page_version WHERE id = ?", brouillon))
+                .doesNotThrowAnyException();
+    }
+
+    // -------------------------------------------------------------- le thème
+
+    private UUID themePublie() {
+        UUID t = UUID.randomUUID();
+        jdbc.update("INSERT INTO theme_version (id, mandat_id, numero, statut, tokens) "
+                  + "VALUES (?,?,1,'BROUILLON',?::jsonb)",
+                t, mandat, "{\"couleurPrimaire\":\"#123456\"}");
+        jdbc.update("UPDATE theme_version SET statut='PUBLIEE' WHERE id=?", t);
+        return t;
+    }
+
+    @Test
+    @DisplayName("un thème publié ne se réécrit plus — la règle vivait dans le code seul")
+    void themePublieFige() {
+        UUID t = themePublie();
+
+        // L'entité Java porte la règle depuis toujours : « un thème PUBLIEE ne
+        // se modifie plus ». La base, elle, acceptait l'UPDATE — exactement la
+        // situation que V2 décrivait pour les pages avant son trigger.
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE theme_version SET tokens = ?::jsonb WHERE id = ?",
+                "{\"couleurPrimaire\":\"#ff0000\"}", t))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("thème figé");
+    }
+
+    @Test
+    @DisplayName("et il ne se dépublie pas : sinon il redeviendrait modifiable")
+    void themeNeSeDepubliePas() {
+        UUID t = themePublie();
+
+        assertThatThrownBy(() -> jdbc.update(
+                "UPDATE theme_version SET statut='BROUILLON' WHERE id = ?", t))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("transition de version interdite");
+    }
+
+    @Test
+    @DisplayName("l'archiver reste possible, jetons inchangés : c'est ce que fait la publication")
+    void themeArchivable() {
+        UUID t = themePublie();
+
+        // Hibernate réécrit TOUTES les colonnes à chaque sauvegarde, jetons
+        // compris. Une garde qui refuserait « tout UPDATE » casserait donc la
+        // publication elle-même.
+        assertThatCode(() -> jdbc.update(
+                "UPDATE theme_version SET statut='ARCHIVEE', tokens = ?::jsonb WHERE id = ?",
+                "{\"couleurPrimaire\":\"#123456\"}", t))
+                .doesNotThrowAnyException();
     }
 }
