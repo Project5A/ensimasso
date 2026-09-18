@@ -6,6 +6,12 @@ import type { PartenaireDashboard } from '../../api'
 
 const apiDashboard = {
   partenaires: vi.fn(),
+  // L'écran lit le contexte (association, année) de la médiathèque depuis les
+  // postes de l'utilisateur : sans ce double, le sélecteur d'image ne peut pas
+  // se monter.
+  mesPostes: vi.fn(),
+  medias: vi.fn(),
+  urlsMedias: vi.fn(),
   creerPartenaire: vi.fn(),
   modifierPartenaire: vi.fn(),
   supprimerPartenaire: vi.fn(),
@@ -38,7 +44,15 @@ function monter() {
 }
 
 describe('Partenaires du tableau de bord', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    apiDashboard.mesPostes.mockResolvedValue([
+      { associationId: 'a1', mandatId: 'm1', anneeCode: '2025-2026',
+        poste: 'PRESIDENT', statutMandat: 'EN_FONCTION' },
+    ])
+    apiDashboard.medias.mockResolvedValue([])
+    apiDashboard.urlsMedias.mockResolvedValue({})
+  })
   afterEach(cleanup)
 
   it('affiche le niveau, et signale ce qui ne sort pas sur le site', async () => {

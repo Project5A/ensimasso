@@ -84,22 +84,25 @@ class ContratApiTest {
      *
      * <p>Le test précédent ne regarde que dans un sens : « le front appelle-t-il
      * une route fantôme ? ». L'autre sens ne se voyait nulle part, et il est
-     * plus lourd de conséquences ici : quatre modules entiers — adhésions,
-     * médias, passations, trésorerie — sont écrits, autorisés, testés, et
-     * atteignables par personne d'autre que curl. Vingt-cinq routes.
+     * plus lourd de conséquences ici : des modules entiers — adhésions,
+     * passations, trésorerie — sont écrits, autorisés, testés, et atteignables
+     * par personne d'autre que curl. Dix-neuf routes.
      *
      * <p>Ce n'est pas un bogue à corriger dans ce test, c'est un état du projet
-     * qu'il faut garder DIT. Le README coche « Module adhesion », « Module
-     * media » et « Module tresorerie » à côté de « Tableau de bord » et
-     * « Portail public », ce qui met sur la même ligne un module qui existe et
-     * une fonctionnalité qu'un humain peut atteindre.
+     * qu'il faut garder DIT. Le README coche « Module adhesion » et « Module
+     * tresorerie » à côté de « Tableau de bord » et « Portail public », ce qui
+     * met sur la même ligne un module qui existe et une fonctionnalité qu'un
+     * humain peut atteindre.
+     *
+     * <p>La liste a déjà rétréci une fois : `/api/medias` en est sorti le jour
+     * où l'écran de médiathèque a été écrit, et c'est ce test qui l'a signalé.
      *
      * <p>La liste est donc figée ici ET dans le README. Le jour où un écran de
      * médiathèque est écrit, ce test devient rouge — et c'est ce qu'on veut :
      * il force à mettre le README à jour au lieu de le laisser vieillir.
      */
     private static final Set<String> MODULES_SANS_ECRAN =
-            Set.of("/api/adhesions", "/api/medias", "/api/passations", "/api/tresorerie");
+            Set.of("/api/adhesions", "/api/passations", "/api/tresorerie");
 
     @Test
     @DisplayName("les modules qu'aucun écran n'atteint sont exactement ceux que le README annonce")
@@ -141,6 +144,53 @@ class ContratApiTest {
                     .as("le README doit nommer %s parmi les modules sans écran", prefixe)
                     .contains(prefixe);
         }
+    }
+
+    @Test
+    @DisplayName("les types de média acceptés par le champ de dépôt sont ceux du serveur")
+    void typesDeMediaAccordes() throws IOException {
+        // Le champ `<input type="file" accept=…>` de la médiathèque est la
+        // première barrière : il décide de ce que l'utilisateur peut même
+        // CHOISIR. S'il est plus large que le serveur, on laisse quelqu'un
+        // téléverser quinze méga-octets pour se faire répondre non au bout ;
+        // s'il est plus étroit, on lui cache un type que le serveur accepte.
+        // Le test côté front ne peut pas trancher cela : il n'a accès qu'à sa
+        // propre constante. Le croisement se fait ici.
+        String service = Files.readString(
+                cheminDu("backend/src/main/java/fr/ensim/asso/media/app/ServiceMedia.java"),
+                StandardCharsets.UTF_8);
+        String clientApi = Files.readString(clientDuFront(), StandardCharsets.UTF_8);
+
+        Set<String> duServeur = new TreeSet<>();
+        Matcher ms = Pattern.compile("\"((?:image|application)/[a-z0-9.+-]+)\",\\s*\"[a-z0-9]+\"")
+                .matcher(service);
+        while (ms.find()) {
+            duServeur.add(ms.group(1));
+        }
+
+        Set<String> duFront = new TreeSet<>();
+        Matcher bloc = Pattern.compile(
+                "TYPES_MEDIA_ACCEPTES\\s*=\\s*\\[(.*?)]", Pattern.DOTALL).matcher(clientApi);
+        if (bloc.find()) {
+            Matcher mf = Pattern.compile("'((?:image|application)/[a-z0-9.+-]+)'").matcher(bloc.group(1));
+            while (mf.find()) {
+                duFront.add(mf.group(1));
+            }
+        }
+
+        // Garde-fou : un test qui n'a rien extrait passerait en comparant deux
+        // ensembles vides.
+        assertThat(duServeur)
+                .as("aucun type extrait de ServiceMedia : le format a changé, "
+                  + "ce test ne vérifierait plus rien")
+                .hasSizeGreaterThan(3);
+        assertThat(duFront)
+                .as("aucun type extrait de api.ts : le format a changé")
+                .hasSizeGreaterThan(3);
+
+        assertThat(duFront)
+                .as("le champ de dépôt et le serveur doivent accepter les mêmes types")
+                .isEqualTo(duServeur);
     }
 
     // ------------------------------------------------------------- serveur
@@ -238,6 +288,21 @@ class ContratApiTest {
             routes.add(new Route(verbe, gabarit(chemins.get(i))));
         }
         return routes;
+    }
+
+    /** Un chemin du dépôt, que Surefire tourne depuis backend/ ou depuis la racine. */
+    private Path cheminDu(String relatifDepuisV2) {
+        for (Path candidat : List.of(
+                Path.of("..").resolve(relatifDepuisV2),
+                Path.of("v2").resolve(relatifDepuisV2),
+                Path.of(relatifDepuisV2.replaceFirst("^backend/", "")))) {
+            if (Files.exists(candidat)) {
+                return candidat;
+            }
+        }
+        throw new IllegalStateException(
+                relatifDepuisV2 + " introuvable depuis " + Path.of("").toAbsolutePath()
+              + " — ce test doit échouer plutôt que de ne rien vérifier");
     }
 
     private Path readmeV2() {

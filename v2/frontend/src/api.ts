@@ -96,6 +96,37 @@ async function authed<T>(chemin: string, jeton: string | null, init: RequestInit
   return (texte ? JSON.parse(texte) : null) as T
 }
 
+// ------------------------------------------------------------- médias
+
+/** Un média de la médiathèque, tel que le serveur le décrit. */
+export type MediaVue = {
+  id: string
+  cle: string
+  contentType: string
+  tailleOctets: number | null
+  largeur: number | null
+  hauteur: number | null
+  blurhash: string | null
+  texteAlternatif: string | null
+  statut: 'ATTENTE_DEPOT' | 'DISPONIBLE' | 'REJETE' | 'SUPPRIME'
+}
+
+/** Ce que le serveur rend pour déposer un fichier SANS passer par lui. */
+export type DepotVue = {
+  mediaId: string
+  cle: string
+  url: string
+  methode: string
+  enTetes: Record<string, string>
+  expireLe: string
+  tailleMaxOctets: number
+}
+
+/** Les types que le serveur accepte — ServiceMedia.TYPES_AUTORISES. */
+export const TYPES_MEDIA_ACCEPTES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'application/pdf',
+] as const
+
 export type TypeBlocVue = {
   type: string
   schemaVersion: number
@@ -281,4 +312,70 @@ export const apiDashboard = {
 
   supprimerPartenaire: (j: string | null, id: string) =>
     authed<void>(`/api/partenaires/${id}`, j, { method: 'DELETE' }),
+
+  // ------------------------------------------------------------- médias
+
+  medias: (j: string | null, associationId: string, anneeCode: string) =>
+    authed<MediaVue[]>(
+      `/api/medias/associations/${associationId}/annees/${anneeCode}`, j),
+
+  preparerDepot: (j: string | null, associationId: string, nomOriginal: string, contentType: string) =>
+    authed<DepotVue>('/api/medias/depots', j, {
+      method: 'POST',
+      body: JSON.stringify({ associationId, nomOriginal, contentType }),
+    }),
+
+  confirmerDepot: (j: string | null, mediaId: string) =>
+    authed<MediaVue>(`/api/medias/${mediaId}/confirmer`, j, { method: 'POST' }),
+
+  decrireMedia: (j: string | null, mediaId: string, texteAlternatif: string) =>
+    authed<MediaVue>(`/api/medias/${mediaId}/description`, j, {
+      method: 'PUT', body: JSON.stringify({ texteAlternatif }),
+    }),
+
+  supprimerMedia: (j: string | null, mediaId: string) =>
+    authed<void>(`/api/medias/${mediaId}`, j, { method: 'DELETE' }),
+
+  /**
+   * Résout des clés en URL de lecture.
+   *
+   * <p>En lot, et jamais mises en cache au-delà de leur durée de vie : la CLÉ
+   * est la référence stable, l'URL est signée et expire. Un écran qui
+   * stockerait ces URL afficherait des images mortes une demi-heure plus tard.
+   */
+  urlsMedias: (j: string | null, cles: string[]) =>
+    cles.length === 0
+      ? Promise.resolve({} as Record<string, string>)
+      : authed<Record<string, string>>('/api/medias/urls', j, {
+          method: 'POST', body: JSON.stringify({ cles }),
+        }),
+}
+
+/**
+ * Envoie les octets DIRECTEMENT au stockage, avec l'URL présignée.
+ *
+ * <p>Volontairement hors de `authed` : cette requête ne va pas à notre API et ne
+ * doit surtout pas porter le jeton Keycloak — l'envoyer à un hôte tiers (MinIO,
+ * S3) le divulguerait. Elle ne porte que les en-têtes que le serveur a signés.
+ *
+ * <p>C'est aussi pourquoi le fichier ne transite jamais par le backend : il
+ * n'aurait rien à en faire, et 15 Mo par affiche à travers un pod Java est
+ * exactement le genre de goulot qu'on ne remarque qu'en production.
+ */
+export async function deposerFichier(depot: DepotVue, fichier: File): Promise<void> {
+  if (fichier.size > depot.tailleMaxOctets) {
+    throw new ErreurApi(
+      413,
+      `Fichier trop volumineux : ${Math.round(fichier.size / 1024 / 1024)} Mo, `
+        + `maximum ${Math.round(depot.tailleMaxOctets / 1024 / 1024)} Mo.`,
+    )
+  }
+  const reponse = await fetch(depot.url, {
+    method: depot.methode,
+    headers: depot.enTetes,
+    body: fichier,
+  })
+  if (!reponse.ok) {
+    throw new ErreurApi(reponse.status, "Le dépôt du fichier a échoué.")
+  }
 }

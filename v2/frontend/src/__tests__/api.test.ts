@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiDashboard, ErreurApi } from '../api'
+import { apiDashboard, deposerFichier, ErreurApi, type DepotVue } from '../api'
 
 /**
  * Le client HTTP lui-même.
@@ -79,5 +79,67 @@ describe('client HTTP', () => {
 
     await expect(apiDashboard.theme(null, 'm1')).rejects.toThrowError(/Session expirée/)
     expect(appel).not.toHaveBeenCalled()
+  })
+
+  // ------------------------------------------- dépôt direct vers le stockage
+
+  const depot = (p: Partial<DepotVue> = {}): DepotVue => ({
+    mediaId: 'md1', cle: 'bde/2025-2026/a.jpg',
+    url: 'https://minio.exemple.org/media/bde/2025-2026/a.jpg?X-Amz-Signature=abc',
+    methode: 'PUT', enTetes: { 'Content-Type': 'image/jpeg' },
+    expireLe: '2026-10-03T20:10:00Z', tailleMaxOctets: 15 * 1024 * 1024,
+    ...p,
+  })
+
+  it('le dépôt va au STOCKAGE, et n’emporte JAMAIS le jeton Keycloak', async () => {
+    const appels = vi.fn().mockResolvedValue({ ok: true, status: 200 } as Response)
+    vi.stubGlobal('fetch', appels)
+
+    await deposerFichier(depot(), new File(['x'], 'a.jpg', { type: 'image/jpeg' }))
+
+    expect(appels).toHaveBeenCalledTimes(1)
+    const [url, init] = appels.mock.calls[0] as [string, RequestInit]
+
+    // L'octet part chez MinIO/S3, pas chez nous : le fichier n'a rien à faire
+    // à travers un pod Java, et 15 Mo par affiche le montreraient vite.
+    expect(url).toContain('minio.exemple.org')
+    expect(url).not.toContain('/api/')
+    expect(init.method).toBe('PUT')
+
+    // LE point : envoyer l'Authorization à un hôte tiers divulguerait le jeton
+    // Keycloak de l’utilisateur à ce tiers. Seuls les en-têtes que le serveur
+    // a SIGNÉS partent.
+    const entetes = (init.headers ?? {}) as Record<string, string>
+    expect(Object.keys(entetes).map((k) => k.toLowerCase())).not.toContain('authorization')
+    expect(entetes['Content-Type']).toBe('image/jpeg')
+  })
+
+  it('un fichier trop volumineux est refusé AVANT d’être envoyé', async () => {
+    const appels = vi.fn()
+    vi.stubGlobal('fetch', appels)
+
+    const gros = new File(['x'], 'gros.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(gros, 'size', { value: 20 * 1024 * 1024 })
+
+    await expect(deposerFichier(depot(), gros)).rejects.toBeInstanceOf(ErreurApi)
+    // Téléverser vingt méga-octets pour se faire répondre non au bout, c’est
+    // la connexion de quelqu’un qu’on dépense.
+    expect(appels).not.toHaveBeenCalled()
+  })
+
+  it('un refus du stockage devient une ErreurApi, pas un silence', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response))
+
+    await expect(deposerFichier(depot(), new File(['x'], 'a.jpg', { type: 'image/jpeg' })))
+      .rejects.toBeInstanceOf(ErreurApi)
+  })
+
+  it('résoudre zéro clé ne fait aucune requête', async () => {
+    const appels = vi.fn()
+    vi.stubGlobal('fetch', appels)
+
+    await expect(apiDashboard.urlsMedias('jeton', [])).resolves.toEqual({})
+    // Une galerie vide ne doit pas réveiller le serveur.
+    expect(appels).not.toHaveBeenCalled()
   })
 })

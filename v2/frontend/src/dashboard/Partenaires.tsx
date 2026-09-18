@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   apiDashboard,
@@ -8,6 +8,7 @@ import {
 } from '../api'
 import { useAuth } from '../auth/AuthContext'
 import { FilMandat, NavMandat } from './NavMandat'
+import { SelecteurMedia } from './SelecteurMedia'
 
 const NIVEAUX: { valeur: PartenaireDashboard['niveau']; libelle: string }[] = [
   { valeur: 'OR', libelle: 'Or — partenaire principal' },
@@ -22,27 +23,29 @@ type Brouillon = {
   url: string
   ordre: string
   visible: boolean
+  /** Le logo, choisi dans la médiathèque. Rendu par le portail public. */
+  logoMediaKey: string | null
 }
 
-const VIDE: Brouillon = { nom: '', niveau: 'SOUTIEN', url: '', ordre: '0', visible: true }
+const VIDE: Brouillon = {
+  nom: '', niveau: 'SOUTIEN', url: '', ordre: '0', visible: true, logoMediaKey: null,
+}
 
 /**
- * @param source le partenaire en cours de modification, s'il y en a un.
- *
- * <p>`logoMediaKey` n'a pas de champ de saisie et partait à `null`. Or
+ * <p>`logoMediaKey` n'avait pas de champ de saisie et partait à `null`. Or
  * ServicePartenariat.modifier REMPLACE tout — `decrire(nom, niveau,
  * logoMediaKey, url, ordre, visible)` — et le portail public affiche ce logo :
  * corriger le niveau d'un partenaire effaçait son logo du site, en silence.
  *
- * <p>On le renvoie tel qu'il est revenu du serveur.
+ * <p>Il se choisit maintenant dans la médiathèque, et suit le brouillon.
  */
-function versRedaction(b: Brouillon, source: PartenaireDashboard | null): RedactionPartenaire | null {
+function versRedaction(b: Brouillon): RedactionPartenaire | null {
   if (!b.nom.trim()) return null
   const ordre = Number.parseInt(b.ordre, 10)
   return {
     nom: b.nom.trim(),
     niveau: b.niveau,
-    logoMediaKey: source?.logoMediaKey ?? null,
+    logoMediaKey: b.logoMediaKey,
     url: b.url.trim() || null,
     ordre: Number.isFinite(ordre) ? ordre : 0,
     visible: b.visible,
@@ -68,6 +71,32 @@ export default function Partenaires() {
   const [edite, setEdite] = useState<PartenaireDashboard | null>(null)
   const [enCours, setEnCours] = useState(false)
 
+  // La médiathèque est rangée par association et par année ; l'écran ne
+  // connaît que le mandat. Les postes de l'utilisateur portent déjà les deux.
+  //
+  // `jeton` passe par une référence et NON par les dépendances : useAuth rend
+  // une fonction dont l'identité peut changer à chaque rendu, et cet effet
+  // écrit un objet NEUF dans l'état — il se rappellerait donc lui-même sans
+  // fin. C'est la même précaution que dans Editeur.tsx et AuthContext.tsx, et
+  // elle n'est pas théorique : la première version de cet effet a fait tourner
+  // la suite de tests jusqu'au délai d'expiration.
+  const [contexteMedia, setContexteMedia] =
+    useState<{ associationId: string; anneeCode: string } | null>(null)
+  const refJetonMedia = useRef(jeton)
+  refJetonMedia.current = jeton
+
+  useEffect(() => {
+    let vivant = true
+    apiDashboard
+      .mesPostes(refJetonMedia.current())
+      .then((postes) => {
+        const p = postes.find((x) => x.mandatId === mandatId)
+        if (vivant && p) setContexteMedia({ associationId: p.associationId, anneeCode: p.anneeCode })
+      })
+      .catch(() => { /* la médiathèque restera vide : ce n'est pas bloquant ici */ })
+    return () => { vivant = false }
+  }, [mandatId])
+
   const charger = useCallback(() => {
     apiDashboard
       .partenaires(jeton(), mandatId)
@@ -83,6 +112,7 @@ export default function Partenaires() {
     setBrouillon({
       nom: p.nom, niveau: p.niveau, url: p.url ?? '',
       ordre: String(p.ordre), visible: p.visible,
+      logoMediaKey: p.logoMediaKey,
     })
   }
 
@@ -107,7 +137,7 @@ export default function Partenaires() {
 
   async function soumettre(e: React.FormEvent) {
     e.preventDefault()
-    const corps = versRedaction(brouillon, edite)
+    const corps = versRedaction(brouillon)
     if (!corps) {
       setErreur('Le nom du partenaire est obligatoire.')
       return
@@ -194,6 +224,15 @@ export default function Partenaires() {
                    onChange={(e) => setBrouillon({ ...brouillon, ordre: e.target.value })} />
           </div>
         </div>
+
+        <SelecteurMedia
+          id="pa-logo"
+          libelle="Logo"
+          associationId={contexteMedia?.associationId ?? null}
+          anneeCode={contexteMedia?.anneeCode ?? null}
+          valeur={brouillon.logoMediaKey}
+          onChange={(cle) => setBrouillon({ ...brouillon, logoMediaKey: cle })}
+        />
 
         <label htmlFor="pa-url">Site (http/https)</label>
         <input id="pa-url" type="url" maxLength={512} value={brouillon.url} placeholder="https://…"

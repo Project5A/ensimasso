@@ -324,23 +324,20 @@ produit, et que la liste de cases ci-dessous le rendait invisible : elle met
 sur la même ligne « Module `adhesion` », qui désigne du code serveur, et
 « Tableau de bord », qui désigne un écran.
 
-Quatre modules sont écrits, autorisés, testés — et **aucun écran ne les
-appelle**. Vingt-cinq routes qu'aucun humain ne peut atteindre autrement
+Trois modules sont écrits, autorisés, testés — et **aucun écran ne les
+appelle**. Dix-neuf routes qu'aucun humain ne peut atteindre autrement
 qu'avec `curl` :
 
 | Module | Routes | Ce qui manque |
 |---|---|---|
-| `/api/medias` | 6 | un écran de médiathèque : dépôt, liste, texte alternatif, retrait |
 | `/api/adhesions` | 8 | l'écran de campagne côté bureau, et l'adhésion côté étudiant |
 | `/api/tresorerie` | 6 | la page de paiement, le suivi de commande, le journal |
 | `/api/passations` | 5 | l'écran de passation : désigner le bureau entrant, activer |
 
-La conséquence ne se limite pas à ces modules. Faute d'écran de médiathèque,
-`evenement.mediaKey` et `partenaire.logoMediaKey` — tous deux **rendus par le
-portail public** — ne peuvent être renseignés que par un INSERT à la main ;
-`media_asset.texte_alternatif` n'est jamais écrit, donc les images de la
-galerie sortent sans texte alternatif. Ce sont des chaînes complètes auxquelles
-il ne manque que le premier maillon.
+Ils étaient quatre. `/api/medias` en est sorti : la médiathèque a son écran —
+dépôt présigné, liste, texte alternatif, retrait — et avec elle
+`evenement.mediaKey` et `partenaire.logoMediaKey`, tous deux **rendus par le
+portail public**, se choisissent enfin autrement que par un INSERT à la main.
 
 `ContratApiTest.modulesSansEcran` fige cette liste et vérifie qu'elle est
 exacte dans les deux sens : le jour où l'un de ces écrans est écrit, le test

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   apiDashboard,
@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../auth/AuthContext'
 import { champVersIso, isoVersChamp } from './dates'
 import { FilMandat, NavMandat } from './NavMandat'
+import { SelecteurMedia } from './SelecteurMedia'
 
 const LIBELLE_STATUT: Record<string, string> = {
   BROUILLON: 'Brouillon',
@@ -24,22 +25,26 @@ type Brouillon = {
   resume: string
   lien: string
   complet: boolean
+  /** L'affiche, choisie dans la médiathèque. Rendue par le portail public. */
+  mediaKey: string | null
 }
 
-const VIDE: Brouillon = { titre: '', lieu: '', debut: '', fin: '', resume: '', lien: '', complet: false }
+const VIDE: Brouillon = {
+  titre: '', lieu: '', debut: '', fin: '', resume: '', lien: '', complet: false,
+  mediaKey: null,
+}
 
 /**
  * @param source l'évènement en cours de modification, s'il y en a un.
  *
- * <p>Deux champs de la rédaction n'ont pas de champ de saisie : `description`
- * et `mediaKey`. Ils partaient à `null` — et le service REMPLACE tout, sans
- * fusionner : `appliquer()` appelle `decrire(...)` avec les neuf champs. Ouvrir
- * un évènement et cliquer sur « Enregistrer » effaçait donc son affiche et sa
- * description, en silence, sans que rien à l'écran n'annonce cette perte. Et
- * l'affiche est rendue par le portail public : elle disparaissait du site.
+ * <p>`mediaKey` se choisit désormais dans la médiathèque. `description`, lui,
+ * n'a toujours pas de champ de saisie — et c'est délibéré : rien ne l'affiche,
+ * ni le portail ni aucune route de détail. On le renvoie donc tel qu'il est
+ * revenu du serveur.
  *
- * <p>On les renvoie tels qu'ils sont revenus du serveur. Ne pas savoir éditer
- * un champ n'est pas une raison de le détruire.
+ * <p>Les deux partaient à `null` en dur, et les services REMPLACENT tout :
+ * ouvrir un évènement pour corriger son lieu effaçait son affiche et sa
+ * description, en silence, et l'affiche disparaissait du site public.
  */
 function versRedaction(b: Brouillon, source: EvenementDashboard | null): RedactionEvenement | null {
   const debutLe = champVersIso(b.debut)
@@ -51,7 +56,7 @@ function versRedaction(b: Brouillon, source: EvenementDashboard | null): Redacti
     lieu: b.lieu.trim() || null,
     debutLe,
     finLe: champVersIso(b.fin),
-    mediaKey: source?.mediaKey ?? null,
+    mediaKey: b.mediaKey,
     lien: b.lien.trim() || null,
     complet: b.complet,
   }
@@ -86,6 +91,32 @@ export default function Agenda() {
   const [annulation, setAnnulation] = useState<{ id: string; motif: string } | null>(null)
   const [enCours, setEnCours] = useState(false)
 
+  // La médiathèque est rangée par association et par année ; l'écran ne
+  // connaît que le mandat. Les postes de l'utilisateur portent déjà les deux.
+  //
+  // `jeton` passe par une référence et NON par les dépendances : useAuth rend
+  // une fonction dont l'identité peut changer à chaque rendu, et cet effet
+  // écrit un objet NEUF dans l'état — il se rappellerait donc lui-même sans
+  // fin. C'est la même précaution que dans Editeur.tsx et AuthContext.tsx, et
+  // elle n'est pas théorique : la première version de cet effet a fait tourner
+  // la suite de tests jusqu'au délai d'expiration.
+  const [contexteMedia, setContexteMedia] =
+    useState<{ associationId: string; anneeCode: string } | null>(null)
+  const refJetonMedia = useRef(jeton)
+  refJetonMedia.current = jeton
+
+  useEffect(() => {
+    let vivant = true
+    apiDashboard
+      .mesPostes(refJetonMedia.current())
+      .then((postes) => {
+        const p = postes.find((x) => x.mandatId === mandatId)
+        if (vivant && p) setContexteMedia({ associationId: p.associationId, anneeCode: p.anneeCode })
+      })
+      .catch(() => { /* la médiathèque restera vide : ce n'est pas bloquant ici */ })
+    return () => { vivant = false }
+  }, [mandatId])
+
   const charger = useCallback(() => {
     apiDashboard
       .evenements(jeton(), mandatId)
@@ -106,6 +137,7 @@ export default function Agenda() {
       resume: ev.resume ?? '',
       lien: ev.lien ?? '',
       complet: ev.complet,
+      mediaKey: ev.mediaKey,
     })
   }
 
@@ -287,6 +319,15 @@ export default function Agenda() {
         <label htmlFor="ev-resume">Résumé</label>
         <textarea id="ev-resume" rows={2} maxLength={400} value={brouillon.resume}
                   onChange={(e) => setBrouillon({ ...brouillon, resume: e.target.value })} />
+
+        <SelecteurMedia
+          id="ev-media"
+          libelle="Affiche"
+          associationId={contexteMedia?.associationId ?? null}
+          anneeCode={contexteMedia?.anneeCode ?? null}
+          valeur={brouillon.mediaKey}
+          onChange={(cle) => setBrouillon({ ...brouillon, mediaKey: cle })}
+        />
 
         <label htmlFor="ev-lien">Billetterie (http/https)</label>
         <input id="ev-lien" type="url" maxLength={512} value={brouillon.lien}

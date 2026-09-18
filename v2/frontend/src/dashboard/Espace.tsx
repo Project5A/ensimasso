@@ -4,6 +4,7 @@ import { Protege } from '../auth/Protege'
 import Agenda from './Agenda'
 import Apercu from './Apercu'
 import Editeur from './Editeur'
+import Mediatheque from './Mediatheque'
 import Partenaires from './Partenaires'
 import Theme from './Theme'
 import Pages from './Pages'
@@ -28,6 +29,7 @@ export default function Espace() {
         <Route path="mandats/:mandatId" element={<Protege><Pages /></Protege>} />
         <Route path="mandats/:mandatId/agenda" element={<Protege><Agenda /></Protege>} />
         <Route path="mandats/:mandatId/partenaires" element={<Protege><Partenaires /></Protege>} />
+        <Route path="mandats/:mandatId/medias" element={<Protege><Mediatheque /></Protege>} />
         <Route path="mandats/:mandatId/theme" element={<Protege><Theme /></Protege>} />
         <Route path="pages/:pageId" element={<Protege><Editeur /></Protege>} />
         <Route path="apercu/:versionId" element={<Protege><Apercu /></Protege>} />

@@ -5,6 +5,12 @@ import type { EvenementDashboard } from '../../api'
 
 const apiDashboard = {
   evenements: vi.fn(),
+  // L'écran lit le contexte (association, année) de la médiathèque depuis les
+  // postes de l'utilisateur : sans ce double, le sélecteur d'image ne peut pas
+  // se monter.
+  mesPostes: vi.fn(),
+  medias: vi.fn(),
+  urlsMedias: vi.fn(),
   creerEvenement: vi.fn(),
   modifierEvenement: vi.fn(),
   publierEvenement: vi.fn(),
@@ -42,7 +48,15 @@ function monter() {
 }
 
 describe('Agenda du tableau de bord', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    apiDashboard.mesPostes.mockResolvedValue([
+      { associationId: 'a1', mandatId: 'm1', anneeCode: '2025-2026',
+        poste: 'PRESIDENT', statutMandat: 'EN_FONCTION' },
+    ])
+    apiDashboard.medias.mockResolvedValue([])
+    apiDashboard.urlsMedias.mockResolvedValue({})
+  })
   afterEach(cleanup)
 
   it('les actions suivent le cycle de vie : un brouillon se publie et se supprime', async () => {
