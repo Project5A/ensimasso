@@ -123,6 +123,8 @@ export type PosteVue = {
   mandatId: string
   anneeCode: string
   poste: string
+  /** PREPARATION | EN_FONCTION. Un mandat CLOS n'est jamais rendu ici. */
+  statutMandat: string
 }
 
 export type PageVue = { id: string; mandatId: string; slug: string; titre: string; ordreMenu: number }

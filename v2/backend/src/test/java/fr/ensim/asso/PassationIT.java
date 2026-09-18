@@ -1,6 +1,8 @@
 package fr.ensim.asso;
 
 import fr.ensim.asso.gouvernance.domain.Passation;
+import fr.ensim.asso.gouvernance.domain.MembreBureau;
+import fr.ensim.asso.gouvernance.domain.MembreBureauRepository;
 import fr.ensim.asso.gouvernance.domain.Poste;
 import fr.ensim.asso.passation.ServicePassation;
 import fr.ensim.asso.shared.error.Erreurs;
@@ -30,6 +32,12 @@ class PassationIT extends BaseIT {
 
     @Autowired
     private ServicePassation passations;
+
+    @Autowired
+    private MembreBureauRepository membres;
+
+    @Autowired
+    private fr.ensim.asso.gouvernance.app.PolitiqueAcces politique;
 
     private UUID asso;
     private UUID president;
@@ -140,5 +148,59 @@ class PassationIT extends BaseIT {
                     entrantPresident, p.getId(), UUID.randomUUID(), Poste.SECRETAIRE, 2))
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("ACTIVEE");
+    }
+
+    @Test
+    @DisplayName("le bureau ENTRANT voit son mandat : c'est le seul chemin qui y mène")
+    void leBureauEntrantAUneEntree() {
+        Passation p = preparer();
+        UUID entrantPresident = UUID.randomUUID();
+        passations.designer(president, p.getId(), entrantPresident, Poste.PRESIDENT, 0);
+
+        // postesActifsDe est la SEULE requête dont le tableau de bord se sert
+        // pour savoir où l'utilisateur peut aller. Elle filtrait EN_FONCTION :
+        // le président tout juste désigné lisait « Aucun mandat en cours », et
+        // en dessous qu'il devait se faire désigner — ce qui venait d'être fait.
+        assertThat(membres.postesActifsDe(entrantPresident))
+                .as("désigné dans la passation, il doit pouvoir préparer son site")
+                .extracting(MembreBureau::getMandatId)
+                .containsExactly(p.getMandatEntrantId());
+    }
+
+    @Test
+    @DisplayName("l'autorisation et la navigation répondent la même chose sur le mandat entrant")
+    void navigationEtAutorisationDAccord() {
+        Passation p = preparer();
+        UUID entrantPresident = UUID.randomUUID();
+        passations.designer(president, p.getId(), entrantPresident, Poste.PRESIDENT, 0);
+
+        // PolitiqueAcces autorise l'écriture sur un mandat en PRÉPARATION — son
+        // commentaire le dit en toutes lettres. La liste, elle, l'ignorait :
+        // deux règles qui répondent à la même question, et qui divergeaient.
+        assertThat(politique.peutSurMandat(entrantPresident,
+                        fr.ensim.asso.gouvernance.domain.Permission.PAGE_EDITER,
+                        p.getMandatEntrantId()))
+                .isTrue();
+        assertThat(membres.postesActifsDe(entrantPresident)).isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("un mandat CLOS ne figure plus dans la liste : on n'y écrit plus")
+    void mandatClosAbsentDeLaListe() {
+        Passation p = preparer();
+        UUID entrantPresident = UUID.randomUUID();
+        passations.designer(president, p.getId(), entrantPresident, Poste.PRESIDENT, 0);
+        passations.designer(president, p.getId(), UUID.randomUUID(), Poste.TRESORIER, 1);
+        passations.marquerBureauComplete(entrantPresident, p.getId());
+        passations.activer(president, p.getId(), OffsetDateTime.parse("2026-09-15T18:00:00Z"));
+
+        // L'activation clôt le mandat sortant. Son président n'a plus rien à y
+        // écrire — le proposer serait un lien vers un refus.
+        assertThat(membres.postesActifsDe(president))
+                .as("le mandat sortant est CLOS après la passation")
+                .isEmpty();
+        assertThat(membres.postesActifsDe(entrantPresident))
+                .extracting(MembreBureau::getMandatId)
+                .containsExactly(p.getMandatEntrantId());
     }
 }

@@ -246,6 +246,13 @@ h2 { font-size: clamp(1.25rem, 2.5vw, 1.55rem); letter-spacing: -0.01em; margin:
 .mandats a:hover, .liste-pages a:hover { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .mandats__annee { font-weight: 600; font-variant-numeric: tabular-nums; }
 .mandats__poste, .liste-pages code { font-size: 0.85rem; color: var(--muted); }
+/* Le mandat entrant se distingue du mandat en fonction : les deux apparaissent
+   désormais dans la même liste, et les confondre serait publier au mauvais
+   endroit. */
+.mandats__statut { font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+  padding: 0.15rem 0.55rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--accent); }
 
 .formulaire-ligne { margin-top: 2rem; }
 .formulaire-ligne label { display: block; font-weight: 600; margin-bottom: 0.4rem; }

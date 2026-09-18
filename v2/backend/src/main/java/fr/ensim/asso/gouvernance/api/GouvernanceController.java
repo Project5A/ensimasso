@@ -82,8 +82,12 @@ public class GouvernanceController {
         return membres.postesActifsDe(moi).stream()
                 .map(m -> {
                     Mandat mandat = mandats.findById(m.getMandatId()).orElseThrow();
+                    // Le statut fait partie de la réponse : sans lui, le
+                    // bureau entrant et le bureau en fonction s'affichent à
+                    // l'identique, et on ne sait plus lequel est déjà public.
                     return new PosteVue(mandat.getAssociationId(), mandat.getId(),
-                            mandat.getAnneeCode(), m.getPoste().name());
+                            mandat.getAnneeCode(), m.getPoste().name(),
+                            mandat.getStatut().name());
                 })
                 .toList();
     }
@@ -119,5 +123,6 @@ public class GouvernanceController {
         }
     }
 
-    public record PosteVue(UUID associationId, UUID mandatId, String anneeCode, String poste) { }
+    public record PosteVue(UUID associationId, UUID mandatId, String anneeCode,
+                           String poste, String statutMandat) { }
 }

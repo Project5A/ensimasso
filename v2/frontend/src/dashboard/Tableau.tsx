@@ -17,6 +17,13 @@ const LIBELLE_POSTE: Record<string, string> = {
  * porterait « président du BDE 2025-2026, trésorier du Gala 2025-2026 » serait
  * volumineux, périmé dès qu'un rôle change, et impossible à révoquer en cours
  * de session.
+ *
+ * <p>Le bureau ENTRANT y figure aussi. Il n'y figurait pas : la requête ne
+ * rendait que les mandats EN_FONCTION, et cet écran est le seul chemin vers un
+ * mandat. Un bureau tout juste désigné lisait donc « Aucun mandat en cours » —
+ * et, en dessous, qu'il devait se faire désigner. Toute la préparation d'un
+ * bureau entrant, qui est précisément l'objet du statut PRÉPARATION, n'était
+ * atteignable qu'en tapant un UUID à la main.
  */
 export default function Tableau() {
   const { jeton, deconnecter, utilisateur } = useAuth()
@@ -53,11 +60,11 @@ export default function Tableau() {
 
       {postes?.length === 0 && (
         <div className="vide-etat">
-          <h2>Aucun mandat en cours</h2>
+          <h2>Aucun mandat</h2>
           <p>
-            Vous n'occupez de poste dans aucun bureau actuellement en fonction.
-            Si vous venez d'être élu·e, le président sortant doit vous désigner
-            dans la passation.
+            Vous n'occupez de poste dans aucun bureau, ni en fonction ni en
+            préparation. Si vous venez d'être élu·e, le président sortant doit
+            vous désigner dans la passation.
           </p>
         </div>
       )}
@@ -69,6 +76,12 @@ export default function Tableau() {
               <Link to={`/tableau/mandats/${p.mandatId}`}>
                 <span className="mandats__annee">{p.anneeCode}</span>
                 <span className="mandats__poste">{LIBELLE_POSTE[p.poste] ?? p.poste}</span>
+                {/* Sans cette mention, le mandat entrant et le mandat en
+                    fonction s'affichent à l'identique : on ne sait plus
+                    lequel des deux est déjà en ligne. */}
+                {p.statutMandat === 'PREPARATION' && (
+                  <span className="mandats__statut">Bureau entrant — en préparation</span>
+                )}
               </Link>
             </li>
           ))}
