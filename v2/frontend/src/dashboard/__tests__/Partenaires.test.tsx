@@ -90,4 +90,43 @@ describe('Partenaires du tableau de bord', () => {
     expect(screen.getByLabelText('Niveau')).toHaveProperty('value', 'OR')
     expect(screen.getByLabelText(/Site/)).toHaveProperty('value', 'https://exemple.fr')
   })
+
+  it("modifier un partenaire n'efface pas son logo", async () => {
+    apiDashboard.partenaires.mockResolvedValue([pa({ logoMediaKey: 'bde/2025-2026/logo.png' })])
+    apiDashboard.modifierPartenaire.mockResolvedValue(pa())
+    monter()
+
+    const u = userEvent.setup()
+    await u.click(await screen.findByRole('button', { name: 'Modifier' }))
+    await u.click(screen.getByRole('button', { name: /enregistrer/i }))
+
+    // `logoMediaKey` n'a pas de champ de saisie et partait à null, alors que
+    // le service remplace tout et que le portail public affiche ce logo :
+    // corriger le niveau d'un partenaire le faisait disparaître du site.
+    await waitFor(() =>
+      expect(apiDashboard.modifierPartenaire).toHaveBeenCalledWith(
+        expect.anything(),
+        'p1',
+        expect.objectContaining({ logoMediaKey: 'bde/2025-2026/logo.png' }),
+      ),
+    )
+  })
+
+  it("retirer le partenaire en cours d'édition referme le formulaire", async () => {
+    apiDashboard.partenaires.mockResolvedValue([pa()])
+    apiDashboard.supprimerPartenaire.mockResolvedValue(undefined)
+    monter()
+    const u = userEvent.setup()
+
+    await u.click(await screen.findByRole('button', { name: 'Modifier' }))
+    expect(screen.getByRole('button', { name: /abandonner/i })).toBeTruthy()
+
+    apiDashboard.partenaires.mockResolvedValue([])
+    await u.click(screen.getByRole('button', { name: 'Retirer' }))
+
+    // Le formulaire restait ouvert sur un identifiant mort : « Enregistrer »
+    // visait un partenaire qui n'existait plus.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /abandonner/i })).toBeNull())
+  })
 })

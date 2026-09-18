@@ -137,4 +137,52 @@ describe('Agenda du tableau de bord', () => {
     monter()
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'permission refusée')
   })
+
+  it("modifier un évènement n'efface pas son affiche ni sa description", async () => {
+    apiDashboard.evenements.mockResolvedValue([
+      ev({ mediaKey: 'bde/2025-2026/affiche.jpg', description: 'Le mot du président.' }),
+    ])
+    apiDashboard.modifierEvenement.mockResolvedValue(ev())
+    monter()
+    const { userEvent } = await import('@testing-library/user-event')
+    const u = userEvent.setup()
+
+    await u.click(await screen.findByRole('button', { name: 'Modifier' }))
+    await u.click(screen.getByRole('button', { name: /enregistrer/i }))
+
+    // Les deux champs n'ont pas de saisie à l'écran et partaient à null. Le
+    // service REMPLACE tout — decrire(...) prend les neuf champs — donc ouvrir
+    // un évènement et enregistrer effaçait son affiche, que le portail public
+    // affiche, et sa description. En silence.
+    await waitFor(() =>
+      expect(apiDashboard.modifierEvenement).toHaveBeenCalledWith(
+        expect.anything(),
+        'e1',
+        expect.objectContaining({
+          mediaKey: 'bde/2025-2026/affiche.jpg',
+          description: 'Le mot du président.',
+        }),
+      ),
+    )
+  })
+
+  it("supprimer l'évènement en cours d'édition referme le formulaire", async () => {
+    apiDashboard.evenements.mockResolvedValue([ev()])
+    apiDashboard.supprimerEvenement.mockResolvedValue(undefined)
+    monter()
+    const { userEvent } = await import('@testing-library/user-event')
+    const u = userEvent.setup()
+
+    await u.click(await screen.findByRole('button', { name: 'Modifier' }))
+    expect(screen.getByRole('button', { name: /abandonner/i })).toBeTruthy()
+
+    apiDashboard.evenements.mockResolvedValue([])
+    await u.click(screen.getByRole('button', { name: 'Supprimer' }))
+
+    // Le formulaire restait ouvert sur un identifiant mort : « Enregistrer »
+    // revenait en « évènement introuvable », sur une saisie encore à l'écran.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /abandonner/i })).toBeNull())
+    expect((screen.getByLabelText(/titre/i) as HTMLInputElement).value).toBe('')
+  })
 })

@@ -28,17 +28,30 @@ type Brouillon = {
 
 const VIDE: Brouillon = { titre: '', lieu: '', debut: '', fin: '', resume: '', lien: '', complet: false }
 
-function versRedaction(b: Brouillon): RedactionEvenement | null {
+/**
+ * @param source l'évènement en cours de modification, s'il y en a un.
+ *
+ * <p>Deux champs de la rédaction n'ont pas de champ de saisie : `description`
+ * et `mediaKey`. Ils partaient à `null` — et le service REMPLACE tout, sans
+ * fusionner : `appliquer()` appelle `decrire(...)` avec les neuf champs. Ouvrir
+ * un évènement et cliquer sur « Enregistrer » effaçait donc son affiche et sa
+ * description, en silence, sans que rien à l'écran n'annonce cette perte. Et
+ * l'affiche est rendue par le portail public : elle disparaissait du site.
+ *
+ * <p>On les renvoie tels qu'ils sont revenus du serveur. Ne pas savoir éditer
+ * un champ n'est pas une raison de le détruire.
+ */
+function versRedaction(b: Brouillon, source: EvenementDashboard | null): RedactionEvenement | null {
   const debutLe = champVersIso(b.debut)
   if (!b.titre.trim() || !debutLe) return null
   return {
     titre: b.titre.trim(),
     resume: b.resume.trim() || null,
-    description: null,
+    description: source?.description ?? null,
     lieu: b.lieu.trim() || null,
     debutLe,
     finLe: champVersIso(b.fin),
-    mediaKey: null,
+    mediaKey: source?.mediaKey ?? null,
     lien: b.lien.trim() || null,
     complet: b.complet,
   }
@@ -117,7 +130,7 @@ export default function Agenda() {
 
   async function soumettre(e: React.FormEvent) {
     e.preventDefault()
-    const corps = versRedaction(brouillon)
+    const corps = versRedaction(brouillon, edite)
     if (!corps) {
       setErreur('Un titre et une date de début sont nécessaires.')
       return
@@ -229,7 +242,15 @@ export default function Agenda() {
                     annoncé s'annule, il ne s'efface pas. */}
                 {ev.statut === 'BROUILLON' && (
                   <button className="lien lien-danger" type="button" disabled={enCours}
-                          onClick={() => void agir(() => apiDashboard.supprimerEvenement(jeton(), ev.id))}>
+                          onClick={() => void agir(async () => {
+                            await apiDashboard.supprimerEvenement(jeton(), ev.id)
+                            // Le formulaire restait ouvert sur l'évènement
+                            // qu'on venait d'effacer : « Enregistrer » partait
+                            // alors vers un identifiant mort et revenait en
+                            // « évènement introuvable », sur une saisie que
+                            // l'écran affichait toujours.
+                            if (edite?.id === ev.id) annulerEdition()
+                          })}>
                     Supprimer
                   </button>
                 )}

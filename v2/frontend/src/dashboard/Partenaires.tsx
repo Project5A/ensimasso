@@ -26,13 +26,23 @@ type Brouillon = {
 
 const VIDE: Brouillon = { nom: '', niveau: 'SOUTIEN', url: '', ordre: '0', visible: true }
 
-function versRedaction(b: Brouillon): RedactionPartenaire | null {
+/**
+ * @param source le partenaire en cours de modification, s'il y en a un.
+ *
+ * <p>`logoMediaKey` n'a pas de champ de saisie et partait à `null`. Or
+ * ServicePartenariat.modifier REMPLACE tout — `decrire(nom, niveau,
+ * logoMediaKey, url, ordre, visible)` — et le portail public affiche ce logo :
+ * corriger le niveau d'un partenaire effaçait son logo du site, en silence.
+ *
+ * <p>On le renvoie tel qu'il est revenu du serveur.
+ */
+function versRedaction(b: Brouillon, source: PartenaireDashboard | null): RedactionPartenaire | null {
   if (!b.nom.trim()) return null
   const ordre = Number.parseInt(b.ordre, 10)
   return {
     nom: b.nom.trim(),
     niveau: b.niveau,
-    logoMediaKey: null,
+    logoMediaKey: source?.logoMediaKey ?? null,
     url: b.url.trim() || null,
     ordre: Number.isFinite(ordre) ? ordre : 0,
     visible: b.visible,
@@ -97,7 +107,7 @@ export default function Partenaires() {
 
   async function soumettre(e: React.FormEvent) {
     e.preventDefault()
-    const corps = versRedaction(brouillon)
+    const corps = versRedaction(brouillon, edite)
     if (!corps) {
       setErreur('Le nom du partenaire est obligatoire.')
       return
@@ -146,7 +156,13 @@ export default function Partenaires() {
               <div className="evenement-ligne__actions">
                 <button className="lien" type="button" onClick={() => editer(p)}>Modifier</button>
                 <button className="lien lien-danger" type="button" disabled={enCours}
-                        onClick={() => void agir(() => apiDashboard.supprimerPartenaire(jeton(), p.id))}>
+                        onClick={() => void agir(async () => {
+                          await apiDashboard.supprimerPartenaire(jeton(), p.id)
+                          // Même piège que dans l'agenda : le formulaire
+                          // restait ouvert sur le partenaire retiré, et
+                          // « Enregistrer » visait un identifiant mort.
+                          if (edite?.id === p.id) abandonner()
+                        })}>
                   Retirer
                 </button>
               </div>
