@@ -156,6 +156,26 @@ public class ServicePassation {
         return p;
     }
 
+    /**
+     * Les passations d'une association, la plus récente d'abord.
+     *
+     * <p>Aucune lecture n'existait : quatre routes faisaient AVANCER une
+     * passation et aucune ne permettait d'en connaître l'état. Le dépôt portait
+     * pourtant déjà le finder — {@code findByAssociationIdOrderByPrepareeLeDesc},
+     * écrit et jamais appelé. Un écran ne peut pas proposer « désigner » ou
+     * « activer » sans savoir où en est la passation ; c'est ce qui manquait
+     * pour qu'elle soit autre chose qu'une suite d'appels curl.
+     *
+     * <p>Lecture réservée au bureau en fonction : la composition d'un bureau
+     * ENTRANT avant son annonce en assemblée générale n'est pas publique, et
+     * cette liste y mène.
+     */
+    @Transactional(readOnly = true)
+    public List<Passation> passationsDe(UUID demandeur, UUID associationId) {
+        politique.exiger(demandeur, Permission.PASSATION_LANCER, associationId);
+        return passations.findByAssociationIdOrderByPrepareeLeDesc(associationId);
+    }
+
     /** Tant qu'elle n'est pas activée, une passation ratée est annulable. */
     @Transactional
     public void annuler(UUID demandeur, UUID passationId) {

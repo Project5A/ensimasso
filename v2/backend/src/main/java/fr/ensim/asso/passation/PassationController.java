@@ -32,6 +32,19 @@ public class PassationController {
         return Vue.de(p);
     }
 
+    /**
+     * L'état des passations d'une association.
+     *
+     * <p>Les quatre routes de ce contrôleur faisaient toutes AVANCER une
+     * passation ; aucune ne disait où elle en était. Un écran ne peut rien
+     * proposer sans cela.
+     */
+    @GetMapping
+    public java.util.List<Vue> lister(@RequestParam UUID associationId) {
+        return service.passationsDe(Utilisateur.idCourantObligatoire(), associationId)
+                .stream().map(Vue::de).toList();
+    }
+
     @PostMapping("/{id}/membres")
     @ResponseStatus(HttpStatus.CREATED)
     public void designer(@PathVariable UUID id, @Valid @RequestBody Designer corps) {

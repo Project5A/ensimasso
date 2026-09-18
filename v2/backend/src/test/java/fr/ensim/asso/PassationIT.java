@@ -203,4 +203,32 @@ class PassationIT extends BaseIT {
                 .extracting(MembreBureau::getMandatId)
                 .containsExactly(p.getMandatEntrantId());
     }
+
+    @Test
+    @DisplayName("les passations d'une association se LISENT : les quatre routes ne faisaient qu'avancer")
+    void lectureDesPassations() {
+        assertThat(passations.passationsDe(president, asso))
+                .as("aucune passation au départ")
+                .isEmpty();
+
+        Passation p = preparer();
+
+        // Sans cette lecture, aucun écran ne peut savoir où en est une
+        // passation — donc ni proposer « désigner », ni proposer « activer ».
+        // Le dépôt portait pourtant déjà le finder, écrit et jamais appelé.
+        assertThat(passations.passationsDe(president, asso))
+                .extracting(Passation::getId)
+                .containsExactly(p.getId());
+    }
+
+    @Test
+    @DisplayName("la lecture est réservée : elle mène au bureau entrant avant son annonce")
+    void lectureReservee() {
+        preparer();
+
+        // La composition d'un bureau ENTRANT avant l'assemblée générale n'est
+        // pas publique, et cette liste y mène par mandatEntrantId.
+        assertThatThrownBy(() -> passations.passationsDe(UUID.randomUUID(), asso))
+                .isInstanceOf(Erreurs.AccesRefuse.class);
+    }
 }

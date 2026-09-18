@@ -84,9 +84,9 @@ class ContratApiTest {
      *
      * <p>Le test précédent ne regarde que dans un sens : « le front appelle-t-il
      * une route fantôme ? ». L'autre sens ne se voyait nulle part, et il est
-     * plus lourd de conséquences ici : des modules entiers — adhésions,
-     * passations, trésorerie — sont écrits, autorisés, testés, et atteignables
-     * par personne d'autre que curl. Dix-neuf routes.
+     * plus lourd de conséquences ici : deux modules entiers — adhésions et
+     * trésorerie — sont écrits, autorisés, testés, et atteignables par
+     * personne d'autre que curl. Quatorze routes.
      *
      * <p>Ce n'est pas un bogue à corriger dans ce test, c'est un état du projet
      * qu'il faut garder DIT. Le README coche « Module adhesion » et « Module
@@ -94,15 +94,16 @@ class ContratApiTest {
      * met sur la même ligne un module qui existe et une fonctionnalité qu'un
      * humain peut atteindre.
      *
-     * <p>La liste a déjà rétréci une fois : `/api/medias` en est sorti le jour
-     * où l'écran de médiathèque a été écrit, et c'est ce test qui l'a signalé.
+     * <p>La liste rétrécit : `/api/medias` puis `/api/passations` en sont
+     * sortis le jour où leurs écrans ont été écrits, et c'est ce test qui l'a
+     * signalé les deux fois.
      *
      * <p>La liste est donc figée ici ET dans le README. Le jour où un écran de
      * médiathèque est écrit, ce test devient rouge — et c'est ce qu'on veut :
      * il force à mettre le README à jour au lieu de le laisser vieillir.
      */
     private static final Set<String> MODULES_SANS_ECRAN =
-            Set.of("/api/adhesions", "/api/passations", "/api/tresorerie");
+            Set.of("/api/adhesions", "/api/tresorerie");
 
     @Test
     @DisplayName("les modules qu'aucun écran n'atteint sont exactement ceux que le README annonce")
@@ -346,6 +347,13 @@ class ContratApiTest {
     /** {@code /a/${x}/b} et {@code /a/{id}/b} désignent la même route. */
     private static String gabarit(String chemin) {
         String normalise = chemin
+                // La chaîne de requête ne fait pas partie de l'identité d'une
+                // route : le serveur déclare `GET /api/passations` et lit
+                // `associationId` en @RequestParam, tandis que le front écrit
+                // `/api/passations?associationId=…`. Sans cette ligne, toute
+                // route à paramètre de requête était signalée « fantôme » —
+                // c'est arrivé au premier appel de ce genre dans le dépôt.
+                .replaceAll("\\?.*$", "")
                 .replaceAll("\\$\\{[^}]*}", "{}")
                 .replaceAll("\\{[^}]*}", "{}")
                 .replaceAll("/{2,}", "/");

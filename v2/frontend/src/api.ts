@@ -96,6 +96,31 @@ async function authed<T>(chemin: string, jeton: string | null, init: RequestInit
   return (texte ? JSON.parse(texte) : null) as T
 }
 
+// ----------------------------------------------------------- passation
+
+export type MembreVue = {
+  id: string
+  personneId: string
+  poste: string
+  titreAffiche: string | null
+  ordre: number
+  photoMediaKey: string | null
+}
+
+export type PassationVue = {
+  id: string
+  associationId: string
+  mandatSortantId: string | null
+  mandatEntrantId: string
+  statut: 'PREPAREE' | 'BUREAU_COMPLETE' | 'ACTIVEE' | 'ANNULEE'
+  pagesClonees: number
+}
+
+export const POSTES = [
+  'PRESIDENT', 'VICE_PRESIDENT', 'TRESORIER', 'SECRETAIRE',
+  'RESP_COM', 'RESP_EVENEMENTS', 'MEMBRE_BUREAU',
+] as const
+
 // ------------------------------------------------------------- médias
 
 /** Un média de la médiathèque, tel que le serveur le décrit. */
@@ -349,6 +374,36 @@ export const apiDashboard = {
       : authed<Record<string, string>>('/api/medias/urls', j, {
           method: 'POST', body: JSON.stringify({ cles }),
         }),
+  // ----------------------------------------------------------- passation
+
+  bureau: (j: string | null, mandatId: string) =>
+    authed<MembreVue[]>(`/api/gouvernance/mandats/${mandatId}/bureau`, j),
+
+  passations: (j: string | null, associationId: string) =>
+    authed<PassationVue[]>(`/api/passations?associationId=${associationId}`, j),
+
+  preparerPassation: (
+    j: string | null, associationId: string, debutPrevu: string, finPrevue: string | null,
+  ) =>
+    authed<PassationVue>('/api/passations', j, {
+      method: 'POST', body: JSON.stringify({ associationId, debutPrevu, finPrevue }),
+    }),
+
+  designer: (j: string | null, passationId: string, personneId: string, poste: string, ordre: number) =>
+    authed<void>(`/api/passations/${passationId}/membres`, j, {
+      method: 'POST', body: JSON.stringify({ personneId, poste, ordre }),
+    }),
+
+  bureauComplet: (j: string | null, passationId: string) =>
+    authed<PassationVue>(`/api/passations/${passationId}/bureau-complet`, j, { method: 'POST' }),
+
+  activerPassation: (j: string | null, passationId: string, aLAg: string | null) =>
+    authed<PassationVue>(`/api/passations/${passationId}/activer`, j, {
+      method: 'POST', body: JSON.stringify({ aLAg }),
+    }),
+
+  annulerPassation: (j: string | null, passationId: string) =>
+    authed<void>(`/api/passations/${passationId}`, j, { method: 'DELETE' }),
 }
 
 /**
