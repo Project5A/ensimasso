@@ -245,4 +245,35 @@ class VenteAdhesionTest {
                 .hasMessageContaining("attend déjà son paiement");
         verify(adhesions, never()).save(any());
     }
+
+    @Test
+    @DisplayName("abandonnée faute de paiement, la place se libère aussi")
+    void readhesionApresAbandon() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+        Adhesion abandonnee = adhesion(StatutAdhesion.EN_ATTENTE_PAIEMENT);
+        when(adhesions.findById(any())).thenReturn(Optional.of(abandonnee));
+
+        service.abandonner(UUID.randomUUID());
+        assertThat(abandonnee.getStatut()).isEqualTo(StatutAdhesion.ANNULEE);
+
+        // Et abandonner deux fois n'est pas une faute.
+        service.abandonner(UUID.randomUUID());
+        assertThat(abandonnee.getStatut()).isEqualTo(StatutAdhesion.ANNULEE);
+
+        dejaEnBase(abandonnee);
+        assertThat(service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT)
+                .getStatut()).isEqualTo(StatutAdhesion.EN_ATTENTE_PAIEMENT);
+    }
+
+    @Test
+    @DisplayName("une adhésion ACTIVE ne s'abandonne pas : elle se rembourse")
+    void abandonDUneAdhesionActive() {
+        Adhesion active = adhesion(StatutAdhesion.ACTIVE);
+        when(adhesions.findById(any())).thenReturn(Optional.of(active));
+
+        assertThatThrownBy(() -> service.abandonner(UUID.randomUUID()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("se rembourse");
+        assertThat(active.getStatut()).isEqualTo(StatutAdhesion.ACTIVE);
+    }
 }

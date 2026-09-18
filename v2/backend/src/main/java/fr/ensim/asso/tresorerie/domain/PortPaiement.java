@@ -29,6 +29,20 @@ public interface PortPaiement {
 
     void rembourser(String referencePaiement, int montantCents);
 
+    /**
+     * Ferme une intention de paiement encore ouverte, pour qu'elle ne puisse
+     * plus être payée.
+     *
+     * <p>Sans elle, abandonner une commande côté ENSIMAsso laissait chez le
+     * prestataire une intention payable : l'argent pouvait arriver après
+     * l'abandon, sur une commande qui n'accorde plus aucun droit.
+     *
+     * <p>Idempotente sur une intention déjà close. Lève
+     * {@link PaiementEngageException} si le paiement est déjà en cours ou
+     * abouti — il ne s'annule alors plus, il se rembourse.
+     */
+    void annulerIntention(String referenceIntention);
+
     record Intention(String reference, String secretClient) { }
 
     /**
@@ -64,5 +78,15 @@ public interface PortPaiement {
     /** Levée si la signature est absente, malformée ou invalide. */
     class SignatureInvalideException extends RuntimeException {
         public SignatureInvalideException(String message) { super(message); }
+    }
+
+    /**
+     * Levée quand une intention ne peut plus être annulée parce que le
+     * paiement est engagé chez le prestataire. Distinguer ce cas d'une panne
+     * réseau est ce qui permet de répondre « c'est payé, demandez plutôt un
+     * remboursement » au lieu de « réessayez ».
+     */
+    class PaiementEngageException extends RuntimeException {
+        public PaiementEngageException(String message) { super(message); }
     }
 }

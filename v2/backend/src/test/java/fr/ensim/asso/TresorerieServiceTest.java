@@ -227,4 +227,88 @@ class TresorerieServiceTest {
         verify(ledger, never()).save(any());
         assertThat(c.getStatut()).isEqualTo(StatutCommande.PAYEE);
     }
+
+    // ------------------------------------------------------------- abandon
+
+    /**
+     * Le chemin d'abandon existait de bout en bout — {@code Commande.annuler()}
+     * et {@code Adhesion.annuler()} — et n'était appelé de nulle part. Une
+     * commande dont le paiement échouait restait OUVERTE pour toujours, son
+     * adhésion EN_ATTENTE_PAIEMENT, et cette adhésion réserve la place de
+     * l'année (index partiel adhesion_une_vivante_par_annee, V12).
+     */
+    @Test
+    @DisplayName("abandonner une commande ferme l'intention chez le prestataire ET l'adhésion")
+    void abandonComplet() {
+        Commande c = commandeOuverte();
+        UUID adhesionId = UUID.randomUUID();
+        when(lignes.findByCommandeId(commandeId)).thenReturn(List.of(
+                new LigneCommande(commandeId, TypeLigne.ADHESION, adhesionId, "Adhésion", 1500)));
+
+        service.annulerCommande(personneId, commandeId);
+
+        assertThat(c.getStatut()).isEqualTo(StatutCommande.ANNULEE);
+        // Fermer l'intention n'est pas une politesse : la laisser payable,
+        // c'est laisser l'argent arriver après l'abandon, sur une commande
+        // qui n'accorde plus aucun droit.
+        verify(prestataire).annulerIntention("pi_existante");
+        verify(adhesions).abandonner(adhesionId);
+    }
+
+    @Test
+    @DisplayName("une commande PAYEE ne s'abandonne pas : elle se rembourse")
+    void abandonDUneCommandePayee() {
+        Commande c = commandeOuverte();
+        c.marquerPayee(1500, java.time.OffsetDateTime.parse("2026-10-01T12:00:00Z"));
+
+        assertThatThrownBy(() -> service.annulerCommande(personneId, commandeId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("se rembourse");
+
+        assertThat(c.getStatut()).isEqualTo(StatutCommande.PAYEE);
+        verify(prestataire, never()).annulerIntention(any());
+        verify(adhesions, never()).abandonner(any());
+    }
+
+    @Test
+    @DisplayName("si le paiement est déjà engagé chez le prestataire, rien n'est abandonné")
+    void abandonRefuseParLePrestataire() {
+        Commande c = commandeOuverte();
+        doThrow(new PortPaiement.PaiementEngageException("succeeded"))
+                .when(prestataire).annulerIntention("pi_existante");
+
+        // La course réelle : la carte passe pendant que l'acheteur clique sur
+        // « annuler ». L'exception annule la transaction, donc l'annulation
+        // locale avec elle — la commande reste payable, ce qui est exact.
+        assertThatThrownBy(() -> service.annulerCommande(personneId, commandeId))
+                .isInstanceOf(Erreurs.Conflit.class)
+                .hasMessageContaining("remboursement");
+
+        verify(adhesions, never()).abandonner(any());
+    }
+
+    @Test
+    @DisplayName("la commande d'un autre ne s'abandonne pas")
+    void abandonDeLaCommandeDUnAutre() {
+        Commande c = commandeOuverte();
+
+        assertThatThrownBy(() -> service.annulerCommande(UUID.randomUUID(), commandeId))
+                .isInstanceOf(Erreurs.AccesRefuse.class);
+
+        assertThat(c.getStatut()).isEqualTo(StatutCommande.OUVERTE);
+        verify(prestataire, never()).annulerIntention(any());
+    }
+
+    @Test
+    @DisplayName("abandonner deux fois est sans effet : un double clic n'est pas une faute")
+    void abandonIdempotent() {
+        Commande c = commandeOuverte();
+        when(lignes.findByCommandeId(commandeId)).thenReturn(List.of());
+
+        service.annulerCommande(personneId, commandeId);
+        service.annulerCommande(personneId, commandeId);
+
+        assertThat(c.getStatut()).isEqualTo(StatutCommande.ANNULEE);
+        verify(prestataire, times(1)).annulerIntention("pi_existante");
+    }
 }

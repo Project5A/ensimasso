@@ -266,6 +266,67 @@ public class ServiceTresorerie {
         revoquerDroits(commande);
     }
 
+    // ------------------------------------------------------------- abandon
+
+    /**
+     * Abandonne une commande que son acheteur ne paiera pas.
+     *
+     * <p>Ce chemin était entièrement modélisé et branché nulle part :
+     * {@code Commande.annuler()} et {@code Adhesion.annuler()} existaient tous
+     * deux sans le moindre appelant, et les statuts ANNULEE des deux modules
+     * étaient inatteignables. Une commande d'adhésion dont le paiement
+     * échouait restait donc OUVERTE et son adhésion EN_ATTENTE_PAIEMENT pour
+     * toujours : aucune tâche ne les expire, et l'index partiel
+     * {@code adhesion_une_vivante_par_annee} compte cette adhésion comme
+     * vivante. L'étudiant dont la carte est refusée était exclu de son
+     * association pour l'année entière.
+     *
+     * <p>L'intention est fermée CHEZ LE PRESTATAIRE avant toute chose :
+     * abandonner côté ENSIMAsso en laissant une intention payable ouvrirait
+     * la fenêtre inverse — l'argent arrive après l'abandon, sur une commande
+     * qui n'accorde plus rien. Si le paiement est déjà engagé, rien n'est
+     * annulé : on le dit, et la commande reste payable.
+     *
+     * <p>Idempotente : abandonner deux fois la même commande est sans effet.
+     */
+    @Transactional
+    public void annulerCommande(UUID personneId, UUID commandeId) {
+        Commande commande = commandes.findByIdPourEcriture(commandeId)
+                .orElseThrow(() -> new Erreurs.Introuvable("commande", commandeId));
+        if (!commande.getPersonneId().equals(personneId)) {
+            throw new Erreurs.AccesRefuse("cette commande n'est pas la vôtre");
+        }
+        if (commande.getStatut() == StatutCommande.ANNULEE) {
+            return;
+        }
+        // Le contrôle d'état d'abord, comme pour le remboursement : une
+        // commande PAYEE se rembourse, elle ne s'annule pas.
+        commande.annuler();
+
+        if (commande.getIntentionRef() != null) {
+            try {
+                prestataire.annulerIntention(commande.getIntentionRef());
+            } catch (PortPaiement.PaiementEngageException e) {
+                // La transaction est annulée avec l'exception : la commande
+                // reste OUVERTE et payable, ce qui est exact.
+                throw new Erreurs.Conflit(
+                        "le paiement de cette commande est déjà engagé : demandez un "
+                      + "remboursement plutôt qu'une annulation");
+            }
+        }
+        abandonnerDroits(commande);
+    }
+
+    private void abandonnerDroits(Commande commande) {
+        for (LigneCommande ligne : lignes.findByCommandeId(commande.getId())) {
+            switch (ligne.getTypeLigne()) {
+                case ADHESION -> adhesions.abandonner(ligne.getReferenceId());
+                case BILLET -> throw new UnsupportedOperationException(
+                        "la billetterie n'est pas encore implémentée : voir v2/README.md");
+            }
+        }
+    }
+
     private void revoquerDroits(Commande commande) {
         for (LigneCommande ligne : lignes.findByCommandeId(commande.getId())) {
             switch (ligne.getTypeLigne()) {

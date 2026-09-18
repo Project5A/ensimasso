@@ -54,6 +54,17 @@ public class TresorerieController {
                 .stream().map(CommandeVue::de).toList();
     }
 
+    /**
+     * Abandonner sa propre commande encore ouverte. Sans cette route, une
+     * commande dont le paiement échoue reste ouverte pour toujours et son
+     * adhésion réserve l'année — c'était le cas jusqu'ici.
+     */
+    @PostMapping("/commandes/{commandeId}/annuler")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void annuler(@PathVariable UUID commandeId) {
+        service.annulerCommande(Utilisateur.idCourantObligatoire(), commandeId);
+    }
+
     @PostMapping("/commandes/{commandeId}/rembourser")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rembourser(@PathVariable UUID commandeId, @Valid @RequestBody Rembourser corps) {

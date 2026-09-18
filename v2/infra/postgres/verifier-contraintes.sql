@@ -121,6 +121,22 @@ INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par
  ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
   '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'EN_ATTENTE_PAIEMENT');
 
+\echo '--- 12d. abandonnee faute de paiement, la place se libere aussi (doit etre ACCEPTE) ---'
+-- Meme verrou par une autre porte : une adhesion dont le paiement echoue
+-- restait EN_ATTENTE_PAIEMENT pour toujours, faute de tout chemin d'abandon.
+-- ANNULEE ne reserve rien non plus.
+UPDATE adhesion SET statut='ANNULEE'
+ WHERE personne_id='d0000000-0000-4000-8000-000000000003'
+   AND couvre_annee_code='2026-2027' AND statut='ACTIVE';
+INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par_mandat_id,
+                      montant_paye_cents, statut) VALUES
+ ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
+  '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'EN_ATTENTE_PAIEMENT');
+SELECT 'adhesions 2026-2027 (1 remboursee + 1 annulee + 1 en attente = 3) : '
+  || count(*)::text FROM adhesion
+ WHERE personne_id='d0000000-0000-4000-8000-000000000003'
+   AND couvre_annee_code='2026-2027';
+
 \echo '--- 13. une URL ne peut pas etre stockee comme cle de media (STOR-01) ---'
 INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par) VALUES
  ('11111111-1111-1111-1111-111111111111','2025-2026',

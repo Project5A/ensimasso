@@ -241,6 +241,34 @@ public class ServiceAdhesion {
         return adhesion;
     }
 
+    /**
+     * Abandonne une adhésion dont le paiement n'aboutira pas.
+     *
+     * <p>{@code Adhesion.annuler()} existait depuis le premier jour sans aucun
+     * appelant, exactement comme {@code rembourser()} avant elle : le statut
+     * ANNULEE était inatteignable en production. La conséquence n'était pas
+     * cosmétique. Une adhésion dont le paiement échouait restait
+     * EN_ATTENTE_PAIEMENT pour toujours — aucune tâche ne l'expire, aucune
+     * route ne l'annulait — et l'index partiel
+     * {@code adhesion_une_vivante_par_annee} la compte comme vivante. La
+     * personne était donc exclue de cette association pour l'année entière,
+     * par la même porte que celle refermée pour les remboursements, et sans
+     * autre recours qu'un DELETE à la main en base.
+     *
+     * <p>Idempotente : abandonner deux fois n'est pas une erreur. Une adhésion
+     * ACTIVE, elle, refuse — celle-là se rembourse.
+     */
+    @Transactional
+    public Adhesion abandonner(UUID adhesionId) {
+        Adhesion adhesion = adhesions.findById(adhesionId)
+                .orElseThrow(() -> new Erreurs.Introuvable("adhésion", adhesionId));
+        if (adhesion.getStatut() == StatutAdhesion.ANNULEE) {
+            return adhesion;
+        }
+        adhesion.annuler();
+        return adhesion;
+    }
+
     // ------------------------------------------------------------ lectures
 
     /**

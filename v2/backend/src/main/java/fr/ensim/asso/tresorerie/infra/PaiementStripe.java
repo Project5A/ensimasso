@@ -184,6 +184,34 @@ public class PaiementStripe implements PortPaiement {
         }
     }
 
+    /**
+     * Ferme une intention encore ouverte chez Stripe.
+     *
+     * <p>Le statut est relu AVANT d'annuler, et non déduit de l'échec de
+     * l'annulation : Stripe refuse d'annuler une intention aboutie, mais il
+     * refuse aussi pour d'autres raisons, et confondre « déjà payé » avec
+     * « appel en échec » ferait répondre « réessayez » à quelqu'un dont
+     * l'argent est déjà parti.
+     */
+    @Override
+    public void annulerIntention(String referenceIntention) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(referenceIntention);
+            String statut = intent.getStatus();
+            if ("succeeded".equals(statut) || "processing".equals(statut)) {
+                throw new PaiementEngageException(
+                        "le paiement de cette intention est " + statut
+                      + " : elle ne s'annule plus, elle se rembourse");
+            }
+            if ("canceled".equals(statut)) {
+                return;                      // déjà close : rejouer ne casse rien
+            }
+            intent.cancel();
+        } catch (StripeException e) {
+            throw new IllegalStateException(
+                    "annulation de l'intention de paiement impossible", e);
+        }
+    }
     @Override
     public EvenementRecu verifierEtLire(String charge, String signature) {
         if (signature == null || signature.isBlank()) {
