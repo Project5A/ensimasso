@@ -131,3 +131,7 @@ dist
 
 # Dossier de travail de l'audit : constats intermédiaires, jamais du livrable.
 .revue/
+
+# Instantané Redis, déposé par un serveur local lancé pour éprouver le cache.
+# Il n'a rien à faire dans le dépôt : c'est de l'état de machine, pas du code.
+dump.rdb
