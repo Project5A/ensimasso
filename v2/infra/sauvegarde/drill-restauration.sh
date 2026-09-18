@@ -86,6 +86,13 @@ exiger_outil numfmt
 titre "Exercice de restauration — source : $BASE_SOURCE"
 
 # --- 0. clés éphémères ----------------------------------------------------
+# L'exercice ne doit JAMAIS détenir la clé privée de production : il fabrique la
+# sienne, et démontre ainsi la chaîne complète sans pouvoir lire une seule vraie
+# sauvegarde. Si l'environnement en fournit tout de même une, on l'écarte
+# explicitement — plutôt que de compter sur l'ordre des affectations, qui est
+# précisément ce qui avait laissé croire pendant des mois que ce pod en avait
+# besoin.
+unset AGE_IDENTITE
 age-keygen -o "$TRAVAIL/identite.txt" 2>/dev/null
 export AGE_IDENTITE="$TRAVAIL/identite.txt"
 AGE_DESTINATAIRE="$(age-keygen -y "$AGE_IDENTITE")"

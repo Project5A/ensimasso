@@ -75,8 +75,19 @@ spec:
               image: ghcr.io/project5a/ensimasso-sauvegarde:2.0.0
               command: ["/opt/sauvegarde/drill-restauration.sh"]
               envFrom:
-                # Ici, et ici seulement, la clé PRIVÉE : c'est la seule tâche
-                # qui a besoin de déchiffrer.
+                # PAS de clé privée ici. Ce commentaire disait le contraire —
+                # « ici, et ici seulement, la clé PRIVÉE : c'est la seule tâche
+                # qui a besoin de déchiffrer » — alors que le script fabrique sa
+                # PROPRE paire de clés éphémère au démarrage et n'utilise jamais
+                # celle qu'on lui montait. La clé qui ouvre toutes les
+                # sauvegardes de production était donc exposée chaque semaine
+                # dans un pod qui n'en avait aucun usage.
+                #
+                # C'est même une meilleure propriété : l'exercice démontre la
+                # chaîne complète — sauvegarder, chiffrer, restaurer, comparer —
+                # sans jamais détenir de quoi lire une vraie sauvegarde. Ce
+                # Secret ne porte que les identifiants de base dont le drill a
+                # besoin pour créer et détruire sa base de travail.
                 - secretRef: { name: ensimasso-secrets-restauration }
               securityContext:
                 allowPrivilegeEscalation: false

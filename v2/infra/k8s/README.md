@@ -77,10 +77,18 @@ kubectl -n ensimasso create secret generic ensimasso-secrets-lecture \
 kubectl -n ensimasso create secret generic ensimasso-secrets-sauvegarde \
   --from-literal=PGUSER=… --from-literal=PGPASSWORD=…
 
-# La clé PRIVÉE age n'apparaît QUE dans celui-ci, utilisé par le seul exercice
-# de restauration. Si elle est perdue, les sauvegardes sont illisibles.
+# L'exercice de restauration hebdomadaire. Il fabrique sa PROPRE paire de clés
+# age au démarrage : il démontre la chaîne complète — sauvegarder, chiffrer,
+# restaurer, comparer — sans jamais détenir de quoi lire une vraie sauvegarde.
+# Ce Secret ne porte donc QUE les identifiants de base, qui doivent pouvoir
+# créer et détruire la base de travail de l'exercice.
+#
+# La clé PRIVÉE age n'est montée nulle part dans le cluster. Elle sert à
+# `restaurer.sh`, qu'un humain lance le jour d'un incident ; elle se garde là où
+# se gardent les secrets qu'on ne veut pas voir tourner en tâche planifiée. Si
+# elle est perdue, les sauvegardes sont illisibles — c'est le prix du fait
+# qu'un hôte compromis ne donne pas l'historique des adhérents.
 kubectl -n ensimasso create secret generic ensimasso-secrets-restauration \
-  --from-file=AGE_IDENTITE=identite.txt \
   --from-literal=PGUSER=… --from-literal=PGPASSWORD=…
 ```
 
