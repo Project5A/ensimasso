@@ -34,7 +34,19 @@ async function get<T>(chemin: string): Promise<T> {
     }
     throw new ErreurApi(reponse.status, detail)
   }
-  return (await reponse.json()) as T
+  // Un corps VIDE n'est pas du JSON.
+  //
+  // `response.json()` sur une réponse sans corps lève une SyntaxError — qui
+  // n'est pas une ErreurApi, donc elle traverse les écrans et ressort en
+  // « Chargement impossible » sans dire pourquoi. C'est ce qui arrivait sur le
+  // thème d'un mandat qui n'en a pas encore : le contrôleur rendait `null`, ce
+  // que Spring traduit par un 200 à corps vide. Le tout premier usage de
+  // l'écran était le seul à échouer.
+  //
+  // Le contrôleur rend maintenant 204, mais la garde reste ici : c'est le seul
+  // endroit traversé par TOUTES les réponses, et la panne était silencieuse.
+  const texte = await reponse.text()
+  return (texte ? JSON.parse(texte) : null) as T
 }
 
 /** Requête authentifiée : le jeton est lu à l'appel, jamais capturé. */
@@ -69,7 +81,19 @@ async function authed<T>(chemin: string, jeton: string | null, init: RequestInit
     // les remonter telles quelles est ce qui rend l'éditeur utilisable.
     throw new ErreurApi(reponse.status, erreurs?.length ? `${detail} — ${erreurs.join(' ; ')}` : detail)
   }
-  return (await reponse.json()) as T
+  // Un corps VIDE n'est pas du JSON.
+  //
+  // `response.json()` sur une réponse sans corps lève une SyntaxError — qui
+  // n'est pas une ErreurApi, donc elle traverse les écrans et ressort en
+  // « Chargement impossible » sans dire pourquoi. C'est ce qui arrivait sur le
+  // thème d'un mandat qui n'en a pas encore : le contrôleur rendait `null`, ce
+  // que Spring traduit par un 200 à corps vide. Le tout premier usage de
+  // l'écran était le seul à échouer.
+  //
+  // Le contrôleur rend maintenant 204, mais la garde reste ici : c'est le seul
+  // endroit traversé par TOUTES les réponses, et la panne était silencieuse.
+  const texte = await reponse.text()
+  return (texte ? JSON.parse(texte) : null) as T
 }
 
 export type TypeBlocVue = {

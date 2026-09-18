@@ -53,7 +53,8 @@ public class AgendaController {
     }
 
     @PostMapping("/evenements/{evenementId}/annuler")
-    public EvenementVue annuler(@PathVariable UUID evenementId, @RequestBody Annulation corps) {
+    public EvenementVue annuler(@PathVariable UUID evenementId,
+                                @Valid @RequestBody Annulation corps) {
         return EvenementVue.de(service.annuler(
                 Utilisateur.idCourantObligatoire(), evenementId, corps.motif()));
     }

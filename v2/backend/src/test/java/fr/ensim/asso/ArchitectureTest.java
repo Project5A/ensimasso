@@ -266,4 +266,62 @@ class ArchitectureTest {
                 .check(CLASSES);
     }
 
+
+    /**
+     * Une contrainte de validation qui n'est jamais évaluée.
+     *
+     * <p>{@code AgendaController.annuler} déclarait {@code @Size(max = 400)} sur
+     * le motif d'annulation — et recevait le corps sans {@code @Valid}. Jakarta
+     * Validation n'évalue RIEN sans lui : un motif de 5 000 caractères
+     * traversait le contrôleur, traversait le service, et n'était refusé qu'au
+     * COMMIT par le {@code CHECK} de la colonne. C'est-à-dire en 500, avec un
+     * message de contrainte PostgreSQL, sur une saisie d'utilisateur.
+     *
+     * <p>Mesuré avant correction, via MockMvc : « POST annuler, motif de 5000
+     * car -> statut 200 », et « le service a reçu un motif de 5000 caractères ».
+     *
+     * <p>Cette règle vaut pour tous les corps à venir : une annotation de
+     * validation posée sur un record qu'on n'annote pas {@code @Valid} est une
+     * garantie décorative, et c'est la pire espèce — elle se lit comme une
+     * protection.
+     */
+    @Test
+    @DisplayName("un corps de requête contraint est VALIDÉ, pas seulement annoté")
+    void corpsContraintsValides() {
+        List<String> decoratifs = new ArrayList<>();
+
+        for (JavaClass classe : CLASSES) {
+            if (!classe.getSimpleName().endsWith("Controller")) {
+                continue;
+            }
+            for (JavaMethod methode : classe.getMethods()) {
+                for (var parametre : methode.getParameters()) {
+                    boolean estUnCorps = parametre.getAnnotations().stream()
+                            .anyMatch(a -> a.getRawType().getSimpleName().equals("RequestBody"));
+                    if (!estUnCorps || !porteDesContraintes(parametre.getRawType())) {
+                        continue;
+                    }
+                    boolean valide = parametre.getAnnotations().stream()
+                            .anyMatch(a -> a.getRawType().getSimpleName().equals("Valid"));
+                    if (!valide) {
+                        decoratifs.add(classe.getSimpleName() + "." + methode.getName()
+                                + " (" + parametre.getRawType().getSimpleName() + ")");
+                    }
+                }
+            }
+        }
+
+        assertThat(decoratifs)
+                .as("ces corps déclarent des contraintes que personne n'évalue : "
+                  + "ajoutez @Valid, ou retirez les annotations qui font croire "
+                  + "à une protection")
+                .isEmpty();
+    }
+
+    /** Le type porte-t-il au moins une annotation de Jakarta Validation ? */
+    private static boolean porteDesContraintes(JavaClass type) {
+        return type.getAllFields().stream()
+                .flatMap(champ -> champ.getAnnotations().stream())
+                .anyMatch(a -> a.getRawType().getPackageName().startsWith("jakarta.validation"));
+    }
 }

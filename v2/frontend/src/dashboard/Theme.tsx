@@ -103,7 +103,7 @@ export default function Theme() {
   const charger = useCallback(async () => {
     try {
       const t = await apiDashboard.theme(refJeton.current(), mandatId)
-      setTheme(t)
+      setTheme(t ?? null)
       setValeurs(lire(t))
     } catch (e) {
       setErreur(e instanceof ErreurApi ? e.message : 'Chargement impossible.')

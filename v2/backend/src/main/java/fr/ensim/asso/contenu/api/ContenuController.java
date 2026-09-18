@@ -61,11 +61,26 @@ public class ContenuController {
      * passation restait à jamais impubliable — une association perdait donc son
      * identité visuelle à chaque changement de bureau.
      */
+    /**
+     * Le thème à éditer, ou 204 quand il n'y en a pas encore.
+     *
+     * <p>Cette méthode rendait {@code null}, ce que Spring traduit par un 200
+     * avec un corps VIDE. Le client fait alors {@code response.json()} sur une
+     * chaîne vide et lève une {@code SyntaxError} — qui n'est pas une
+     * {@code ErreurApi}, donc l'écran affiche « Chargement impossible » au lieu
+     * de « Aucun thème : les valeurs ci-dessous sont celles par défaut ».
+     * Autrement dit : le tout premier usage de l'écran, sur un mandat qui n'a
+     * pas encore de thème, était le seul à échouer.
+     *
+     * <p>204 est ce que veut dire « rien à renvoyer », et le client sait déjà
+     * le lire.
+     */
     @GetMapping("/mandats/{mandatId}/theme")
-    public ThemeVue theme(@PathVariable UUID mandatId) {
+    public ResponseEntity<ThemeVue> theme(@PathVariable UUID mandatId) {
         return themes.aEditer(Utilisateur.idCourantObligatoire(), mandatId)
                 .map(ThemeVue::de)
-                .orElse(null);
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PutMapping("/mandats/{mandatId}/theme")
