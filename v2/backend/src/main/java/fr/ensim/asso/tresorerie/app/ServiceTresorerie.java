@@ -220,8 +220,29 @@ public class ServiceTresorerie {
 
     @Transactional
     public void rembourser(UUID demandeur, UUID commandeId, String motif) {
-        Commande commande = commande(commandeId);
+        // VERROUILLÉE, et l'état vérifié AVANT tout le reste.
+        //
+        // Cette méthode lisait la commande sans verrou, appelait le prestataire,
+        // écrivait au journal, et n'appelait `commande.rembourser()` — le seul
+        // contrôle d'état qui existe — qu'à la toute fin. Deux remboursements
+        // lancés en même temps, ce qu'un double clic suffit à produire,
+        // lisaient donc tous deux une commande PAYEE : chacun écrivait sa
+        // SORTIE, chacun passait la commande en REMBOURSEE dans son propre
+        // instantané, et aucun ne voyait l'autre. Le journal comptait deux fois
+        // un remboursement qui n'a eu lieu qu'une, et le solde de l'association
+        // était faux d'autant — définitivement, un journal ne se corrige pas en
+        // effaçant une ligne. La clé d'idempotence protégeait l'argent CHEZ
+        // Stripe ; elle ne protégeait pas le journal ici.
+        Commande commande = commandes.findByIdPourEcriture(commandeId)
+                .orElseThrow(() -> new Erreurs.Introuvable("commande", commandeId));
         politique.exiger(demandeur, Permission.FINANCE_CONSULTER, commande.getAssociationId());
+
+        // Le contrôle d'état D'ABORD, avant même de chercher les encaissements :
+        // c'est lui qui répond au second remboursement, et « seule une commande
+        // payée peut être remboursée » dit ce qui s'est passé, là où « aucun
+        // encaissement à rembourser » — vrai aussi, puisque le premier vient de
+        // les marquer REMBOURSE — laisserait croire à une commande jamais payée.
+        commande.rembourser();
 
         List<Paiement> encaissements = paiements.findByCommandeId(commandeId).stream()
                 .filter(p -> p.getStatut() == Paiement.StatutPaiement.REUSSI)
@@ -236,7 +257,6 @@ public class ServiceTresorerie {
             ledger.save(new EcritureLedger(commande.getId(), p.getId(), commande.getAssociationId(),
                     EcritureLedger.Sens.SORTIE, p.getMontantCents(), "Remboursement : " + motif));
         }
-        commande.rembourser();
 
         // Et, dans la MÊME transaction, le droit acheté est repris. Symétrique
         // de accorderDroits() : l'encaissement ouvre le droit, la restitution

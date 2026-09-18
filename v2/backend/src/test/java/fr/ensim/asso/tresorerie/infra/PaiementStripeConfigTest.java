@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Les réglages réseau du prestataire de paiement.
@@ -13,6 +15,33 @@ import static org.assertj.core.api.Assertions.assertThat;
  * n'élargit pas la visibilité d'une classe de production pour la tester.
  */
 class PaiementStripeConfigTest {
+
+    @Test
+    @DisplayName("sans secret, l'adaptateur refuse de se construire, et dit lequel manque")
+    void secretsObligatoires() {
+        // « Jamais de valeur par défaut pour un secret », dit application.yml
+        // au-dessus de ces deux propriétés — qui en avaient chacune une : la
+        // chaîne vide. L'application démarrait donc, et Webhook.constructEvent
+        // rejetait 100 % des évènements en signature invalide : Stripe
+        // encaissait, aucune adhésion ne s'activait, et rien ne le disait.
+        assertThatThrownBy(() -> new PaiementStripe("", "whsec_x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("STRIPE_CLE_SECRETE");
+
+        assertThatThrownBy(() -> new PaiementStripe("sk_test_x", "   "))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("STRIPE_SECRET_WEBHOOK");
+
+        // Les deux manquants sont nommés d'un coup : corriger un .env à raison
+        // d'un redémarrage par variable serait une punition.
+        assertThatThrownBy(() -> new PaiementStripe(null, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("STRIPE_CLE_SECRETE")
+                .hasMessageContaining("STRIPE_SECRET_WEBHOOK");
+
+        assertThatCode(() -> new PaiementStripe("sk_test_x", "whsec_x"))
+                .doesNotThrowAnyException();
+    }
 
     @Test
     @DisplayName("les délais réseau sont bornés : le pool de connexions en dépend")

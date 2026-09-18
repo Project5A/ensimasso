@@ -89,9 +89,11 @@ jobs:
       # que le module média existe.
       - name: Tests d'intégration
         working-directory: v2/backend
-        env:
-          MINIO_USER: ci
-          MINIO_PASSWORD: ci_factice_aucun_depot_dans_les_tests
+        # Plus aucune variable de configuration ici : les tests d'intégration
+        # posent eux-mêmes ce dont ils ont besoin (voir BaseIT). Tant que ces
+        # valeurs vivaient dans l'environnement de la CI, la suite ne démarrait
+        # pas sur la machine d'un contributeur — et on ne pouvait pas la lancer
+        # pour vérifier un correctif avant de pousser.
         run: ./mvnw -B verify
 
       - name: Rapports de test
@@ -390,6 +392,8 @@ jobs:
             -e SPRING_DATASOURCE_USERNAME=postgres \
             -e SPRING_DATASOURCE_PASSWORD=ci_seulement \
             -e MINIO_PASSWORD=ci_seulement_12 \
+            -e STRIPE_CLE_SECRETE=sk_test_ci_factice \
+            -e STRIPE_SECRET_WEBHOOK=whsec_ci_factice \
             ensimasso-core:${{ github.sha }}
           for i in $(seq 1 45); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health || echo 000)

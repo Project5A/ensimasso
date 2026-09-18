@@ -48,8 +48,51 @@ public class PaiementStripe implements PortPaiement {
 
     public PaiementStripe(@Value("${ensimasso.paiement.cle-secrete:}") String cleSecrete,
                           @Value("${ensimasso.paiement.secret-webhook:}") String secretWebhook) {
+        exigerConfiguration(cleSecrete, secretWebhook);
         this.cleSecrete = cleSecrete;
         this.secretWebhook = secretWebhook;
+    }
+
+    /**
+     * Sans secret, on ne démarre pas.
+     *
+     * <p>« Jamais de valeur par défaut pour un secret : une clé absente doit
+     * faire échouer bruyamment, pas démarrer avec un placeholder », dit le
+     * commentaire d'{@code application.yml} au-dessus de ces deux propriétés.
+     * Elles avaient pourtant chacune une valeur par défaut — la chaîne vide —
+     * et rien ne la relisait. L'application démarrait donc très bien, et :
+     *
+     * <ul>
+     *   <li>{@code Stripe.apiKey} valant "", tout appel au prestataire échouait
+     *       au premier paiement ;</li>
+     *   <li>le secret de webhook valant "", {@code Webhook.constructEvent}
+     *       rejetait <strong>100 % des évènements</strong> en
+     *       {@code SignatureVerificationException} — c'est-à-dire, du point de
+     *       vue du code, exactement ce que produit un faux webhook. Chaque
+     *       paiement réellement encaissé par Stripe était compté
+     *       « signature_invalide » et n'activait aucune adhésion. L'étudiant
+     *       paie, l'association encaisse, et personne n'est adhérent.</li>
+     * </ul>
+     *
+     * <p>Le silence est ce qui rend cette panne coûteuse : elle ne se voit pas
+     * au démarrage, ne se voit pas à l'achat, et se découvre à la première
+     * réclamation. C'est la même correction que {@code StockageS3} applique
+     * déjà pour MinIO, au même endroit et pour la même raison.
+     */
+    private static void exigerConfiguration(String cleSecrete, String secretWebhook) {
+        var manquants = new java.util.ArrayList<String>();
+        if (cleSecrete == null || cleSecrete.isBlank()) manquants.add("STRIPE_CLE_SECRETE");
+        if (secretWebhook == null || secretWebhook.isBlank()) manquants.add("STRIPE_SECRET_WEBHOOK");
+        if (!manquants.isEmpty()) {
+            throw new IllegalStateException(
+                    "paiement non configuré : " + String.join(", ", manquants)
+                    + (manquants.size() > 1
+                            ? " sont absentes. Renseignez-les"
+                            : " est absente. Renseignez-la")
+                    + " dans .env (voir .env.example) puis relancez. "
+                    + "Sans secret de webhook, Stripe encaisse et aucune adhésion "
+                    + "ne s'active : mieux vaut ne pas démarrer.");
+        }
     }
 
     /**

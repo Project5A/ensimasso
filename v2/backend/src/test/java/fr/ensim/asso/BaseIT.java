@@ -82,5 +82,27 @@ public abstract class BaseIT {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
                 () -> "http://localhost:0/realms/test");
+        // L'adaptateur de paiement REFUSE désormais de se construire sans
+        // secret — un secret de webhook vide faisait rejeter 100 % des
+        // évènements Stripe en « signature invalide », donc encaisser sans
+        // activer une seule adhésion. Ces valeurs sont factices et ne sortent
+        // pas du processus : aucun test d'intégration n'appelle Stripe.
+        // Elles sont ici, et non dans l'environnement de la CI, pour que la
+        // suite se suffise à elle-même.
+        // Volontairement SANS la forme d'une vraie clé : le scanner de secrets
+        // du dépôt n'a pas de liste d'exceptions — une liste d'exceptions est
+        // un endroit où cacher un secret — donc une valeur de test ne doit pas
+        // ressembler à un secret.
+        registry.add("ensimasso.paiement.cle-secrete", () -> "aucune-cle-reelle-en-test");
+        registry.add("ensimasso.paiement.secret-webhook", () -> "aucun-secret-reel-en-test");
+        // Même raison pour le stockage : StockageS3 refuse aussi de se
+        // construire sans configuration. Ces valeurs vivaient jusqu'ici dans
+        // l'environnement de la CI, si bien que la suite d'intégration ne
+        // démarrait pas sur la machine d'un contributeur — et qu'on ne pouvait
+        // pas la lancer pour vérifier un correctif avant de pousser.
+        registry.add("ensimasso.stockage.endpoint", () -> "http://localhost:0");
+        registry.add("ensimasso.stockage.acces", () -> "integration");
+        registry.add("ensimasso.stockage.secret", () -> "integration_sans_depot");
+        registry.add("ensimasso.stockage.bucket", () -> "media-integration");
     }
 }

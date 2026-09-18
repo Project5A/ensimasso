@@ -48,8 +48,19 @@ class LimiteDebitTest {
         limiteur = new LimiteurDebit(3, 100, horloge);
     }
 
+    /**
+     * Une requête telle qu'un conteneur la présente.
+     *
+     * <p>{@code setServletPath} n'est pas un détail : le filtre décide sur le
+     * chemin DÉCODÉ, que le conteneur expose là, et non sur l'URI brute. Une
+     * requête montée sans lui retomberait sur un repli défensif — et ces cas
+     * éprouveraient alors un chemin que la production n'emprunte pas. Le
+     * contournement par encodage, lui, ne peut se voir que contre un vrai
+     * Tomcat : c'est l'objet de {@link LimiteDebitCheminTest}.
+     */
     private MockHttpServletResponse appeler(String chemin, String ip) throws Exception {
         MockHttpServletRequest requete = new MockHttpServletRequest("GET", chemin);
+        requete.setServletPath(chemin);
         requete.setRemoteAddr(ip);
         MockHttpServletResponse reponse = new MockHttpServletResponse();
         limiteur.doFilter(requete, reponse, mock(FilterChain.class));
@@ -126,6 +137,7 @@ class LimiteDebitTest {
     void chaineAppelee() throws Exception {
         FilterChain suite = mock(FilterChain.class);
         MockHttpServletRequest requete = new MockHttpServletRequest("GET", "/api/public/x");
+        requete.setServletPath("/api/public/x");
         requete.setRemoteAddr("10.0.0.9");
         limiteur.doFilter(requete, new MockHttpServletResponse(), suite);
         verify(suite, times(1)).doFilter(any(), any());
@@ -137,6 +149,7 @@ class LimiteDebitTest {
         LimiteurDebit petit = new LimiteurDebit(1, 10, horloge);
         for (int i = 0; i < 200; i++) {
             MockHttpServletRequest r = new MockHttpServletRequest("GET", "/api/public/x");
+            r.setServletPath("/api/public/x");
             r.setRemoteAddr("10.0.0." + i);
             petit.doFilter(r, new MockHttpServletResponse(), mock(FilterChain.class));
         }

@@ -2,6 +2,7 @@ package fr.ensim.asso;
 
 import fr.ensim.asso.adhesion.app.ServiceAdhesion;
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
+import fr.ensim.asso.gouvernance.domain.Permission;
 import fr.ensim.asso.shared.error.Erreurs;
 import fr.ensim.asso.tresorerie.app.ServiceTresorerie;
 import fr.ensim.asso.tresorerie.domain.*;
@@ -83,6 +84,7 @@ class TresorerieServiceTest {
             throw new IllegalStateException(e);
         }
         when(commandes.findById(commandeId)).thenReturn(Optional.of(c));
+        when(commandes.findByIdPourEcriture(commandeId)).thenReturn(Optional.of(c));
         return c;
     }
 
@@ -173,5 +175,56 @@ class TresorerieServiceTest {
         // appelée de nulle part.
         verify(adhesions).revoquerPourRemboursement(adhesionId);
         assertThat(c.getStatut()).isEqualTo(StatutCommande.REMBOURSEE);
+
+        // La commande est chargée par le finder VERROUILLANT, pas par findById.
+        // Sans lui, deux remboursements simultanés lisent tous deux une
+        // commande PAYEE et écrivent tous deux une SORTIE.
+        verify(commandes).findByIdPourEcriture(commandeId);
+        verify(commandes, never()).findById(commandeId);
+    }
+
+    @Test
+    @DisplayName("une commande déjà remboursée ne repart pas chez le prestataire")
+    void secondRemboursementRefuseAvantLePrestataire() {
+        Commande c = commandeOuverte();
+        c.marquerPayee(1500, java.time.OffsetDateTime.parse("2026-10-01T12:00:00Z"));
+        c.rembourser();                                  // déjà remboursée
+
+        Paiement p = new Paiement(commandeId, "STRIPE", "pi_existante", 1500, "EUR",
+                Paiement.StatutPaiement.REUSSI);
+        when(paiements.findByCommandeId(commandeId)).thenReturn(List.of(p));
+
+        assertThatThrownBy(() -> service.rembourser(personneId, commandeId, "encore"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("payée");
+
+        // Le contrôle d'état venait APRÈS l'appel au prestataire et APRÈS
+        // l'écriture au journal : le second remboursement partait chez Stripe
+        // et laissait une SORTIE de plus derrière lui avant d'échouer — ou,
+        // en concurrence, sans échouer du tout.
+        verify(prestataire, never()).rembourser(any(), anyInt());
+        verify(ledger, never()).save(any());
+        verify(adhesions, never()).revoquerPourRemboursement(any());
+    }
+
+    @Test
+    @DisplayName("rembourser exige la permission, et un refus arrête tout")
+    void remboursementExigeLaPermission() {
+        Commande c = commandeOuverte();
+        c.marquerPayee(1500, java.time.OffsetDateTime.parse("2026-10-01T12:00:00Z"));
+
+        // Le cas précédent stubait `politique.peut(...)`, que `rembourser`
+        // n'appelle jamais : il passait donc à l'identique si le contrôle de
+        // permission disparaissait du service. C'est `exiger` qu'il faut
+        // éprouver, et un mock ne lève rien tant qu'on ne le lui demande pas.
+        doThrow(new Erreurs.AccesRefuse("pas trésorier"))
+                .when(politique).exiger(personneId, Permission.FINANCE_CONSULTER, assoId);
+
+        assertThatThrownBy(() -> service.rembourser(personneId, commandeId, "tentative"))
+                .isInstanceOf(Erreurs.AccesRefuse.class);
+
+        verify(prestataire, never()).rembourser(any(), anyInt());
+        verify(ledger, never()).save(any());
+        assertThat(c.getStatut()).isEqualTo(StatutCommande.PAYEE);
     }
 }

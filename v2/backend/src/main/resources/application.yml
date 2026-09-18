@@ -81,6 +81,13 @@ ensimasso:
     # Jamais de valeur par défaut pour un secret : une clé absente doit faire
     # échouer bruyamment, pas démarrer avec un placeholder. La v1 avait la
     # clé secrète Stripe en clair dans application.properties, committée.
+    #
+    # La chaîne vide ci-dessous EST une valeur par défaut — ce commentaire a
+    # longtemps affirmé le contraire de ce que faisait le fichier. C'est
+    # PaiementStripe.exigerConfiguration qui tient la promesse : il refuse de
+    # construire l'adaptateur tant que les deux variables sont absentes. Le
+    # « : » vide reste, pour que le message d'erreur vienne de là — nommant la
+    # variable et disant pourquoi — plutôt que d'un échec d'injection Spring.
     cle-secrete: ${STRIPE_CLE_SECRETE:}
     secret-webhook: ${STRIPE_SECRET_WEBHOOK:}
 

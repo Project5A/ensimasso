@@ -72,8 +72,38 @@ public class LimiteurDebit extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest requete) {
-        String chemin = requete.getRequestURI();
+        String chemin = cheminDecode(requete);
         return !(chemin.startsWith("/api/public/") || chemin.startsWith("/api/webhooks/"));
+    }
+
+    /**
+     * Le chemin tel que le CONTENEUR l'a résolu, donc décodé.
+     *
+     * <p>Cette méthode lisait {@code getRequestURI()}, qui rend la ligne de
+     * requête brute, jamais décodée. Tomcat, lui, décode avant de choisir le
+     * servlet, et Spring Security décode avant d'évaluer ses règles. Encoder un
+     * seul caractère suffisait donc à sortir de la limite sans sortir de la
+     * route : {@code GET /api/%70ublic/associations} passe le pare-feu strict
+     * (il ne rejette que {@code ;}, {@code %2f} et {@code %2e}), reste
+     * {@code permitAll} pour Spring Security, atteint bien le contrôleur du
+     * portail — et ce filtre-ci se désactivait, parce que la chaîne
+     * « /api/%70ublic/… » ne commence pas par « /api/public/ ».
+     *
+     * <p>Autrement dit : le plafond disparaissait sur exactement les deux
+     * routes qu'il existe pour protéger. Vérifié contre un Tomcat réel, pas
+     * contre une requête montée à la main — voir {@code LimiteDebitCheminTest}.
+     *
+     * <p>{@code getServletPath()} et {@code getPathInfo()} sont décodés par
+     * spécification, et leur concaténation est le chemin dans l'application,
+     * quel que soit le mappage du servlet. Le repli sur l'URI brute ne sert que
+     * si le conteneur ne rend ni l'un ni l'autre — ce qui, pour une route
+     * commençant par {@code /api/}, ne se produit pas.
+     */
+    static String cheminDecode(HttpServletRequest requete) {
+        String servlet = requete.getServletPath();
+        String reste = requete.getPathInfo();
+        String chemin = (servlet == null ? "" : servlet) + (reste == null ? "" : reste);
+        return chemin.isEmpty() ? requete.getRequestURI() : chemin;
     }
 
     @Override
