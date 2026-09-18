@@ -99,7 +99,19 @@ public class ServiceContenu {
         int schemaVersion = validation.versionCourantePour(type);
         validation.valider(type, schemaVersion, payloadJson);
 
-        int position = (ordre != null) ? ordre : (int) blocs.countByPageVersionId(versionId);
+        // max+1, et non count() : une suppression au milieu d'une page laisse un
+        // trou, après quoi count() désigne un ordre DÉJÀ PRIS. Blocs 0,1,2,
+        // retirer le 1 : count() vaut 2, la contrainte bloc_ordre_unique refuse,
+        // et l'ajout sort en 500. Une seule suppression suffisait à bloquer
+        // l'éditeur jusqu'au prochain réordonnancement.
+        int position = (ordre != null) ? ordre : blocs.dernierOrdre(versionId) + 1;
+        if (ordre != null && blocs.existsByPageVersionIdAndOrdre(versionId, ordre)) {
+            // Une position imposée et déjà occupée est une erreur de l'appelant,
+            // pas une panne : la dire en 409 vaut mieux que de la laisser
+            // remonter en violation de contrainte.
+            throw new Erreurs.Conflit(
+                    "la position " + ordre + " est déjà occupée dans cette version");
+        }
         return blocs.save(new Bloc(version.getId(), position, type, schemaVersion, payloadJson));
     }
 
