@@ -337,6 +337,23 @@ public class ServiceAdhesion {
         return adhesions.findByAssociationIdAndCouvreAnneeCode(associationId, anneeCode);
     }
 
+    /**
+     * Les campagnes d'une association, la plus récente d'abord.
+     *
+     * <p>Troisième finder écrit et jamais appelé du dépôt — après celui des
+     * passations et celui des postes. Sans lui, rien ne permet de savoir si une
+     * campagne est déjà ouverte : ni au bureau, qui en rouvrirait une seconde,
+     * ni à l'étudiant, qui n'a aucun moyen de trouver l'identifiant de campagne
+     * que la route d'adhésion exige.
+     *
+     * <p>Lisible par tout compte authentifié, comme les tarifs : l'existence
+     * d'une campagne et son prix sont ce qu'une association AFFICHE.
+     */
+    @Transactional(readOnly = true)
+    public List<CampagneAdhesion> campagnesDe(UUID associationId) {
+        return campagnes.findByAssociationIdOrderByCouvreAnneeCodeDesc(associationId);
+    }
+
     @Transactional(readOnly = true)
     public List<TarifAdhesion> tarifsDe(UUID campagneId) {
         return tarifs.findByCampagneId(campagneId);

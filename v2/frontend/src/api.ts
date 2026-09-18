@@ -96,6 +96,57 @@ async function authed<T>(chemin: string, jeton: string | null, init: RequestInit
   return (texte ? JSON.parse(texte) : null) as T
 }
 
+// ----------------------------------------------------------- adhésion
+
+export type CampagneVue = {
+  id: string
+  associationId: string
+  couvreAnneeCode: string
+  statut: 'PREPAREE' | 'OUVERTE' | 'FERMEE'
+  ouvreLe: string | null
+  fermeLe: string | null
+}
+
+export type TarifVue = {
+  id: string
+  libelle: string
+  montantCents: number
+  publicCible: 'ETUDIANT' | 'EXTERIEUR' | 'ANCIEN'
+}
+
+export type AdhesionVue = {
+  id: string
+  personneId: string
+  associationId: string
+  couvreAnneeCode: string
+  montantPayeCents: number
+  statut: 'EN_ATTENTE_PAIEMENT' | 'ACTIVE' | 'ANNULEE' | 'REMBOURSEE'
+  activeeLe: string | null
+}
+
+export type CommandeVue = {
+  id: string
+  associationId: string
+  statut: 'OUVERTE' | 'PAYEE' | 'ANNULEE' | 'REMBOURSEE'
+  montantTotalCents: number
+  devise: string
+  payeeLe: string | null
+}
+
+export type EcritureVue = {
+  id: string
+  sens: 'ENTREE' | 'SORTIE'
+  montantCents: number
+  motif: string
+  creeLe: string
+}
+
+export type JournalVue = { soldeCents: number; ecritures: EcritureVue[] }
+
+export type AssociationBrute = { id: string; slug: string; nom: string; type: string }
+
+export const PUBLICS_CIBLES = ['ETUDIANT', 'EXTERIEUR', 'ANCIEN'] as const
+
 // ----------------------------------------------------------- passation
 
 export type MembreVue = {
@@ -404,6 +455,82 @@ export const apiDashboard = {
 
   annulerPassation: (j: string | null, passationId: string) =>
     authed<void>(`/api/passations/${passationId}`, j, { method: 'DELETE' }),
+  // ----------------------------------------------------------- adhésion
+
+  associations: (j: string | null) =>
+    authed<AssociationBrute[]>('/api/gouvernance/associations', j),
+
+  campagnes: (j: string | null, associationId: string) =>
+    authed<CampagneVue[]>(`/api/adhesions/associations/${associationId}/campagnes`, j),
+
+  ouvrirCampagne: (j: string | null, associationId: string, couvreAnneeCode: string,
+                   fermeLe: string | null) =>
+    authed<CampagneVue>('/api/adhesions/campagnes', j, {
+      method: 'POST', body: JSON.stringify({ associationId, couvreAnneeCode, fermeLe }),
+    }),
+
+  fermerCampagne: (j: string | null, campagneId: string) =>
+    authed<void>(`/api/adhesions/campagnes/${campagneId}`, j, { method: 'DELETE' }),
+
+  tarifs: (j: string | null, campagneId: string) =>
+    authed<TarifVue[]>(`/api/adhesions/campagnes/${campagneId}/tarifs`, j),
+
+  definirTarif: (j: string | null, campagneId: string, libelle: string,
+                 montantCents: number, publicCible: string) =>
+    authed<TarifVue>(`/api/adhesions/campagnes/${campagneId}/tarifs`, j, {
+      method: 'POST', body: JSON.stringify({ libelle, montantCents, publicCible }),
+    }),
+
+  adherents: (j: string | null, associationId: string, anneeCode: string) =>
+    authed<AdhesionVue[]>(
+      `/api/adhesions/associations/${associationId}/annees/${anneeCode}`, j),
+
+  mesAdhesions: (j: string | null) =>
+    authed<AdhesionVue[]>('/api/adhesions/moi', j),
+
+  /**
+   * Commander une adhésion.
+   *
+   * <p>C'est LA porte d'entrée d'une adhésion payante : elle crée l'adhésion,
+   * la commande et l'intention de paiement ensemble. La route
+   * /api/adhesions/campagnes/{id}/adherer, elle, ne crée aucune commande et
+   * refuse désormais un tarif payant — une adhésion payante sans commande ne
+   * pourrait ni être payée ni être abandonnée.
+   */
+  commanderAdhesion: (j: string | null, campagneId: string, publicCible: string) =>
+    authed<CommandeVue>('/api/tresorerie/commandes/adhesion', j, {
+      method: 'POST', body: JSON.stringify({ campagneId, publicCible }),
+    }),
+
+  adhererGratuitement: (j: string | null, campagneId: string, publicCible: string) =>
+    authed<AdhesionVue>(`/api/adhesions/campagnes/${campagneId}/adherer`, j, {
+      method: 'POST', body: JSON.stringify({ publicCible }),
+    }),
+  // --------------------------------------------------------- trésorerie
+
+  mesCommandes: (j: string | null) =>
+    authed<CommandeVue[]>('/api/tresorerie/commandes/moi', j),
+
+  /**
+   * Le secret client de l'intention DÉJÀ créée.
+   *
+   * <p>Relu, jamais refabriqué : créer une intention à chaque appel laisserait
+   * chez Stripe une traînée d'intentions toutes payables pour une seule
+   * commande.
+   */
+  secretDeCommande: (j: string | null, commandeId: string) =>
+    authed<{ secretClient: string }>(`/api/tresorerie/commandes/${commandeId}/secret`, j),
+
+  annulerCommande: (j: string | null, commandeId: string) =>
+    authed<void>(`/api/tresorerie/commandes/${commandeId}/annuler`, j, { method: 'POST' }),
+
+  rembourserCommande: (j: string | null, commandeId: string, motif: string) =>
+    authed<void>(`/api/tresorerie/commandes/${commandeId}/rembourser`, j, {
+      method: 'POST', body: JSON.stringify({ motif }),
+    }),
+
+  journal: (j: string | null, associationId: string) =>
+    authed<JournalVue>(`/api/tresorerie/associations/${associationId}/journal`, j),
 }
 
 /**

@@ -317,38 +317,42 @@ site) : [`infra/sauvegarde/README.md`](infra/sauvegarde/README.md).
 Honnêtement, pour que ce fichier ne devienne pas le README de la v1 — qui
 documentait MySQL, Jenkins et Docker Compose, dont aucun n'existait :
 
-### Ce qui existe mais que personne ne peut atteindre
+### Ce qui existait mais que personne ne pouvait atteindre
 
-D'abord ceci, parce que c'est le plus gros écart entre ce dépôt et un
-produit, et que la liste de cases ci-dessous le rendait invisible : elle met
-sur la même ligne « Module `adhesion` », qui désigne du code serveur, et
-« Tableau de bord », qui désigne un écran.
+C'était le plus gros écart entre ce dépôt et un produit, et la liste de cases
+ci-dessous le rendait invisible : elle met sur la même ligne « Module
+`adhesion` », qui désigne du code serveur, et « Tableau de bord », qui désigne
+un écran.
 
-Deux modules sont écrits, autorisés, testés — et **aucun écran ne les
-appelle**. Quatorze routes qu'aucun humain ne peut atteindre autrement
-qu'avec `curl` :
+Quatre modules étaient écrits, autorisés, testés — et **aucun écran ne les
+appelait**. Vingt-cinq routes qu'aucun humain ne pouvait atteindre autrement
+qu'avec `curl` : `/api/medias`, `/api/passations`, `/api/adhesions`,
+`/api/tresorerie`. Ils ont désormais leurs écrans, et la conséquence dépassait
+ces modules :
 
-| Module | Routes | Ce qui manque |
-|---|---|---|
-| `/api/adhesions` | 8 | l'écran de campagne côté bureau, et l'adhésion côté étudiant |
-| `/api/tresorerie` | 6 | la page de paiement, le suivi de commande, le journal |
+- `evenement.mediaKey` et `partenaire.logoMediaKey` — tous deux **rendus par le
+  portail public** — ne pouvaient être renseignés que par un INSERT à la main,
+  et les formulaires les écrasaient à `null` à chaque modification ;
+- `media_asset.texte_alternatif` n'était jamais écrit, faute d'endroit où le
+  saisir : les images publiques sortaient sans texte alternatif ;
+- le bloc `CTA_ADHESION` du portail pointait vers `/assos/{slug}/adherer`, une
+  route qui n'existait pas — le seul bouton d'adhésion du site public tombait
+  sur « page introuvable » ;
+- la « liste nominative » des adhérents, réservée au bureau, ne portait aucune
+  identité : elle ne disait pas qui avait adhéré.
 
-Ils étaient quatre. `/api/medias` est sorti de la liste — la médiathèque a son
-écran, et avec elle `evenement.mediaKey` et `partenaire.logoMediaKey`, tous
-deux **rendus par le portail public**, se choisissent enfin autrement que par
-un INSERT à la main. `/api/passations` aussi : les quatre étapes se déroulent
-depuis le tableau de bord.
+`ContratApiTest.modulesSansEcran` vérifie maintenant les deux sens : aucune
+route serveur sans écran, et le README à jour. La liste est vide, ce qui n'avait
+jamais été le cas.
 
 Il manque cependant un **annuaire des personnes**, et cela se voit à l'écran de
-passation : le système ne stocke aucun nom — `membre_bureau.personne_id` est le
-`sub` Keycloak et rien d'autre. On désigne donc quelqu'un par l'identifiant de
-son compte, que chacun lit sur cet écran et transmet. C'est utilisable, ce
-n'est pas satisfaisant, et c'est aussi pourquoi le trombinoscope public affiche
-des postes et des photos, jamais des noms.
-
-`ContratApiTest.modulesSansEcran` fige cette liste et vérifie qu'elle est
-exacte dans les deux sens : le jour où l'un de ces écrans est écrit, le test
-devient rouge et oblige à corriger ce paragraphe.
+passation comme sur la liste des adhérents : le système ne stocke aucun nom —
+`membre_bureau.personne_id` et `adhesion.personne_id` sont le `sub` Keycloak et
+rien d'autre. On désigne donc quelqu'un par l'identifiant de son compte, que
+chacun lit sur l'écran de passation et transmet. C'est utilisable, ce n'est pas
+satisfaisant, et c'est aussi pourquoi le trombinoscope public affiche des postes
+et des photos, jamais des noms. Un annuaire suppose d'interroger Keycloak :
+c'est une intégration à part entière, pas une finition.
 
 ### Le reste
 

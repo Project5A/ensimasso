@@ -378,3 +378,20 @@ textarea { resize: vertical; }
 .selecteur-media label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
 .selecteur-media select { width: 100%; }
 .selecteur-media__apercu { margin-top: 0.6rem; max-height: 8rem; border-radius: 6px; }
+
+/* ------------------------------------------------ adhésions et trésorerie */
+.campagnes, .tarifs { list-style: none; padding: 0; }
+.campagnes { margin: 1rem 0 0; display: grid; gap: 1rem; }
+.campagne { background: var(--surface); border-radius: 8px; padding: 1rem 1.2rem; }
+.campagne__entete { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.tarifs { margin: 0.6rem 0 0; display: grid; gap: 0.3rem; font-size: 0.9rem; }
+.tarifs--choix { margin-top: 1.5rem; gap: 0.6rem; }
+.tarifs--choix .bouton { width: 100%; }
+
+.solde { font-size: 1.4rem; margin: 1rem 0 0.3rem; }
+.journal { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+.journal th, .journal td { text-align: left; padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--muted) 25%, transparent); }
+.journal th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--muted); }
+.journal__montant { font-variant-numeric: tabular-nums; white-space: nowrap; }

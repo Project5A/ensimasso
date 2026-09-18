@@ -136,7 +136,9 @@ class ArchitectureTest {
             "GouvernanceController.mandatsDe", "liste des mandats d'une association, déjà publique",
             "GouvernanceController.creer", "création d'association : rôle global de plateforme",
             "AdhesionController.tarifs", "grille tarifaire d'une campagne : c'est ce qu'on montre "
-                    + "à qui s'apprête à adhérer, la cacher au futur adhérent n'aurait pas de sens");
+                    + "à qui s'apprête à adhérer, la cacher au futur adhérent n'aurait pas de sens",
+            "AdhesionController.campagnes", "les campagnes d'une association : même raison que les "
+                    + "tarifs, et il faut bien ce numéro de campagne pour adhérer");
 
     @Test
     @DisplayName("toute route qui agit ou lit au nom de quelqu'un sait qui c'est")

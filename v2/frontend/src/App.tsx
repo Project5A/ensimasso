@@ -9,6 +9,15 @@ const PageAsso = lazy(() => import('./pages/PageAsso'))
 // frontière paresseuse, pour qu'aucun visiteur public ne le télécharge.
 const Espace = lazy(() => import('./dashboard/Espace'))
 
+// Les pages d'adhésion, chargées à la demande elles aussi : elles emportent le
+// fournisseur OIDC, et une page publique ne doit pas le télécharger.
+const PageAdherer = lazy(() =>
+  import('./adhesion/pages').then((m) => ({ default: m.PageAdherer })))
+const PageMesCommandes = lazy(() =>
+  import('./adhesion/pages').then((m) => ({ default: m.PageMesCommandes })))
+const PagePaiement = lazy(() =>
+  import('./adhesion/pages').then((m) => ({ default: m.PagePaiement })))
+
 function Chargement() {
   return (
     <main className="page page--centree">
@@ -27,6 +36,12 @@ export default function App() {
             une unique route littérale /assos/bdlc pointant sur un composant de
             1 117 lignes avec l'identifiant d'association 5 codé en dur — chaque
             nouvelle asso aurait exigé une copie du fichier. */}
+        {/* Avant /assos/:slug/:pageSlug : le bloc CTA_ADHESION du portail
+            public pointe vers /assos/{slug}/adherer depuis toujours, et cette
+            route n'existait pas. Elle tombait donc sur la recherche d'une page
+            nommée « adherer » — le seul bouton d'adhésion du site public ne
+            menait nulle part. */}
+        <Route path="/assos/:slug/adherer" element={<PageAdherer />} />
         <Route path="/assos/:slug" element={<PageAsso />} />
         <Route path="/assos/:slug/:pageSlug" element={<PageAsso />} />
 
@@ -36,6 +51,8 @@ export default function App() {
         {/* Tableau de bord. Le garde REND l'invite de connexion à la place du
             contenu — il ne l'affiche pas puis ne redirige trois secondes plus
             tard, comme le faisait la v1. La vraie autorisation reste serveur. */}
+        <Route path="/commandes" element={<PageMesCommandes />} />
+        <Route path="/commandes/:commandeId" element={<PagePaiement />} />
         <Route path="/connexion/retour" element={<Espace />} />
         <Route path="/tableau/*" element={<Espace />} />
 

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 /**
  * La navigation d'un mandat : pages, agenda, partenaires, médiathèque, thème,
- * passation.
+ * adhésions, trésorerie, passation.
  *
  * <p>Tout ce que gère un bureau est rattaché à SON mandat, et l'URL le dit.
  * Un lien de tableau de bord porte donc toujours l'identifiant du mandat — il
@@ -15,6 +15,8 @@ export function NavMandat({ mandatId, actif }: { mandatId: string; actif: string
     { cle: 'partenaires', libelle: 'Partenaires', vers: `/tableau/mandats/${mandatId}/partenaires` },
     { cle: 'medias', libelle: 'Médiathèque', vers: `/tableau/mandats/${mandatId}/medias` },
     { cle: 'theme', libelle: 'Thème', vers: `/tableau/mandats/${mandatId}/theme` },
+    { cle: 'adhesions', libelle: 'Adhésions', vers: `/tableau/mandats/${mandatId}/adhesions` },
+    { cle: 'tresorerie', libelle: 'Trésorerie', vers: `/tableau/mandats/${mandatId}/tresorerie` },
     { cle: 'passation', libelle: 'Passation', vers: `/tableau/mandats/${mandatId}/passation` },
   ]
   return (

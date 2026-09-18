@@ -48,6 +48,15 @@ public class AdhesionController {
                 corps.montantCents(), PublicCible.valueOf(corps.publicCible())));
     }
 
+    /**
+     * Les campagnes d'une association. Sans cette lecture, l'identifiant de
+     * campagne que la route d'adhésion exige n'était trouvable nulle part.
+     */
+    @GetMapping("/associations/{associationId}/campagnes")
+    public List<CampagneVue> campagnes(@PathVariable UUID associationId) {
+        return service.campagnesDe(associationId).stream().map(CampagneVue::de).toList();
+    }
+
     @GetMapping("/campagnes/{campagneId}/tarifs")
     public List<TarifVue> tarifs(@PathVariable UUID campagneId) {
         return service.tarifsDe(campagneId).stream().map(TarifVue::de).toList();
@@ -124,11 +133,27 @@ public class AdhesionController {
         }
     }
 
-    public record AdhesionVue(UUID id, UUID associationId, String couvreAnneeCode,
-                              int montantPayeCents, String statut, OffsetDateTime activeeLe) {
+    /**
+     * Une adhésion, telle que l'API la rend.
+     *
+     * <p>{@code personneId} en fait partie, et ne l'a pas toujours fait. La
+     * route {@code /associations/{id}/annees/{code}} se présente comme la
+     * « liste nominative, réservée au bureau » et exige à ce titre une
+     * permission — mais la vue ne portait AUCUNE identité. Le bureau lisait donc
+     * une liste d'adhésions sans savoir de qui, ce qui la rend inutile pour la
+     * seule chose qu'on en attend : savoir qui est adhérent. Et la restriction
+     * d'accès ne protégeait rien, puisqu'il n'y avait rien à protéger.
+     *
+     * <p>Faute d'annuaire, cet identifiant est le « sub » Keycloak — la seule
+     * identité que le système connaisse. Sur {@code /moi}, c'est le sien.
+     */
+    public record AdhesionVue(UUID id, UUID personneId, UUID associationId,
+                              String couvreAnneeCode, int montantPayeCents,
+                              String statut, OffsetDateTime activeeLe) {
         static AdhesionVue de(Adhesion a) {
-            return new AdhesionVue(a.getId(), a.getAssociationId(), a.getCouvreAnneeCode(),
-                    a.getMontantPayeCents(), a.getStatut().name(), a.getActiveeLe());
+            return new AdhesionVue(a.getId(), a.getPersonneId(), a.getAssociationId(),
+                    a.getCouvreAnneeCode(), a.getMontantPayeCents(),
+                    a.getStatut().name(), a.getActiveeLe());
         }
     }
 

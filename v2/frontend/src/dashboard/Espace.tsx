@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { FournisseurAuth } from '../auth/AuthContext'
 import { Protege } from '../auth/Protege'
+import Adhesions from './Adhesions'
 import Agenda from './Agenda'
 import Apercu from './Apercu'
 import Editeur from './Editeur'
@@ -8,6 +9,7 @@ import Mediatheque from './Mediatheque'
 import Partenaires from './Partenaires'
 import Passation from './Passation'
 import Theme from './Theme'
+import Tresorerie from './Tresorerie'
 import Pages from './Pages'
 import Tableau from './Tableau'
 
@@ -32,6 +34,8 @@ export default function Espace() {
         <Route path="mandats/:mandatId/partenaires" element={<Protege><Partenaires /></Protege>} />
         <Route path="mandats/:mandatId/medias" element={<Protege><Mediatheque /></Protege>} />
         <Route path="mandats/:mandatId/theme" element={<Protege><Theme /></Protege>} />
+        <Route path="mandats/:mandatId/adhesions" element={<Protege><Adhesions /></Protege>} />
+        <Route path="mandats/:mandatId/tresorerie" element={<Protege><Tresorerie /></Protege>} />
         <Route path="mandats/:mandatId/passation" element={<Protege><Passation /></Protege>} />
         <Route path="pages/:pageId" element={<Protege><Editeur /></Protege>} />
         <Route path="apercu/:versionId" element={<Protege><Apercu /></Protege>} />

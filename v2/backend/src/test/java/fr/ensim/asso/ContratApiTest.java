@@ -83,30 +83,26 @@ class ContratApiTest {
      * Les modules que le serveur expose et qu'AUCUN écran n'appelle.
      *
      * <p>Le test précédent ne regarde que dans un sens : « le front appelle-t-il
-     * une route fantôme ? ». L'autre sens ne se voyait nulle part, et il est
-     * plus lourd de conséquences ici : deux modules entiers — adhésions et
-     * trésorerie — sont écrits, autorisés, testés, et atteignables par
-     * personne d'autre que curl. Quatorze routes.
+     * une route fantôme ? ». L'autre sens ne se voyait nulle part, et il portait
+     * le plus gros écart entre ce dépôt et un produit : quatre modules entiers —
+     * médias, passations, adhésions, trésorerie — étaient écrits, autorisés,
+     * testés, et atteignables par personne d'autre que curl. Vingt-cinq routes.
      *
-     * <p>Ce n'est pas un bogue à corriger dans ce test, c'est un état du projet
-     * qu'il faut garder DIT. Le README coche « Module adhesion » et « Module
-     * tresorerie » à côté de « Tableau de bord » et « Portail public », ce qui
-     * met sur la même ligne un module qui existe et une fonctionnalité qu'un
-     * humain peut atteindre.
+     * <p>Cette liste est vide aujourd'hui, et c'est tout l'intérêt de la garder :
+     * elle n'a jamais été vide avant, et rien ne le disait. Elle a rétréci
+     * quatre fois, et chaque fois c'est ce test qui l'a signalé — il devient
+     * rouge dès qu'un écran atteint un module de plus, ce qui force à mettre le
+     * README à jour au lieu de le laisser vieillir. Il devient rouge aussi dans
+     * l'autre sens : une nouvelle route serveur qu'aucun écran n'appelle
+     * apparaît ici le jour où elle est écrite.
      *
-     * <p>La liste rétrécit : `/api/medias` puis `/api/passations` en sont
-     * sortis le jour où leurs écrans ont été écrits, et c'est ce test qui l'a
-     * signalé les deux fois.
-     *
-     * <p>La liste est donc figée ici ET dans le README. Le jour où un écran de
-     * médiathèque est écrit, ce test devient rouge — et c'est ce qu'on veut :
-     * il force à mettre le README à jour au lieu de le laisser vieillir.
+     * <p>{@code /api/webhooks} est exclu : Stripe l'appelle, pas un navigateur.
+     * Son absence côté front est la conception, pas un manque.
      */
-    private static final Set<String> MODULES_SANS_ECRAN =
-            Set.of("/api/adhesions", "/api/tresorerie");
+    private static final Set<String> MODULES_SANS_ECRAN = Set.of();
 
     @Test
-    @DisplayName("les modules qu'aucun écran n'atteint sont exactement ceux que le README annonce")
+    @DisplayName("aucun module du serveur n'est hors de portée d'un écran")
     void modulesSansEcran() throws IOException {
         Set<String> prefixesServeur = new TreeSet<>();
         for (Route r : routesDuServeur()) {
@@ -115,16 +111,13 @@ class ContratApiTest {
                 prefixesServeur.add(m.group(1));
             }
         }
-        // Appelé par Stripe, jamais par un navigateur : son absence côté front
-        // est la conception, pas un manque.
         prefixesServeur.remove("/api/webhooks");
 
         assertThat(prefixesServeur)
                 .as("l'analyse n'a trouvé presque aucun module : elle ne vérifie plus rien")
                 .hasSizeGreaterThan(5);
 
-        String clientApi = Files.readString(
-                clientDuFront(), StandardCharsets.UTF_8);
+        String clientApi = Files.readString(clientDuFront(), StandardCharsets.UTF_8);
         Set<String> sansEcran = new TreeSet<>();
         for (String prefixe : prefixesServeur) {
             if (!clientApi.contains(prefixe)) {
@@ -133,12 +126,13 @@ class ContratApiTest {
         }
 
         assertThat(sansEcran)
-                .as("la liste des modules sans écran a changé : mettez à jour "
-                  + "MODULES_SANS_ECRAN et la section correspondante du README")
+                .as("ces modules du serveur ne sont appelés par aucun écran. Soit on leur "
+                  + "en écrit un, soit on les inscrit dans MODULES_SANS_ECRAN avec la "
+                  + "raison, et on met à jour la section correspondante du README")
                 .isEqualTo(new TreeSet<>(MODULES_SANS_ECRAN));
 
-        // Et le README doit les nommer. Un état connu qui n'est écrit nulle part
-        // est un état oublié.
+        // Et le README doit nommer ceux qui restent. Un état connu qui n'est
+        // écrit nulle part est un état oublié.
         String readme = Files.readString(readmeV2(), StandardCharsets.UTF_8);
         for (String prefixe : MODULES_SANS_ECRAN) {
             assertThat(readme)
