@@ -98,6 +98,29 @@ INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par
  ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
   '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'ACTIVE');
 
+\echo '--- 12b. remboursee, la place se libere : readherer doit etre ACCEPTE ---'
+-- L'unicite portait sur tous les statuts : une adhesion REMBOURSEE fermait
+-- l'annee a l'etudiant pour toujours. Elle est partielle depuis V12, et ce
+-- bloc doit passer SANS erreur — c'est le seul du script dans ce cas parmi
+-- les adhesions, et c'est voulu.
+UPDATE adhesion SET statut='REMBOURSEE'
+ WHERE personne_id='d0000000-0000-4000-8000-000000000003'
+   AND couvre_annee_code='2026-2027';
+INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par_mandat_id,
+                      montant_paye_cents, statut) VALUES
+ ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
+  '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'ACTIVE');
+SELECT 'adhesions 2026-2027 de cette personne (1 remboursee + 1 active = 2) : '
+  || count(*)::text FROM adhesion
+ WHERE personne_id='d0000000-0000-4000-8000-000000000003'
+   AND couvre_annee_code='2026-2027';
+
+\echo '--- 12c. ... mais une SECONDE vivante reste REFUSEE ---'
+INSERT INTO adhesion (personne_id, association_id, couvre_annee_code, vendue_par_mandat_id,
+                      montant_paye_cents, statut) VALUES
+ ('d0000000-0000-4000-8000-000000000003','11111111-1111-1111-1111-111111111111',
+  '2026-2027','aaaa0000-0000-4000-8000-000000000002',1500,'EN_ATTENTE_PAIEMENT');
+
 \echo '--- 13. une URL ne peut pas etre stockee comme cle de media (STOR-01) ---'
 INSERT INTO media_asset (association_id, annee_code, cle, content_type, statut, depose_par) VALUES
  ('11111111-1111-1111-1111-111111111111','2025-2026',

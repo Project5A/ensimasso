@@ -170,4 +170,79 @@ class VenteAdhesionTest {
         assertThat(rouverte.getOuvertePparMandatId()).isEqualTo(bureauSortant.getId());
         assertThat(rouverte.getFermeLe()).isEqualTo(OffsetDateTime.parse("2026-11-30T00:00:00Z"));
     }
+
+    // ------------------------------------------------ réadhérer après coup
+
+    /**
+     * Les adhésions déjà en base, et la règle « laquelle occupe la place ».
+     *
+     * <p>Le filtre est appliqué ICI, à partir du statut, plutôt que rendu
+     * ligne par ligne : un test qui répondrait {@code Optional.empty()} à la
+     * main se donnerait sa propre réponse. La moitié base de cette règle —
+     * l'index partiel {@code adhesion_une_vivante_par_annee} — est démontrée
+     * par V12, qui rejoue les trois cas au moment même où elle la pose.
+     */
+    private void dejaEnBase(Adhesion... existantes) {
+        when(adhesions.adhesionVivante(any(), any(), any())).thenAnswer(i ->
+                java.util.Arrays.stream(existantes)
+                        .filter(a -> a.getStatut() == StatutAdhesion.ACTIVE
+                                  || a.getStatut() == StatutAdhesion.EN_ATTENTE_PAIEMENT)
+                        .findFirst());
+    }
+
+    private Adhesion adhesion(StatutAdhesion statut) {
+        Adhesion a = new Adhesion(PERSONNE, ASSO, "2026-2027", bureauSortant.getId(),
+                CAMPAGNE, 1500, OffsetDateTime.parse("2026-07-10T00:00:00Z"));
+        if (statut == StatutAdhesion.ACTIVE || statut == StatutAdhesion.REMBOURSEE) {
+            a.activer("pi_ancien", OffsetDateTime.parse("2026-07-10T00:00:00Z"));
+        }
+        if (statut == StatutAdhesion.REMBOURSEE) {
+            a.rembourser();
+        }
+        return a;
+    }
+
+    @Test
+    @DisplayName("remboursé, on peut réadhérer : le remboursement rend l'argent, il ne ferme pas l'année")
+    void readhesionApresRemboursement() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+        dejaEnBase(adhesion(StatutAdhesion.REMBOURSEE));
+
+        // La recherche portait sur TOUS les statuts : la ligne remboursée
+        // suffisait à refuser, et un statut ne se périme pas. L'étudiant était
+        // exclu de cette association pour l'année entière, sans autre recours
+        // qu'un DELETE à la main en base.
+        Adhesion nouvelle = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT);
+
+        assertThat(nouvelle.getStatut()).isEqualTo(StatutAdhesion.EN_ATTENTE_PAIEMENT);
+        assertThat(nouvelle.getCouvreAnneeCode()).isEqualTo("2026-2027");
+    }
+
+    @Test
+    @DisplayName("déjà adhérent, on ne rachète pas : le filet contre le double droit tient")
+    void deuxiemeAdhesionRefusee() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+        dejaEnBase(adhesion(StatutAdhesion.ACTIVE));
+
+        assertThatThrownBy(() ->
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                .isInstanceOf(Erreurs.Conflit.class)
+                .hasMessageContaining("déjà adhérent");
+        verify(adhesions, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("un paiement en attente renvoie vers la commande en cours, pas vers une seconde")
+    void paiementEnAttenteRenvoieVersLaCommande() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+        dejaEnBase(adhesion(StatutAdhesion.EN_ATTENTE_PAIEMENT));
+
+        // Ouvrir une seconde intention de paiement pour la même année, ce
+        // serait rendre payable deux fois ce qui ne se doit qu'une.
+        assertThatThrownBy(() ->
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                .isInstanceOf(Erreurs.Conflit.class)
+                .hasMessageContaining("attend déjà son paiement");
+        verify(adhesions, never()).save(any());
+    }
 }

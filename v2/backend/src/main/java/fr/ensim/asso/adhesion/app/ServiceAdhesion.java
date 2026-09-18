@@ -141,11 +141,27 @@ public class ServiceAdhesion {
             throw new Erreurs.Conflit("cette campagne d'adhésion n'est pas ouverte");
         }
 
-        adhesions.findByPersonneIdAndAssociationIdAndCouvreAnneeCode(
-                        personneId, campagne.getAssociationId(), campagne.getCouvreAnneeCode())
-                .ifPresent(existante -> {
-                    throw new Erreurs.Conflit("vous avez déjà une adhésion pour "
-                            + campagne.getCouvreAnneeCode() + " (statut : " + existante.getStatut() + ")");
+        // Seule une adhésion VIVANTE fait obstacle. La recherche portait sur
+        // tous les statuts : une adhésion REMBOURSEE fermait donc l'année à
+        // l'étudiant définitivement, alors que le remboursement venait
+        // justement de lui reprendre son droit. Voir V12.
+        adhesions.adhesionVivante(personneId, campagne.getAssociationId(),
+                        campagne.getCouvreAnneeCode())
+                .ifPresent(vivante -> {
+                    // Le message nomme le statut réellement lu, et n'en suppose
+                    // aucun : la requête n'en rend que deux aujourd'hui, mais un
+                    // message qui décrirait le mauvais cas serait pire qu'un
+                    // message générique.
+                    throw new Erreurs.Conflit(switch (vivante.getStatut()) {
+                        case ACTIVE -> "vous êtes déjà adhérent pour "
+                                + campagne.getCouvreAnneeCode();
+                        case EN_ATTENTE_PAIEMENT -> "une adhésion pour "
+                                + campagne.getCouvreAnneeCode()
+                                + " attend déjà son paiement : reprenez-la plutôt que d'en "
+                                + "ouvrir une seconde";
+                        default -> "une adhésion pour " + campagne.getCouvreAnneeCode()
+                                + " occupe déjà la place (statut : " + vivante.getStatut() + ")";
+                    });
                 });
 
         // LE point de la méthode : le prix vient d'ici, jamais de l'appelant.
