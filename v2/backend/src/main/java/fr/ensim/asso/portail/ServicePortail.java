@@ -128,10 +128,27 @@ public class ServicePortail {
         this.horloge = horloge;
     }
 
-    /** L'annuaire public : une association par ligne, avec son mandat en cours. */
+    /**
+     * L'annuaire public : les associations qu'un bureau dirige aujourd'hui.
+     *
+     * <p>Ce javadoc promettait « une association par ligne, avec son mandat en
+     * cours ». {@code AssociationVue} ne porte aucun mandat, et
+     * {@code findAll()} n'écartait pas celles qui n'en ont pas — or c'est
+     * l'état de toute association fraîchement créée : la route de création
+     * enregistre l'association et rien d'autre, et le seul endroit du code qui
+     * crée un mandat est la passation, qui EXIGE déjà un mandat en fonction.
+     * L'annuaire listait donc des associations dont la page répond 404 « mandat
+     * en fonction pour … ». Un lien public qui ne mène nulle part.
+     *
+     * <p>Ce qui n'est pas dans la vue n'est pas promis : la ligne dit le slug,
+     * le nom et le type. Ce qu'elle garantit désormais, c'est qu'en cliquant on
+     * arrive quelque part.
+     */
     @Transactional(readOnly = true)
     public List<PageRendue.AssociationVue> annuaire() {
+        Set<UUID> dirigees = new HashSet<>(mandats.associationsEnFonction());
         return associations.findAll().stream()
+                .filter(a -> dirigees.contains(a.getId()))
                 .sorted(Comparator.comparing(Association::getSlug))
                 .map(a -> new PageRendue.AssociationVue(
                         a.getSlug(), a.getNom(), a.getTypeAsso().name()))
@@ -161,8 +178,17 @@ public class ServicePortail {
                         "mandat " + anneeCode + " pour", slugAsso));
         if (mandat.getStatut() == StatutMandat.PREPARATION) {
             // Un mandat en préparation est invisible : le bureau entrant
-            // travaille ses brouillons, le public ne doit rien en voir.
-            throw new Erreurs.Introuvable("mandat publié " + anneeCode + " pour", slugAsso);
+            // travaille ses brouillons, le public ne doit rien en voir — PAS
+            // MÊME la différence entre « cette année n'existe pas » et « elle
+            // existe mais n'est pas publiée ».
+            //
+            // Le message disait « mandat publié <annee> pour <slug> », l'autre
+            // branche « mandat <annee> pour <slug> », et le gestionnaire
+            // d'erreurs recopie getMessage() dans le corps du 404, sur une
+            // route permitAll. Comparer les deux réponses révélait donc
+            // l'existence du mandat que cette branche existe pour cacher. Le
+            // message est maintenant identique, octet pour octet.
+            throw new Erreurs.Introuvable("mandat " + anneeCode + " pour", slugAsso);
         }
         // `false` était écrit en dur. L'URL datée d'un mandat EN FONCTION est
         // une URL légitime et citable — mais ce qu'elle sert n'est pas une
@@ -416,8 +442,8 @@ public class ServicePortail {
         }
 
         // Seul un bloc trombinoscope reçoit l'équipe : inutile de la répéter.
-        List<PageRendue.MembreVue> equipeDuBloc =
-                "TEAM_GRID".equals(bloc.getType()) ? equipe : List.of();
+        List<PageRendue.MembreVue> equipeDuBloc = "TEAM_GRID".equals(bloc.getType())
+                ? SelectionBlocs.equipe(sel.payload(), equipe) : List.of();
 
         return new PageRendue.BlocRendu(bloc.getId(), bloc.getType(), bloc.getSchemaVersion(),
                 sel.payload(), urls, equipeDuBloc,

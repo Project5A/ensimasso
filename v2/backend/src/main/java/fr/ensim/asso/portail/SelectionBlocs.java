@@ -63,6 +63,28 @@ final class SelectionBlocs {
         return tous.stream().filter(p -> vises.contains(p.getNiveau().name())).toList();
     }
 
+    /**
+     * Les membres retenus par un bloc trombinoscope : tout le bureau, ou les
+     * seuls postes demandés.
+     *
+     * <p>Le champ {@code postes} existait dans le schéma, était éditable dans
+     * le formulaire généré et validé à l'enregistrement — et n'était appliqué
+     * nulle part. Un bureau qui choisissait « seulement le président et le
+     * trésorier » obtenait tout le bureau sur sa page publique, y compris les
+     * membres qu'il n'avait pas retenus. Un réglage qui ne règle rien est pire
+     * qu'un réglage absent : on croit avoir décidé.
+     */
+    static List<PageRendue.MembreVue> equipe(Map<String, Object> payload,
+                                             List<PageRendue.MembreVue> tous) {
+        if (!(payload.get("postes") instanceof List<?> demandes) || demandes.isEmpty()) {
+            return tous;
+        }
+        Set<String> vises = demandes.stream()
+                .filter(String.class::isInstance).map(String.class::cast)
+                .collect(Collectors.toSet());
+        return tous.stream().filter(m -> vises.contains(m.poste())).toList();
+    }
+
     private static String texte(Object valeur, String defaut) {
         return valeur instanceof String s && !s.isBlank() ? s : defaut;
     }

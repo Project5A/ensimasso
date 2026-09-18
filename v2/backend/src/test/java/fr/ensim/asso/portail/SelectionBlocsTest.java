@@ -135,4 +135,48 @@ class SelectionBlocsTest {
         assertThat(SelectionBlocs.partenaires(Map.of("niveaux", List.of("PLATINE")), tous))
                 .isEmpty();
     }
+
+    // --------------------------------------------------- le trombinoscope
+
+    private PageRendue.MembreVue membre(String poste) {
+        return new PageRendue.MembreVue(poste, poste, 0, null);
+    }
+
+    private List<PageRendue.MembreVue> bureau() {
+        return List.of(membre("PRESIDENT"), membre("TRESORIER"),
+                       membre("SECRETAIRE"), membre("RESP_COM"));
+    }
+
+    @Test
+    @DisplayName("sans « postes », le trombinoscope montre tout le bureau")
+    void trombinoscopeComplet() {
+        assertThat(SelectionBlocs.equipe(Map.of(), bureau())).hasSize(4);
+        assertThat(SelectionBlocs.equipe(Map.of("postes", List.of()), bureau())).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("« postes » retient ceux qu'on a demandés, et eux seuls")
+    void trombinoscopeFiltre() {
+        // Ce champ existait dans le schéma, était éditable dans le formulaire
+        // généré, validé à l'enregistrement — et n'était appliqué nulle part.
+        // Un bureau qui choisissait deux postes en obtenait quatre sur sa page
+        // publique. Un réglage qui ne règle rien est pire qu'un réglage
+        // absent : on croit avoir décidé.
+        assertThat(SelectionBlocs.equipe(
+                Map.of("postes", List.of("PRESIDENT", "TRESORIER")), bureau()))
+                .extracting(PageRendue.MembreVue::poste)
+                .containsExactly("PRESIDENT", "TRESORIER");
+    }
+
+    @Test
+    @DisplayName("un poste inconnu ne fait pas tomber le bloc, il ne retient rien")
+    void trombinoscopePosteInconnu() {
+        assertThat(SelectionBlocs.equipe(
+                Map.of("postes", List.of("GRAND_MANITOU")), bureau())).isEmpty();
+        // Et une valeur non textuelle n'est pas une demande.
+        assertThat(SelectionBlocs.equipe(
+                Map.of("postes", List.of(42, "PRESIDENT")), bureau()))
+                .extracting(PageRendue.MembreVue::poste)
+                .containsExactly("PRESIDENT");
+    }
 }
