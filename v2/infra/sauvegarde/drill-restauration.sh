@@ -114,6 +114,51 @@ verifier "une clé tierce ne déchiffre pas l'archive" $?
 statut=0; grep -q '^version_pg=' "$ARCHIVE/manifeste.txt" || statut=$?
 verifier "le manifeste est vérifiable sans la clé privée" "$statut"
 
+# --- 1 bis. la rétention, c'est-à-dire le seul chemin qui EFFACE ----------
+titre "1 bis. Rétention"
+# L'exercice ne lançait la sauvegarde qu'UNE fois, sur un dépôt vide. Or la
+# rétention ne fait rien tant qu'il n'y a qu'une archive : le seul chemin du
+# système qui SUPPRIME des sauvegardes n'était donc jamais parcouru. C'est ainsi
+# qu'un défaut de jointure de chaîne — la rétention purgeait TOUT, y compris
+# l'archive qu'elle venait d'écrire — a pu vivre sans être vu : un drill qui
+# n'exerce pas l'effacement ne démontre pas que les sauvegardes survivent.
+#
+# On force donc de l'ancien dans le dépôt, puis on sauvegarde une SECONDE fois.
+for jours in 1 9 20 100; do
+  ancienne="$DEPOT/$(date -u -d "-$jours day" +%Y-%m-%dT%H-%M-%SZ)"
+  mkdir -p "$ancienne"
+  cp "$ARCHIVE/manifeste.txt" "$ancienne/manifeste.txt"
+done
+AVANT_RETENTION=$(find "$DEPOT" -mindepth 1 -maxdepth 1 -type d | wc -l)
+
+# Politique délibérément serrée pour CETTE exécution : avec les valeurs par
+# défaut (7 quotidiennes), cinq archives tiennent toutes et la rétention ne
+# supprimerait rien — l'exercice repasserait à côté du chemin destructeur, ce
+# qui est exactement le défaut qu'on corrige. À 1/1/1, au plus trois survivent.
+RETENTION_QUOTIDIENNE=1 RETENTION_HEBDO=1 RETENTION_MENSUELLE=1 \
+  ./sauvegarder.sh >"$TRAVAIL/sauvegarde2.log" 2>&1 || {
+    cat "$TRAVAIL/sauvegarde2.log" >&2
+    echec "la seconde sauvegarde a échoué"
+  }
+APRES_RETENTION=$(find "$DEPOT" -mindepth 1 -maxdepth 1 -type d | wc -l)
+info "dépôt : $AVANT_RETENTION archives avant, $APRES_RETENTION après la rétention"
+
+statut=0; [ "$APRES_RETENTION" -gt 0 ] || statut=1
+verifier "la rétention laisse au moins une sauvegarde" "$statut"
+
+# Et LA plus récente, celle qu'on vient d'écrire, doit être là : c'est
+# exactement celle que la rétention effaçait.
+DERNIERE="$(find "$DEPOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r | head -1)"
+statut=0; [ -s "$DEPOT/$DERNIERE/base.dump.age" ] || statut=1
+verifier "la sauvegarde qui vient d'être écrite survit à sa propre rétention" "$statut"
+
+# Le témoin inverse : une rétention qui ne supprime jamais rien n'est pas une
+# rétention. Avec 5 archives dont une vieille de 40 jours, elle doit mordre.
+statut=0; [ "$APRES_RETENTION" -lt "$AVANT_RETENTION" ] || statut=1
+verifier "la rétention supprime réellement les archives hors politique" "$statut"
+
+ARCHIVE="$DEPOT/$DERNIERE"
+
 # --- 2. une archive corrompue doit être refusée ---------------------------
 titre "2. Détection de corruption"
 cp -r "$ARCHIVE" "$DEPOT/corrompue"

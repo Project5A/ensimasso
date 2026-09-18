@@ -60,6 +60,30 @@ fi
 # On garde les N plus récentes par jour, puis une par semaine, puis une par
 # mois. Volontairement simple : une rétention que personne ne comprend est une
 # rétention que personne ne vérifie.
+
+# Appartenance à une liste, explicitement — et non par jointure de chaîne.
+#
+# Les trois tests ci-dessous s'écrivaient «  [[ ! " ${liste[*]} " == *" $x "* ]]  ».
+# Cette jointure suppose que le PREMIER caractère d'IFS est une espace. Ce
+# script pose IFS=$'\n\t' en tête — l'idiome de mode strict, treize lignes plus
+# haut. La jointure se faisait donc par saut de ligne, aucun motif délimité par
+# des espaces ne pouvait correspondre, et la rétention concluait que RIEN n'était
+# à garder : dès la deuxième exécution, elle effaçait tout le dépôt, y compris la
+# sauvegarde qu'elle venait d'écrire, pendant que le script affichait
+# « Sauvegarde terminée ». Vérifié en extrayant la fonction et en la lançant sur
+# cinq répertoires : cinq purges, zéro restant.
+#
+# La comparaison est désormais faite terme à terme : elle ne dépend d'aucune
+# variable globale, donc plus personne ne peut la casser à distance.
+contient() {
+  local cible="$1"; shift
+  local element
+  for element in "$@"; do
+    [ "$element" = "$cible" ] && return 0
+  done
+  return 1
+}
+
 appliquer_retention() {
   local -a toutes
   mapfile -t toutes < <(find "$DEPOT" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -r)
@@ -71,17 +95,24 @@ appliquer_retention() {
     mois="${d:0:7}"
     if   [ "$i" -lt "$RETENTION_QUOTIDIENNE" ]; then gardees+=("$d")
     elif [ "${#vues_semaines[@]}" -lt "$RETENTION_HEBDO" ] \
-         && [[ ! " ${vues_semaines[*]:-} " == *" $semaine "* ]]; then
+         && ! contient "$semaine" "${vues_semaines[@]}"; then
       gardees+=("$d"); vues_semaines+=("$semaine")
     elif [ "${#vues_mois[@]}" -lt "$RETENTION_MENSUELLE" ] \
-         && [[ ! " ${vues_mois[*]:-} " == *" $mois "* ]]; then
+         && ! contient "$mois" "${vues_mois[@]}"; then
       gardees+=("$d"); vues_mois+=("$mois")
     fi
     i=$((i + 1))
   done
 
+  # Garde-fou : une rétention qui ne garde rien n'est pas une rétention, c'est
+  # un effacement. Elle refuse plutôt que de vider le dépôt — y compris la
+  # sauvegarde que l'on vient d'écrire.
+  if [ "${#gardees[@]}" -eq 0 ]; then
+    echec "la rétention ne garderait AUCUNE sauvegarde sur ${#toutes[@]} : refus de purger"
+  fi
+
   for d in "${toutes[@]}"; do
-    if [[ ! " ${gardees[*]} " == *" $d "* ]]; then
+    if ! contient "$d" "${gardees[@]}"; then
       info "purge $d"
       rm -rf "${DEPOT:?}/${d:?}"
     fi
