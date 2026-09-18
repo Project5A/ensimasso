@@ -2,6 +2,7 @@ package fr.ensim.asso.gouvernance.api;
 
 import fr.ensim.asso.gouvernance.app.PolitiqueAcces;
 import fr.ensim.asso.gouvernance.domain.*;
+import fr.ensim.asso.shared.error.Erreurs;
 import fr.ensim.asso.shared.security.Utilisateur;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -37,7 +38,10 @@ public class GouvernanceController {
     @ResponseStatus(HttpStatus.CREATED)
     public AssociationVue creer(@Valid @RequestBody CreerAssociation corps) {
         if (associations.existsBySlug(corps.slug())) {
-            throw new IllegalStateException("le slug « " + corps.slug() + " » est déjà pris");
+            // Erreurs.Conflit plutôt que IllegalStateException : les deux
+            // sortent en 409, mais l'une porte le type « conflit » que le reste
+            // de l'API expose, l'autre le type fourre-tout « regle-metier ».
+            throw new Erreurs.Conflit("le slug « " + corps.slug() + " » est déjà pris");
         }
         Association a = associations.save(new Association(
                 corps.slug(), corps.nom(), Association.TypeAssociation.valueOf(corps.type())));
@@ -51,8 +55,13 @@ public class GouvernanceController {
 
     @GetMapping("/associations/{slug}/mandats")
     public List<MandatVue> mandatsDe(@PathVariable String slug) {
+        // Une association inconnue est une ressource ABSENTE, pas un conflit.
+        // IllegalArgumentException tombait dans le fourre-tout « règle métier »
+        // et sortait en 409 « Opération impossible » — un client ne pouvait pas
+        // distinguer « ce slug n'existe pas » de « l'opération est refusée »,
+        // et un 409 invite à réessayer là où un 404 dit de ne pas insister.
         Association a = associations.findBySlug(slug)
-                .orElseThrow(() -> new IllegalArgumentException("association inconnue : " + slug));
+                .orElseThrow(() -> new Erreurs.Introuvable("association", slug));
         return mandats.findByAssociationIdOrderByDebutLeDesc(a.getId()).stream()
                 .map(MandatVue::de).toList();
     }

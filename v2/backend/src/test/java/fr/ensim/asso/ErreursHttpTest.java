@@ -83,4 +83,36 @@ class ErreursHttpTest {
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("Exception"))));
     }
+
+    // ------------------------------- et quand c'est la RESSOURCE qui manque
+
+    @Test
+    @DisplayName("une association inconnue est une ressource absente : 404, pas 409")
+    void associationInconnueEn404() throws Exception {
+        var associations = org.mockito.Mockito.mock(
+                fr.ensim.asso.gouvernance.domain.AssociationRepository.class);
+        org.mockito.Mockito.when(associations.findBySlug(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Optional.empty());
+
+        MockMvc api = MockMvcBuilders
+                .standaloneSetup(new fr.ensim.asso.gouvernance.api.GouvernanceController(
+                        associations,
+                        org.mockito.Mockito.mock(fr.ensim.asso.gouvernance.domain.MandatRepository.class),
+                        org.mockito.Mockito.mock(
+                                fr.ensim.asso.gouvernance.domain.MembreBureauRepository.class),
+                        org.mockito.Mockito.mock(fr.ensim.asso.gouvernance.app.PolitiqueAcces.class)))
+                .setControllerAdvice(new GestionnaireErreurs())
+                .build();
+
+        // La route levait IllegalArgumentException, qui tombe dans le
+        // fourre-tout « règle métier » et sort en 409 « Opération impossible ».
+        // Un client ne pouvait pas distinguer « ce slug n'existe pas » de
+        // « l'opération est refusée » — et un 409 invite à réessayer là où un
+        // 404 dit de ne pas insister.
+        api.perform(get("/api/gouvernance/associations/inconnue/mandats"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Introuvable"))
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("inconnue")));
+    }
 }
