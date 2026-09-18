@@ -79,6 +79,70 @@ class ContratApiTest {
         assertThat(appels).anyMatch(r -> r.startsWith("DELETE "));
     }
 
+    /**
+     * Les modules que le serveur expose et qu'AUCUN écran n'appelle.
+     *
+     * <p>Le test précédent ne regarde que dans un sens : « le front appelle-t-il
+     * une route fantôme ? ». L'autre sens ne se voyait nulle part, et il est
+     * plus lourd de conséquences ici : quatre modules entiers — adhésions,
+     * médias, passations, trésorerie — sont écrits, autorisés, testés, et
+     * atteignables par personne d'autre que curl. Vingt-cinq routes.
+     *
+     * <p>Ce n'est pas un bogue à corriger dans ce test, c'est un état du projet
+     * qu'il faut garder DIT. Le README coche « Module adhesion », « Module
+     * media » et « Module tresorerie » à côté de « Tableau de bord » et
+     * « Portail public », ce qui met sur la même ligne un module qui existe et
+     * une fonctionnalité qu'un humain peut atteindre.
+     *
+     * <p>La liste est donc figée ici ET dans le README. Le jour où un écran de
+     * médiathèque est écrit, ce test devient rouge — et c'est ce qu'on veut :
+     * il force à mettre le README à jour au lieu de le laisser vieillir.
+     */
+    private static final Set<String> MODULES_SANS_ECRAN =
+            Set.of("/api/adhesions", "/api/medias", "/api/passations", "/api/tresorerie");
+
+    @Test
+    @DisplayName("les modules qu'aucun écran n'atteint sont exactement ceux que le README annonce")
+    void modulesSansEcran() throws IOException {
+        Set<String> prefixesServeur = new TreeSet<>();
+        for (Route r : routesDuServeur()) {
+            Matcher m = Pattern.compile("^(/api/[a-z-]+)").matcher(r.chemin());
+            if (m.find()) {
+                prefixesServeur.add(m.group(1));
+            }
+        }
+        // Appelé par Stripe, jamais par un navigateur : son absence côté front
+        // est la conception, pas un manque.
+        prefixesServeur.remove("/api/webhooks");
+
+        assertThat(prefixesServeur)
+                .as("l'analyse n'a trouvé presque aucun module : elle ne vérifie plus rien")
+                .hasSizeGreaterThan(5);
+
+        String clientApi = Files.readString(
+                clientDuFront(), StandardCharsets.UTF_8);
+        Set<String> sansEcran = new TreeSet<>();
+        for (String prefixe : prefixesServeur) {
+            if (!clientApi.contains(prefixe)) {
+                sansEcran.add(prefixe);
+            }
+        }
+
+        assertThat(sansEcran)
+                .as("la liste des modules sans écran a changé : mettez à jour "
+                  + "MODULES_SANS_ECRAN et la section correspondante du README")
+                .isEqualTo(new TreeSet<>(MODULES_SANS_ECRAN));
+
+        // Et le README doit les nommer. Un état connu qui n'est écrit nulle part
+        // est un état oublié.
+        String readme = Files.readString(readmeV2(), StandardCharsets.UTF_8);
+        for (String prefixe : MODULES_SANS_ECRAN) {
+            assertThat(readme)
+                    .as("le README doit nommer %s parmi les modules sans écran", prefixe)
+                    .contains(prefixe);
+        }
+    }
+
     // ------------------------------------------------------------- serveur
 
     private Set<Route> routesDuServeur() {
@@ -174,6 +238,28 @@ class ContratApiTest {
             routes.add(new Route(verbe, gabarit(chemins.get(i))));
         }
         return routes;
+    }
+
+    private Path readmeV2() {
+        for (Path candidat : List.of(
+                Path.of("../README.md"),
+                Path.of("v2/README.md"),
+                Path.of("README.md"))) {
+            // Celui de la v2, reconnu à son contenu : la racine du dépôt en
+            // porte un autre, et lire le mauvais rendrait ce test muet.
+            if (Files.exists(candidat)) {
+                try {
+                    if (Files.readString(candidat, StandardCharsets.UTF_8).contains("Reste à faire")) {
+                        return candidat;
+                    }
+                } catch (IOException e) {
+                    // fichier illisible : on continue de chercher
+                }
+            }
+        }
+        throw new IllegalStateException(
+                "README de la v2 introuvable depuis " + Path.of("").toAbsolutePath()
+              + " — ce test doit échouer plutôt que de ne rien vérifier");
     }
 
     private Path clientDuFront() {
