@@ -14,12 +14,29 @@ import { useAuth } from './AuthContext'
  * côté serveur, dans PolitiqueAcces. Un garde client ne protège rien.
  */
 export function Protege({ children }: { children: ReactNode }) {
-  const { utilisateur, chargement, connecter } = useAuth()
+  const { utilisateur, chargement, erreurConnexion, connecter } = useAuth()
 
   if (chargement) {
     return (
       <main className="page page--centree">
         <p aria-live="polite">Vérification de la session…</p>
+      </main>
+    )
+  }
+
+  // Un retour raté n'est pas une absence de session : le dire « Connexion
+  // requise » décrivait quelqu'un qui n'a pas essayé, à quelqu'un qui vient
+  // d'essayer et s'est fait refuser. Le motif rendu par le fournisseur est
+  // affiché tel quel — c'est la seule information qui permette de savoir s'il
+  // faut réessayer ou demander un droit à quelqu'un.
+  if (!utilisateur && erreurConnexion) {
+    return (
+      <main className="page page--centree">
+        <h1>La connexion a échoué</h1>
+        <p role="alert">{erreurConnexion}</p>
+        <button className="bouton" onClick={() => void connecter()}>
+          Réessayer
+        </button>
       </main>
     )
   }

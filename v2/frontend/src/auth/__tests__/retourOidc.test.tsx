@@ -1,4 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,6 +43,7 @@ vi.mock('oidc-client-ts', () => {
 vi.mock('../config', () => ({ parametresOidc: {} }))
 
 const { FournisseurAuth, useAuth } = await import('../AuthContext')
+const { Protege } = await import('../Protege')
 
 function Sonde() {
   const { utilisateur, chargement } = useAuth()
@@ -104,5 +106,67 @@ describe('retour du fournisseur d’identité', () => {
     await waitFor(() =>
       expect(screen.getByTestId('route').textContent).toBe('/tableau/contenu'),
     )
+  })
+
+  // ------------------------------------------------- quand le retour échoue
+
+  it('un refus du fournisseur est DIT, avec son motif, et rien n’est échangé', async () => {
+    window.history.replaceState({}, '', 
+      '/connexion/retour?error=access_denied&error_description=Compte+non+autoris%C3%A9')
+
+    render(
+      <MemoryRouter initialEntries={['/connexion/retour']}>
+        <FournisseurAuth>
+          <Protege><span>tableau de bord</span></Protege>
+        </FournisseurAuth>
+      </MemoryRouter>,
+    )
+
+    // « Connexion requise » est le message de quelqu'un qui n'a pas essayé.
+    // Celui-ci vient d'essayer, et s'est fait refuser.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /connexion a échoué/i })).toBeTruthy())
+    expect(screen.getByRole('alert').textContent).toContain('access_denied')
+    expect(screen.getByRole('alert').textContent).toContain('Compte non autorisé')
+    expect(screen.queryByText('Connexion requise')).toBeNull()
+
+    // Et on ne présente pas un code au fournisseur quand il vient de dire non.
+    expect(appels.callback).toBe(0)
+  })
+
+  it('réessayer depuis la page de retour ne fait pas revenir SUR la page de retour', async () => {
+    window.history.replaceState({}, '', '/connexion/retour?error=access_denied')
+
+    render(
+      <MemoryRouter initialEntries={['/connexion/retour']}>
+        <FournisseurAuth>
+          <Protege><span>tableau de bord</span></Protege>
+        </FournisseurAuth>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByRole('button', { name: /réessayer/i })).toBeTruthy())
+    await userEvent.click(screen.getByRole('button', { name: /réessayer/i }))
+
+    // Le piège : `connecter()` enregistrait window.location.pathname sans le
+    // regarder, et ce bouton se clique depuis /connexion/retour. La connexion
+    // suivante y revenait, l'amorçage y rejouait un échange de code qui
+    // n'existe plus, et l'échec ramenait au même bouton — toute la session,
+    // la clé n'étant jamais effacée.
+    expect(sessionStorage.getItem('retour')).toBe('/tableau')
+  })
+
+  it('la destination de retour est CONSOMMÉE : la connexion suivante ne la resservira pas', async () => {
+    sessionStorage.setItem('retour', '/tableau/contenu')
+
+    render(
+      <MemoryRouter initialEntries={['/connexion/retour?code=abc&state=xyz']}>
+        <FournisseurAuth>
+          <Sonde />
+        </FournisseurAuth>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(screen.getByText('connecté')).toBeTruthy())
+    expect(sessionStorage.getItem('retour')).toBeNull()
   })
 })

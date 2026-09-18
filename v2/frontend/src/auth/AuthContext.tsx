@@ -1,5 +1,5 @@
 import { User, UserManager } from 'oidc-client-ts'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parametresOidc } from './config'
@@ -7,9 +7,46 @@ import { parametresOidc } from './config'
 type EtatAuth = {
   utilisateur: User | null
   chargement: boolean
+  /**
+   * Pourquoi le retour du fournisseur d'identité a échoué, s'il a échoué.
+   *
+   * Cet échec était avalé par un `catch` muet et rendu comme une simple
+   * absence de session : l'écran affichait « Connexion requise », c'est-à-dire
+   * le message de quelqu'un qui n'a jamais essayé de se connecter. Un refus
+   * explicite du fournisseur — droits non accordés, compte désactivé — n'était
+   * donc jamais dit, et le bouton proposé relançait exactement la manœuvre qui
+   * venait d'échouer.
+   */
+  erreurConnexion: string | null
   connecter: () => Promise<void>
   deconnecter: () => Promise<void>
   jeton: () => string | null
+}
+
+/** La route de retour du fournisseur d'identité. */
+const CHEMIN_RETOUR = '/connexion/retour'
+
+/**
+ * Où revenir après connexion — jamais la page de retour elle-même.
+ *
+ * `connecter()` enregistrait `window.location.pathname` sans le regarder. Or
+ * le bouton « Se connecter » est aussi celui qu'on voit APRÈS un retour raté,
+ * donc depuis /connexion/retour : la valeur enregistrée devenait la page de
+ * retour. La connexion suivante y ramenait, l'amorçage y relançait l'échange
+ * d'un code qui n'existe plus, et l'échec ramenait au même bouton. La clé
+ * n'étant jamais effacée, la boucle tenait toute la session.
+ */
+function destinationApresConnexion(chemin: string): string {
+  return chemin.startsWith(CHEMIN_RETOUR) ? '/tableau' : chemin
+}
+
+/** Ce que le fournisseur dit de son refus, quand il le dit lui-même. */
+function motifDeRefus(recherche: string): string | null {
+  const params = new URLSearchParams(recherche)
+  const code = params.get('error')
+  if (!code) return null
+  const description = params.get('error_description')
+  return description ? `${code} — ${description}` : code
 }
 
 const Contexte = createContext<EtatAuth | null>(null)
@@ -42,6 +79,19 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
   const naviguer = useNavigate()
   const [utilisateur, setUtilisateur] = useState<User | null>(null)
   const [chargement, setChargement] = useState(true)
+  const [erreurConnexion, setErreurConnexion] = useState<string | null>(null)
+
+  // `naviguer` dans une référence, et non dans les dépendances de l'effet.
+  //
+  // `useNavigate()` rend une fonction dont l'identité CHANGE à chaque
+  // changement de route. L'effet d'amorçage repartait donc après sa propre
+  // navigation, retombait dans la branche « retour du fournisseur » — le
+  // chemin de `window.location` n'ayant pas encore suivi — et rejouait un
+  // échange de code déjà consommé. Le défaut restait invisible tant que la
+  // clé `retour` n'était jamais effacée : la seconde navigation refaisait la
+  // première. Elle l'est désormais, et la seconde partait vers /tableau.
+  const refNaviguer = useRef(naviguer)
+  refNaviguer.current = naviguer
 
   useEffect(() => {
     let vivant = true
@@ -49,7 +99,17 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
     async function amorcer() {
       try {
         // Retour du fournisseur d'identité : on échange le code contre un jeton.
-        if (window.location.pathname === '/connexion/retour') {
+        if (window.location.pathname === CHEMIN_RETOUR) {
+          // Un refus annoncé par le fournisseur n'est pas une panne à
+          // rattraper : il est dit tel quel, avec ses propres mots.
+          const refus = motifDeRefus(window.location.search)
+          if (refus) {
+            if (vivant) {
+              setUtilisateur(null)
+              setErreurConnexion(refus)
+            }
+            return
+          }
           echangeDuCode ??= gestionnaire.signinRedirectCallback().catch((e) => {
             echangeDuCode = null
             throw e
@@ -57,6 +117,7 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
           const u = await echangeDuCode
           if (!vivant) return
           setUtilisateur(u)
+          setErreurConnexion(null)
           // On nettoie l'URL : le code d'autorisation n'a rien à faire dans
           // l'historique du navigateur.
           //
@@ -64,13 +125,23 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
           // la barre d'adresse sans prévenir React Router, qui continuait donc
           // d'afficher la route /connexion/retour — une page vide — sous une
           // URL qui annonçait le tableau de bord.
-          naviguer(sessionStorage.getItem('retour') ?? '/tableau', { replace: true })
+          const voulu = sessionStorage.getItem('retour')
+          // Consommée : sans cela, toute connexion ultérieure de la session
+          // repartait vers une page choisie une fois, il y a longtemps.
+          sessionStorage.removeItem('retour')
+          refNaviguer.current(destinationApresConnexion(voulu ?? '/tableau'), { replace: true })
           return
         }
         const u = await gestionnaire.getUser()
         if (vivant) setUtilisateur(u && !u.expired ? u : null)
-      } catch {
-        if (vivant) setUtilisateur(null)
+      } catch (e: unknown) {
+        if (!vivant) return
+        setUtilisateur(null)
+        // Seul le retour raté est une erreur DE CONNEXION. Ailleurs, l'absence
+        // de session est l'état normal d'un visiteur.
+        if (window.location.pathname === CHEMIN_RETOUR) {
+          setErreurConnexion(e instanceof Error ? e.message : 'échange du code impossible')
+        }
       } finally {
         if (vivant) setChargement(false)
       }
@@ -88,10 +159,11 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
       gestionnaire.events.removeAccessTokenExpired(surExpiration)
       gestionnaire.events.removeUserLoaded(surRenouvellement)
     }
-  }, [gestionnaire, naviguer])
+  }, [gestionnaire])
 
   const connecter = useCallback(async () => {
-    sessionStorage.setItem('retour', window.location.pathname)
+    setErreurConnexion(null)
+    sessionStorage.setItem('retour', destinationApresConnexion(window.location.pathname))
     await gestionnaire.signinRedirect()
   }, [gestionnaire])
 
@@ -108,8 +180,8 @@ export function FournisseurAuth({ children }: { children: ReactNode }) {
   )
 
   const valeur = useMemo<EtatAuth>(
-    () => ({ utilisateur, chargement, connecter, deconnecter, jeton }),
-    [utilisateur, chargement, connecter, deconnecter, jeton],
+    () => ({ utilisateur, chargement, erreurConnexion, connecter, deconnecter, jeton }),
+    [utilisateur, chargement, erreurConnexion, connecter, deconnecter, jeton],
   )
 
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>
