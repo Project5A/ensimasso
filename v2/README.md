@@ -101,10 +101,12 @@ futur développeur pressé, une contrainte ne l'est pas.
 | Un seul mandat en fonction par association | index unique partiel |
 | Un seul président / trésorier par bureau | index unique partiel sur les postes statutaires |
 | Au plus une version publiée par page | index unique partiel |
-| Le contenu publié est immuable | trigger `bloc_fige` |
+| Le contenu publié ne se modifie pas | trigger `bloc_fige` |
+| Une archive ne se supprime pas non plus | gardes de suppression sur `mandat`, `page`, `page_version` |
+| Un thème publié est figé, et ne se dépublie pas | triggers `theme_fige` et `theme_transition` |
 | On ne dépublie pas | trigger de transition de statut |
 | Un bloc archivé reste revalidable | `PK(type, schema_version)` + FK |
-| Une adhésion par personne, asso et année | contrainte d'unicité |
+| Une seule adhésion VIVANTE par personne, asso et année | index unique partiel sur `ACTIVE` et `EN_ATTENTE_PAIEMENT` |
 | Une référence de paiement n'active qu'une adhésion | index unique partiel |
 | Une clé de média n'est jamais une URL | `CHECK (cle !~ '^https?://' AND cle !~ '\?')` |
 | Un média utilisé par une archive est indestructible | FK `media_usage → media_asset` |
@@ -116,7 +118,7 @@ futur développeur pressé, une contrainte ne l'est pas.
 | Le journal comptable est append-only | trigger |
 
 `infra/postgres/verifier-contraintes.sql` (`make verif-contraintes`) vérifie
-ces trente-sept garanties contre un vrai PostgreSQL : chaque bloc « doit être
+ces garanties une à une contre un vrai PostgreSQL — quarante-quatre cas : chaque bloc « doit être
 REFUSÉ » doit produire une erreur. Un script qui passe sans erreur signifie
 qu'une contrainte a disparu. `ContraintesTemporellesIT` et
 `ImmuabiliteContenuIT` font la même chose via Testcontainers.

@@ -333,6 +333,43 @@ class NonRegressionAuditTest {
         assertThat(cheminsManquants)
                 .as("le README renvoie à des fichiers absents")
                 .isEmpty();
+
+        // Un nombre écrit dans un README est une affirmation comme une autre,
+        // et il se périme en silence : celui-ci annonçait « trente-sept
+        // garanties » alors que le script en jouait quarante-quatre. On le
+        // compte plutôt que de le croire.
+        String script = lire("infra/postgres/verifier-contraintes.sql");
+        long cas = script.lines().filter(l -> l.startsWith("\\echo '---")).count();
+        assertThat(readme)
+                .as("le README annonce un nombre de cas ; le script en joue %d", cas)
+                .contains(enLettres(cas) + " cas");
+    }
+
+    /**
+     * Le nombre de cas, en toutes lettres, tel que le README l'écrit.
+     *
+     * <p>Volontairement étroit : au-delà de cette plage le test échoue et
+     * quelqu'un doit venir écrire la forme voulue — ce qui vaut mieux qu'un
+     * repli silencieux sur des chiffres, qui laisserait passer un README qui
+     * ne dit plus le bon nombre.
+     */
+    private static String enLettres(long n) {
+        return switch ((int) n) {
+            case 40 -> "quarante";
+            case 41 -> "quarante et un";
+            case 42 -> "quarante-deux";
+            case 43 -> "quarante-trois";
+            case 44 -> "quarante-quatre";
+            case 45 -> "quarante-cinq";
+            case 46 -> "quarante-six";
+            case 47 -> "quarante-sept";
+            case 48 -> "quarante-huit";
+            case 49 -> "quarante-neuf";
+            case 50 -> "cinquante";
+            default -> throw new IllegalStateException(
+                    "nombre de cas hors de la plage prévue (" + n + ") : "
+                  + "écrivez sa forme en toutes lettres ici et dans le README");
+        };
     }
 
     // ------------------------------------------------------------ paiement
