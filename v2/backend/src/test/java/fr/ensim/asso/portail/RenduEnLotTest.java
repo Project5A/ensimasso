@@ -132,7 +132,7 @@ class RenduEnLotTest {
     }
 
     @Test
-    @DisplayName("six blocs illustrés : UN seul lot de médias pour toute la page")
+    @DisplayName("six blocs illustrés : UN seul lot de médias pour tous les blocs")
     void unSeulLotParPage() {
         when(contenu.blocsDe(any())).thenReturn(List.of(
                 illustre(0, "k0"), illustre(1, "k1"), illustre(2, "k2"),
@@ -194,5 +194,42 @@ class RenduEnLotTest {
 
         // Une page de texte ne doit pas payer un aller-retour pour rien.
         verify(medias, never()).urlsDe(anyCollection());
+    }
+
+    @Test
+    @DisplayName("sans trombinoscope, le bureau n'est même pas interrogé")
+    void pageSansTrombinoscope() {
+        when(contenu.blocsDe(any())).thenReturn(List.of(illustre(0, "banniere")));
+
+        portail.page("bde", "accueil");
+
+        // Le bureau échappait à la garde que l'agenda et les partenaires ont
+        // toujours eue : il était résolu à CHAQUE rendu, y compris sur les
+        // pages sans trombinoscope, c'est-à-dire la plupart.
+        verify(membres, never()).membresActifs(any());
+        verify(medias, times(1)).urlsDe(anyCollection());
+    }
+
+    @Test
+    @DisplayName("avec trombinoscope, le bureau fait son PROPRE lot — et c'est dit ici")
+    void pageAvecTrombinoscope() {
+        MembreBureau president = new MembreBureau(MANDAT, UUID.randomUUID(), Poste.PRESIDENT, 0);
+        president.setPhotoMediaKey("bde/2025-2026/photo-president.jpg");
+        when(membres.membresActifs(any())).thenReturn(List.of(president));
+        when(contenu.blocsDe(any())).thenReturn(List.of(
+                illustre(0, "banniere"),
+                new Bloc(publiee.getId(), 1, "TEAM_GRID", 1, "{\"source\":\"MANDAT\"}")));
+
+        PageRendue rendue = portail.page("bde", "accueil");
+
+        // DEUX lots, pas un : celui des blocs, et celui des photos du bureau.
+        // C'est ÉCRIT ici plutôt que caché — et c'est aussi ce qui rendait le
+        // cas « un seul lot » vrai par son montage, qui stube un bureau vide.
+        // Fondre les deux demanderait de rendre le bureau après les blocs, pour
+        // gagner un aller-retour sur les seules pages qui ont un trombinoscope.
+        verify(medias, times(2)).urlsDe(anyCollection());
+        assertThat(rendue.blocs().get(1).equipe()).hasSize(1);
+        assertThat(rendue.blocs().get(1).equipe().get(0).photoUrl())
+                .isEqualTo("https://stockage.invalide/bde/2025-2026/photo-president.jpg");
     }
 }

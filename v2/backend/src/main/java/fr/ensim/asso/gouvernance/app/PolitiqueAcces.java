@@ -13,8 +13,14 @@ import java.util.UUID;
  *
  * <p>Deux règles non négociables, tirées directement de l'audit de la v1 :
  * <ol>
- *   <li>Les écritures ne sont permises que sur le mandat <em>en fonction</em>.
- *       Un mandat clos est immuable : c'est ce qui rend l'archive fiable.</li>
+ *   <li>Aucune écriture sur un mandat <strong>CLOS</strong>. Un mandat clos est
+ *       immuable : c'est ce qui rend l'archive fiable. Un mandat en
+ *       PRÉPARATION, lui, accepte les écritures — le bureau entrant doit
+ *       pouvoir composer son site avant l'investiture, et c'est tout l'objet de
+ *       ce statut. (Cette phrase disait « seulement sur le mandat en
+ *       fonction », ce que le code n'a jamais fait ; elle décrivait donc une
+ *       règle plus stricte que celle appliquée, sur la classe même où l'on
+ *       vient vérifier ce qui est permis.)</li>
  *   <li>L'appartenance n'est jamais lue depuis le jeton. Le jeton porte
  *       l'identité ; les droits par association sont résolus ici, pour être
  *       révocables immédiatement.</li>
@@ -56,13 +62,16 @@ public class PolitiqueAcces {
         if (mandat == null || !mandat.accepteEcriture()) {
             return false;   // un mandat CLOS n'accepte plus aucune écriture
         }
-        if (mandat.getStatut() == StatutMandat.PREPARATION) {
-            // Le bureau entrant prépare son site avant l'investiture : il doit
-            // pouvoir éditer son propre mandat en préparation.
-            return membres.posteActif(mandatId, personneId)
-                    .map(mb -> permission.portéePar(mb.getPoste()))
-                    .orElse(false);
-        }
+        // PRÉPARATION et EN_FONCTION suivent la MÊME règle : siéger à ce
+        // mandat-là, avec un poste qui porte la permission. Une branche
+        // séparée existait pour le cas PRÉPARATION, à l'identique près du
+        // commentaire — elle donnait à croire à un traitement particulier là où
+        // il n'y en a pas, et masquait que la seule question posée par cette
+        // méthode est celle du mandat CLOS.
+        //
+        // Le bureau ENTRANT compose bien son site avant l'investiture ; c'est
+        // l'objet du statut PRÉPARATION, et c'est pour cela qu'on ne le refuse
+        // pas ici.
         return membres.posteActif(mandatId, personneId)
                 .map(mb -> permission.portéePar(mb.getPoste()))
                 .orElse(false);

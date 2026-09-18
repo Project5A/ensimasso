@@ -130,7 +130,6 @@ class ArchitectureTest {
      */
     private static final java.util.Map<String, String> ROUTES_SANS_IDENTITE = java.util.Map.of(
             "PortailController", "chemin public : ne sert que du contenu PUBLIÉ",
-            "ApercuController", "aperçu signé : le droit vient du jeton d'aperçu, pas de l'identité",
             "WebhookController", "l'identité est prouvée par la signature cryptographique de Stripe",
             "ContenuController.catalogue", "catalogue des types de blocs : aucune donnée d'association",
             "GouvernanceController.lister", "annuaire des associations, déjà public sur le portail",
@@ -157,11 +156,7 @@ class ArchitectureTest {
                                 classe.getSimpleName() + "." + methode.getName())) {
                     continue;
                 }
-                boolean connaitLAppelant = methode.getMethodCallsFromSelf().stream()
-                        .anyMatch(appel -> appel.getTarget().getOwner()
-                                        .getSimpleName().equals("Utilisateur")
-                                || appel.getTarget().getName().startsWith("idCourant"));
-                if (!connaitLAppelant) {
+                if (!connaitLAppelant(methode)) {
                     aveugles.add(classe.getSimpleName() + "." + methode.getName());
                 }
             }
@@ -178,6 +173,54 @@ class ArchitectureTest {
                   + "soit elles exigent une identité, soit elles rejoignent "
                   + "ROUTES_SANS_IDENTITE avec la raison écrite")
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("aucune dispense inutile : une entrée qui ne sert plus est un trou qui attend")
+    void dispensesToutesNecessaires() {
+        // ApercuController figurait dans la liste au motif d'un « jeton
+        // d'aperçu » qui n'existe nulle part — et il appelle pourtant
+        // Utilisateur.idCourantObligatoire(), donc il passait la règle sans
+        // dispense. Une dispense dont on n'a pas besoin est pire qu'un
+        // commentaire faux : elle reste ouverte, et le jour où quelqu'un
+        // retire le contrôle d'identité de cette route, la règle ne bronche
+        // pas. Ce cas retire la dispense dès qu'elle cesse d'être nécessaire.
+        List<String> inutiles = new ArrayList<>();
+
+        for (JavaClass classe : CLASSES) {
+            if (!classe.getSimpleName().endsWith("Controller")) {
+                continue;
+            }
+            List<JavaMethod> routes = classe.getMethods().stream()
+                    .filter(m -> m.getAnnotations().stream()
+                            .anyMatch(a -> a.getRawType().getSimpleName().endsWith("Mapping")))
+                    .toList();
+            if (routes.isEmpty()) {
+                continue;
+            }
+            if (ROUTES_SANS_IDENTITE.containsKey(classe.getSimpleName())
+                    && routes.stream().allMatch(ArchitectureTest::connaitLAppelant)) {
+                inutiles.add(classe.getSimpleName() + " (toutes ses routes exigent déjà une identité)");
+            }
+            for (JavaMethod methode : routes) {
+                String cle = classe.getSimpleName() + "." + methode.getName();
+                if (ROUTES_SANS_IDENTITE.containsKey(cle) && connaitLAppelant(methode)) {
+                    inutiles.add(cle + " (exige déjà une identité)");
+                }
+            }
+        }
+
+        assertThat(inutiles)
+                .as("ces dispenses ne servent à rien : retirez-les de "
+                  + "ROUTES_SANS_IDENTITE plutôt que de laisser la règle "
+                  + "aveugle sur des routes qui, elles, se gardent bien")
+                .isEmpty();
+    }
+
+    private static boolean connaitLAppelant(JavaMethod methode) {
+        return methode.getMethodCallsFromSelf().stream()
+                .anyMatch(appel -> appel.getTarget().getOwner().getSimpleName().equals("Utilisateur")
+                        || appel.getTarget().getName().startsWith("idCourant"));
     }
 
     @Test

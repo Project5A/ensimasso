@@ -23,14 +23,23 @@ public class KeycloakRolesConverter implements Converter<Jwt, Collection<Granted
             Set.of("PLATFORM_ADMIN", "STUDENT", "ALUMNI");
 
     @Override
-    @SuppressWarnings("unchecked")
     public Collection<GrantedAuthority> convert(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-        if (realmAccess == null) {
+        // `getClaim` fait un transtypage NON CONTRÔLÉ : affecter le résultat à
+        // un Map insérait un checkcast, et la garde qui suivait ne portait que
+        // sur la nullité puis sur la forme de `roles`. La forme de
+        // `realm_access` lui-même n'était jamais vérifiée. Un jeton signé
+        // valide dont cette revendication est une chaîne ou une liste — ce
+        // qu'un mapper Keycloak mal réglé, ou un autre émetteur branché sur
+        // OIDC_ISSUER, produit sans effort — levait donc une
+        // ClassCastException à l'intérieur du convertisseur. Ce n'est pas une
+        // AuthenticationException : elle traversait la chaîne de filtres et
+        // sortait en 500, là où toutes les autres formes dégradées rendent une
+        // liste vide, donc un 403. Un 500 réveille une astreinte et fait
+        // réessayer l'appelant ; un 403 dit la vérité.
+        if (!(jwt.getClaim("realm_access") instanceof Map<?, ?> realmAccess)) {
             return List.of();
         }
-        Object roles = realmAccess.get("roles");
-        if (!(roles instanceof Collection<?> c)) {
+        if (!(realmAccess.get("roles") instanceof Collection<?> c)) {
             return List.of();
         }
         return c.stream()

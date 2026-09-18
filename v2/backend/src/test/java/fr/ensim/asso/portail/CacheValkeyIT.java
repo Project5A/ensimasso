@@ -45,8 +45,13 @@ class CacheValkeyIT {
         try {
             redis.execute((org.springframework.data.redis.core.RedisCallback<Object>) c -> c.ping());
         } catch (RuntimeException e) {
-            fail("aucun serveur Valkey/Redis sur %s:%d — ce test doit échouer plutôt que "
-               + "prétendre avoir vérifié l'adaptateur (cause : %s)"
+            // Les parenthèses ne sont pas cosmétiques : `.formatted(…)` ne
+            // s'appliquait qu'au DERNIER littéral de la concaténation. Le
+            // message affichait donc « sur %s:%d » en toutes lettres et
+            // rapportait l'hôte comme cause — sur le seul message dont
+            // quelqu'un dispose pour comprendre pourquoi la CI est rouge.
+            fail(("aucun serveur Valkey/Redis sur %s:%d — ce test doit échouer plutôt que "
+                + "prétendre avoir vérifié l'adaptateur (cause : %s)")
                     .formatted(HOTE, PORT, e.getClass().getSimpleName()), e);
         }
         cache = new CacheValkey(redis);

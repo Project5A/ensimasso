@@ -305,13 +305,19 @@ public class ServicePortail {
                 .filter(Bloc::isVisible)
                 .toList();
 
-        // Le bureau DU MANDAT DE LA PAGE. Résolu une fois, réutilisé par tous
-        // les blocs qui en ont besoin.
-        List<PageRendue.MembreVue> equipe = equipeDe(mandat.getId());
-
-        // Agenda et partenaires sont résolus une fois pour la page, et seulement
-        // si un bloc les demande : une page sans agenda ne doit pas payer une
-        // requête pour rien.
+        // Bureau, agenda et partenaires : résolus une fois pour la page, et
+        // seulement si un bloc les demande. Une page sans agenda ne doit pas
+        // payer une requête pour rien.
+        //
+        // Le bureau échappait à cette garde : il était résolu à chaque rendu,
+        // y compris sur les pages sans trombinoscope — c'est-à-dire la
+        // plupart —, avec sa requête sur les membres et, dès qu'une photo
+        // existe, un second lot de médias. C'est aussi ce qui rendait le test
+        // « un seul lot pour toute la page » vrai par son montage : il stube un
+        // bureau vide. Le bureau est DU MANDAT DE LA PAGE, jamais du mandat
+        // courant — c'est ce qui rend l'archive fidèle.
+        List<PageRendue.MembreVue> equipe = blocs.stream().anyMatch(b -> "TEAM_GRID".equals(b.getType()))
+                ? equipeDe(mandat.getId()) : List.of();
         List<Evenement> tousEvenements = blocs.stream().anyMatch(b -> "EVENT_LIST".equals(b.getType()))
                 ? agenda.publicsDuMandat(mandat.getId()) : List.of();
         List<Partenaire> tousPartenaires = blocs.stream().anyMatch(b -> "PARTNERS".equals(b.getType()))
