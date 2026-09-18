@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Countdown, Embed, EventList, Partners, periode, resteJusqua } from '../Blocs'
+import { Countdown, Embed, EventList, Partners, Stats, periode, resteJusqua } from '../Blocs'
 import type { BlocRendu, EvenementVue, PartenaireVue } from '../../types'
 
 // Vitest n'active pas les globales, donc le nettoyage automatique de
@@ -38,6 +38,59 @@ const evenement = (p: Partial<EvenementVue> = {}): EvenementVue => ({
   lien: null,
   afficheUrl: null,
   ...p,
+})
+
+describe('titre de l’agenda', () => {
+  // Le titre ne suivait que `estCourant` : sur une page VIVANTE dont le bloc
+  // est réglé sur PASSES, le bureau demandait « ce qu'on a organisé », le
+  // serveur rendait bien des évènements passés — et le titre annonçait « À
+  // venir » au-dessus. Ces cas sont le miroir du ternaire serveur de
+  // SelectionBlocs.agenda.
+  const rendre = (payload: Record<string, unknown>, courant: boolean) =>
+    render(
+      <EventList
+        bloc={bloc('EVENT_LIST', payload, { agenda: [evenement()] })}
+        anneeCode="2025-2026"
+        estCourant={courant}
+      />,
+    )
+
+  it('page vivante, filtre par défaut : « À venir »', () => {
+    rendre({}, true)
+    expect(screen.getByRole('heading', { name: 'À venir' })).toBeDefined()
+  })
+
+  it('page vivante, filtre PASSES : ce n’est plus « À venir »', () => {
+    rendre({ filtre: 'PASSES' }, true)
+    expect(screen.queryByRole('heading', { name: 'À venir' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Ce qui a déjà eu lieu' })).toBeDefined()
+  })
+
+  it('page vivante, filtre TOUS : le titre nomme l’année, pas un temps', () => {
+    rendre({ filtre: 'TOUS' }, true)
+    expect(screen.getByRole('heading', { name: 'Les évènements de 2025-2026' })).toBeDefined()
+  })
+
+  it('archive : le filtre du bloc est ignoré, comme côté serveur', () => {
+    // Sur une archive, SelectionBlocs force « TOUS » quel que soit le bloc.
+    rendre({ filtre: 'A_VENIR' }, false)
+    expect(screen.queryByRole('heading', { name: 'À venir' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Les évènements de 2025-2026' })).toBeDefined()
+  })
+})
+
+describe('Stats', () => {
+  it('le terme précède sa définition dans le DOM', () => {
+    render(<Stats bloc={bloc('STATS', { items: [{ libelle: 'Adhérents', valeur: '420' }] })} />)
+
+    // <dd> était écrit AVANT <dt> : HTML invalide, et un lecteur d'écran
+    // apparie le terme et la définition dans l'ordre du document. L'ordre
+    // visuel — le grand nombre d'abord — est rétabli par la feuille de style.
+    const groupe = screen.getByText('Adhérents').parentElement
+    const enfants = [...(groupe?.children ?? [])].map((e) => e.tagName)
+    expect(enfants).toEqual(['DT', 'DD'])
+    expect(screen.getByText('420').tagName).toBe('DD')
+  })
 })
 
 describe('EventList', () => {

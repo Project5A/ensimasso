@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiDashboard, ErreurApi, type ThemeVue } from '../api'
+import type { Theme } from '../types'
 import { useAuth } from '../auth/AuthContext'
 import { FilMandat, NavMandat } from './NavMandat'
 
@@ -11,15 +12,43 @@ import { FilMandat, NavMandat } from './NavMandat'
  * une association choisit « la couleur principale », pas « le bleu ». C'est ce
  * qui permet au portail de composer un thème cohérent sans qu'un bureau ait à
  * penser aux contrastes.
+ *
+ * <p><strong>Les clés sont celles que le portail LIT.</strong> Cet écran
+ * écrivait `couleurPrimaire`, `couleurSecondaire`, `couleurFond` et
+ * `couleurTexte` ; `variablesDuTheme`, dans src/theme.ts, lit `accent`,
+ * `accentContraste`, `encre`, `fond`, `rayon` et `police`. Aucune des quatre
+ * n'était donc jamais lue par personne : un bureau choisissait ses couleurs,
+ * enregistrait, publiait — et sa page publique retombait sur les valeurs par
+ * défaut. Pire, le payload REMPLACE le précédent : un thème posé autrement
+ * (clonage à la passation, INSERT) était détruit par le premier enregistrement.
+ * Les deux vocabulaires sont maintenant le même, et
+ * {@code Theme.contrat.test.tsx} vérifie qu'ils le restent.
  */
-const JETONS: { cle: string; libelle: string; defaut: string; aide: string }[] = [
-  { cle: 'couleurPrimaire', libelle: 'Couleur principale', defaut: '#8B1E3F',
+type Genre = 'couleur' | 'choix'
+
+const JETONS: {
+  cle: keyof ThemeJetons; genre: Genre; libelle: string; defaut: string; aide: string
+  options?: [string, string][]
+}[] = [
+  { cle: 'accent', genre: 'couleur', libelle: 'Couleur principale', defaut: '#8B1E3F',
     aide: 'Titres, boutons, liens' },
-  { cle: 'couleurSecondaire', libelle: 'Couleur secondaire', defaut: '#2F4858',
-    aide: 'Accents et éléments discrets' },
-  { cle: 'couleurFond', libelle: 'Fond', defaut: '#FFFFFF', aide: 'Fond des pages' },
-  { cle: 'couleurTexte', libelle: 'Texte', defaut: '#1A1A1A', aide: 'Corps de texte' },
+  { cle: 'accentContraste', genre: 'couleur', libelle: 'Texte sur la couleur principale',
+    defaut: '#FFFFFF', aide: 'Doit rester lisible posé sur la couleur principale' },
+  { cle: 'encre', genre: 'couleur', libelle: 'Texte', defaut: '#101820',
+    aide: 'Corps de texte' },
+  { cle: 'fond', genre: 'couleur', libelle: 'Fond', defaut: '#F6F7F9',
+    aide: 'Fond des pages' },
+  { cle: 'rayon', genre: 'choix', libelle: 'Arrondi des angles', defaut: '8px',
+    aide: 'Boutons, cartes, images',
+    options: [['0px', 'Angles droits'], ['4px', 'Léger'], ['8px', 'Arrondi'],
+              ['16px', 'Très arrondi']] },
+  { cle: 'police', genre: 'choix', libelle: 'Police', defaut: 'SANS',
+    aide: 'Un choix parmi deux : le portail ne charge aucune police distante',
+    options: [['SANS', 'Sans empattement'], ['SERIF', 'Avec empattements']] },
 ]
+
+/** Exactement les jetons que `variablesDuTheme` sait lire — ni plus, ni moins. */
+type ThemeJetons = Required<Theme>
 
 function lire(theme: ThemeVue | null): Record<string, string> {
   const valeurs = Object.fromEntries(JETONS.map((j) => [j.cle, j.defaut]))
@@ -125,30 +154,50 @@ export default function Theme() {
         {JETONS.map((j) => (
           <p key={j.cle}>
             <label htmlFor={`jeton-${j.cle}`}>{j.libelle}</label>
-            <input
-              id={`jeton-${j.cle}`}
-              type="color"
-              value={valeurs[j.cle]}
-              disabled={occupe}
-              onChange={(e) => setValeurs({ ...valeurs, [j.cle]: e.target.value })}
-            />
-            <input
-              type="text"
-              aria-label={`${j.libelle}, valeur hexadécimale`}
-              value={valeurs[j.cle]}
-              disabled={occupe}
-              onChange={(e) => setValeurs({ ...valeurs, [j.cle]: e.target.value })}
-            />
+            {j.genre === 'couleur' ? (
+              <>
+                <input
+                  id={`jeton-${j.cle}`}
+                  type="color"
+                  value={valeurs[j.cle]}
+                  disabled={occupe}
+                  onChange={(e) => setValeurs({ ...valeurs, [j.cle]: e.target.value })}
+                />
+                <input
+                  type="text"
+                  aria-label={`${j.libelle}, valeur hexadécimale`}
+                  value={valeurs[j.cle]}
+                  disabled={occupe}
+                  onChange={(e) => setValeurs({ ...valeurs, [j.cle]: e.target.value })}
+                />
+              </>
+            ) : (
+              // Une liste fermée, pas une saisie libre : ce sont les deux seuls
+              // jetons qui ne sont pas des couleurs, et rien ne gagnerait à ce
+              // qu'un bureau puisse y écrire n'importe quoi.
+              <select
+                id={`jeton-${j.cle}`}
+                value={valeurs[j.cle]}
+                disabled={occupe}
+                onChange={(e) => setValeurs({ ...valeurs, [j.cle]: e.target.value })}
+              >
+                {(j.options ?? []).map(([valeur, libelle]) => (
+                  <option key={valeur} value={valeur}>{libelle}</option>
+                ))}
+              </select>
+            )}
             <small>{j.aide}</small>
           </p>
         ))}
 
         <div
           className="apercu-theme"
-          style={{ background: valeurs.couleurFond, color: valeurs.couleurTexte }}
+          style={{ background: valeurs.fond, color: valeurs.encre }}
         >
-          <strong style={{ color: valeurs.couleurPrimaire }}>Aperçu</strong>{' '}
-          <span style={{ color: valeurs.couleurSecondaire }}>texte secondaire</span>
+          <strong style={{ color: valeurs.accent }}>Aperçu</strong>{' '}
+          <span style={{ background: valeurs.accent, color: valeurs.accentContraste }}>
+            texte sur la couleur principale
+          </span>
         </div>
 
         <button

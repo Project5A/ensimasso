@@ -125,9 +125,15 @@ export function Stats({ bloc }: { bloc: BlocRendu }) {
     <section className="stats" aria-label="Chiffres clés">
       <dl>
         {items.map((it, i) => (
+          // dt AVANT dd : c'est l'ordre qu'impose une liste de définitions, et
+          // c'est l'ordre dans lequel un lecteur d'écran apparie le terme et sa
+          // définition. L'inverse produisait un HTML invalide et annonçait
+          // « 420 » puis « Adhérents » en les rattachant de travers. L'ordre
+          // VISUEL — le grand nombre d'abord — est rétabli par la feuille de
+          // style, qui est le bon endroit pour une question d'apparence.
           <div className="stat" key={i}>
-            <dd>{it.valeur}</dd>
             <dt>{it.libelle}</dt>
+            <dd>{it.valeur}</dd>
           </div>
         ))}
       </dl>
@@ -314,7 +320,19 @@ export function EventList({
 }) {
   const evenements = bloc.agenda ?? []
   const style = (texte(bloc.payload.style) ?? 'LISTE').toLowerCase()
-  const titre = estCourant ? 'À venir' : `Les évènements de ${anneeCode}`
+
+  // Le titre suivait le SEUL drapeau `estCourant`, et annonçait donc « À venir »
+  // sur une page vivante dont le bloc est réglé sur PASSES : le bureau demandait
+  // « ce qu'on a organisé », le serveur rendait bien des évènements passés, et
+  // le titre affirmait le contraire au-dessus. Le ternaire ci-dessous est le
+  // miroir exact de celui de SelectionBlocs.agenda, côté serveur : sur une
+  // archive le filtre du bloc est ignoré et vaut TOUS, sur une page vivante
+  // c'est celui que le bloc porte.
+  const filtre = estCourant ? (texte(bloc.payload.filtre) ?? 'A_VENIR') : 'TOUS'
+  const titre =
+    filtre === 'A_VENIR' ? 'À venir'
+    : filtre === 'PASSES' ? 'Ce qui a déjà eu lieu'
+    : `Les évènements de ${anneeCode}`
 
   if (evenements.length === 0) {
     return (

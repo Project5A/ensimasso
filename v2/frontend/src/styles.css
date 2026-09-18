@@ -100,10 +100,15 @@ h2 { font-size: clamp(1.25rem, 2.5vw, 1.55rem); letter-spacing: -0.01em; margin:
   gap: 1px; margin: 0; background: var(--surface); border: 1px solid var(--trait);
   border-radius: var(--rayon); overflow: hidden; }
 .stat + .stat { box-shadow: -1px 0 0 var(--trait), 0 -1px 0 var(--trait); }
-.stat { background: var(--surface); padding: 1.4rem 1.25rem; }
-.stat dd { margin: 0 0 0.2rem; font-size: 1.9rem; font-weight: 600; line-height: 1;
+/* La valeur s'affiche AU-DESSUS de son libellé, alors que le DOM porte le
+   libellé d'abord — l'ordre qu'impose une liste de définitions et dont dépend
+   l'appariement par un lecteur d'écran. L'apparence se règle ici, pas en
+   inversant la structure. */
+.stat { background: var(--surface); padding: 1.4rem 1.25rem;
+  display: flex; flex-direction: column-reverse; }
+.stat dd { margin: 0; font-size: 1.9rem; font-weight: 600; line-height: 1;
   color: var(--accent); font-variant-numeric: tabular-nums; }
-.stat dt { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.stat dt { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
 
 /* ------------------------------------------------------------ équipe */
 .equipe__grille { list-style: none; padding: 0; margin: 0; display: grid;

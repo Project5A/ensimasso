@@ -27,7 +27,7 @@ const { default: Theme } = await import('../Theme')
 
 const vue = (p: Partial<ThemeVue> = {}): ThemeVue => ({
   id: 't1', mandatId: 'm1', numero: 1, statut: 'BROUILLON',
-  tokens: JSON.stringify({ couleurPrimaire: '#8B1E3F' }),
+  tokens: JSON.stringify({ accent: '#8B1E3F' }),
   ...p,
 })
 
@@ -77,7 +77,7 @@ describe('thème du mandat', () => {
 
     await waitFor(() => expect(apiDashboard.enregistrerTheme).toHaveBeenCalledTimes(1))
     expect(apiDashboard.enregistrerTheme.mock.calls[0]?.[2])
-      .toHaveProperty('couleurPrimaire')
+      .toHaveProperty('accent')   // la clé que le PORTAIL lit
     // Enregistrer ne doit jamais changer ce que voient les visiteurs.
     expect(apiDashboard.publierTheme).not.toHaveBeenCalled()
   })
@@ -105,7 +105,7 @@ describe('thème du mandat', () => {
 
   it('un thème existant est relu, pas écrasé par les valeurs par défaut', async () => {
     apiDashboard.theme.mockResolvedValue(
-      vue({ tokens: JSON.stringify({ couleurPrimaire: '#123456' }) }))
+      vue({ tokens: JSON.stringify({ accent: '#123456' }) }))
     monter()
     await waitFor(() =>
       expect((screen.getByLabelText('Couleur principale') as HTMLInputElement).value)
@@ -114,7 +114,7 @@ describe('thème du mandat', () => {
 
   it('le renouvellement du jeton n’efface pas les couleurs en cours de choix', async () => {
     apiDashboard.theme.mockResolvedValue(vue({
-      tokens: JSON.stringify({ couleurPrimaire: '#123456' }),
+      tokens: JSON.stringify({ accent: '#123456' }),
     }))
     const { rerender } = monter()
     const champ = () => screen.getByLabelText('Couleur principale') as HTMLInputElement
