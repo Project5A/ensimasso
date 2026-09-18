@@ -79,7 +79,10 @@ public class ServiceTresorerie {
                                       UUID campagneId, PublicCible cible) {
         // Le module adhésion crée l'adhésion EN_ATTENTE_PAIEMENT au tarif
         // serveur — et vérifie que l'appelant a droit au public qu'il réclame.
-        Adhesion adhesion = adhesions.adherer(personneId, rolesVerifies, campagneId, cible);
+        //  : c'est CETTE méthode qui crée la commande et l'intention de
+        // paiement juste après. La route publique d'adhésion, elle, n'en crée
+        // aucune et refuse donc un tarif payant.
+        Adhesion adhesion = adhesions.adherer(personneId, rolesVerifies, campagneId, cible, true);
 
         if (lignes.existsByTypeLigneAndReferenceId(TypeLigne.ADHESION, adhesion.getId())) {
             throw new Erreurs.Conflit("cette adhésion est déjà rattachée à une commande");

@@ -91,6 +91,17 @@ class VenteAdhesionTest {
         when(adhesions.save(any())).thenAnswer(i -> i.getArgument(0));
     }
 
+    /**
+     * La vente telle qu'elle a lieu : par la trésorerie, qui crée la commande
+     * et l'intention de paiement juste après. Le cinquième argument dit
+     * exactement cela — et sans lui, un tarif payant est refusé, parce qu'une
+     * adhésion payante sans commande ne pourrait ni être payée ni être
+     * abandonnée.
+     */
+    private Adhesion vendre() {
+        return service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true);
+    }
+
     /** Un mandat porteur d'un identifiant, comme il revient de la base. */
     private Mandat mandat(String annee) {
         Mandat m = Mandat.enPreparation(ASSO, annee,
@@ -111,7 +122,7 @@ class VenteAdhesionTest {
     void venduePparLeBureauDuJour() {
         when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
 
-        Adhesion vendue = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT);
+        Adhesion vendue = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true);
 
         assertThat(vendue.getVendueParMandatId())
                 .as("le bureau qui encaisse en septembre est le bureau entrant, "
@@ -129,7 +140,7 @@ class VenteAdhesionTest {
         // Même campagne, même code : c'est l'instant de la vente qui décide.
         when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauSortant));
 
-        assertThat(service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT)
+        assertThat(service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true)
                 .getVendueParMandatId())
                 .isEqualTo(bureauSortant.getId());
     }
@@ -143,7 +154,7 @@ class VenteAdhesionTest {
         // sans bureau en fonction. Écrire l'adhésion au compte d'un bureau
         // arbitraire serait pire que la refuser.
         assertThatThrownBy(() ->
-                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true))
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("encaisser");
         verify(adhesions, never()).save(any());
@@ -212,7 +223,7 @@ class VenteAdhesionTest {
         // suffisait à refuser, et un statut ne se périme pas. L'étudiant était
         // exclu de cette association pour l'année entière, sans autre recours
         // qu'un DELETE à la main en base.
-        Adhesion nouvelle = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT);
+        Adhesion nouvelle = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true);
 
         assertThat(nouvelle.getStatut()).isEqualTo(StatutAdhesion.EN_ATTENTE_PAIEMENT);
         assertThat(nouvelle.getCouvreAnneeCode()).isEqualTo("2026-2027");
@@ -225,7 +236,7 @@ class VenteAdhesionTest {
         dejaEnBase(adhesion(StatutAdhesion.ACTIVE));
 
         assertThatThrownBy(() ->
-                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true))
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("déjà adhérent");
         verify(adhesions, never()).save(any());
@@ -240,7 +251,7 @@ class VenteAdhesionTest {
         // Ouvrir une seconde intention de paiement pour la même année, ce
         // serait rendre payable deux fois ce qui ne se doit qu'une.
         assertThatThrownBy(() ->
-                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true))
                 .isInstanceOf(Erreurs.Conflit.class)
                 .hasMessageContaining("attend déjà son paiement");
         verify(adhesions, never()).save(any());
@@ -261,7 +272,7 @@ class VenteAdhesionTest {
         assertThat(abandonnee.getStatut()).isEqualTo(StatutAdhesion.ANNULEE);
 
         dejaEnBase(abandonnee);
-        assertThat(service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT)
+        assertThat(service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT, true)
                 .getStatut()).isEqualTo(StatutAdhesion.EN_ATTENTE_PAIEMENT);
     }
 
@@ -275,5 +286,42 @@ class VenteAdhesionTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("se rembourse");
         assertThat(active.getStatut()).isEqualTo(StatutAdhesion.ACTIVE);
+    }
+
+    // --------------------------------- la porte qui créait une adhésion morte
+
+    @Test
+    @DisplayName("la route publique refuse un tarif payant : sans commande, l'adhésion serait morte")
+    void adhesionDirecteRefuseeSurTarifPayant() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+
+        // POST /adhesions/campagnes/{id}/adherer ne crée NI commande NI
+        // intention de paiement. Sur une campagne payante, elle produisait une
+        // adhésion EN_ATTENTE_PAIEMENT impossible à payer — aucun secret client
+        // à demander, faute de commande — qui occupe la place de l'année et
+        // qu'on ne peut pas non plus abandonner, le seul chemin d'abandon
+        // partant d'une commande. L'étudiant était exclu pour l'année, sans
+        // recours.
+        assertThatThrownBy(() ->
+                service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT))
+                .isInstanceOf(Erreurs.Conflit.class)
+                .hasMessageContaining("payant");
+        verify(adhesions, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("mais une adhésion GRATUITE passe par là, et s'active tout de suite")
+    void adhesionGratuiteDirecte() {
+        when(mandats.mandatEnFonction(ASSO)).thenReturn(Optional.of(bureauEntrant));
+        when(tarifs.findByCampagneIdAndPublicCible(any(), eq(PublicCible.ETUDIANT)))
+                .thenReturn(Optional.of(new TarifAdhesion(CAMPAGNE, "Gratuit", 0,
+                        PublicCible.ETUDIANT)));
+
+        // Rien à encaisser : la commande n'aurait aucun objet, et le refus
+        // ci-dessus n'a pas à s'appliquer ici.
+        Adhesion a = service.adherer(PERSONNE, ETUDIANT, CAMPAGNE, PublicCible.ETUDIANT);
+
+        assertThat(a.getStatut()).isEqualTo(StatutAdhesion.ACTIVE);
+        assertThat(a.getMontantPayeCents()).isZero();
     }
 }

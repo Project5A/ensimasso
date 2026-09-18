@@ -124,6 +124,39 @@ public class ServiceAdhesion {
     @Transactional
     public Adhesion adherer(UUID personneId, Set<String> rolesVerifies,
                             UUID campagneId, PublicCible cible) {
+        return adherer(personneId, rolesVerifies, campagneId, cible, false);
+    }
+
+    /**
+     * Adhérer, en sachant si un encaissement suit.
+     *
+     * <p>Cette distinction manquait, et elle laissait une trappe ouverte. Deux
+     * routes créent une adhésion : {@code POST /adhesions/campagnes/{id}/adherer}
+     * et {@code POST /tresorerie/commandes/adhesion}. Seule la seconde crée la
+     * commande et l'intention de paiement. Sur une campagne PAYANTE, la
+     * première produisait donc une adhésion EN_ATTENTE_PAIEMENT sans commande :
+     * <ul>
+     *   <li>elle ne peut pas être payée — il n'existe aucune commande, donc
+     *       aucun secret client à demander ;</li>
+     *   <li>elle occupe la place de l'année (index partiel
+     *       {@code adhesion_une_vivante_par_annee}, V12) ;</li>
+     *   <li>et elle ne peut pas être abandonnée : le seul chemin d'abandon part
+     *       d'une commande, et il n'y en a pas.</li>
+     * </ul>
+     * L'étudiant était donc exclu de son association pour l'année, sans aucun
+     * recours — exactement le verrou que V12 et le chemin d'abandon ont refermé
+     * ailleurs, rouvert ici par une troisième porte.
+     *
+     * <p>La route publique refuse désormais un tarif payant et dit où aller.
+     * Elle reste la bonne porte pour une adhésion GRATUITE, qui s'active
+     * immédiatement et n'a rien à encaisser.
+     *
+     * @param paiementPrisEnCharge l'appelant crée-t-il la commande qui suit ?
+     */
+    @Transactional
+    public Adhesion adherer(UUID personneId, Set<String> rolesVerifies,
+                            UUID campagneId, PublicCible cible,
+                            boolean paiementPrisEnCharge) {
         // Choisir son public, c'est choisir son prix. Le corps de la requête ne
         // contient aucun montant — c'était la correction de la faille PAY de la
         // v1 — mais il contenait le sélecteur qui le détermine, et rien ne
@@ -181,6 +214,13 @@ public class ServiceAdhesion {
         Mandat vendeur = mandats.mandatEnFonction(campagne.getAssociationId()).orElseThrow(() ->
                 new Erreurs.Conflit("aucun bureau en fonction : personne ne peut encaisser "
                                   + "cette adhésion"));
+
+        if (tarif.getMontantCents() > 0 && !paiementPrisEnCharge) {
+            throw new Erreurs.Conflit(
+                    "ce tarif est payant : passez par la commande d'adhésion, qui crée "
+                  + "l'intention de paiement. Une adhésion créée ici ne pourrait ni être "
+                  + "payée ni être annulée.");
+        }
 
         return adhesions.save(new Adhesion(
                 personneId,
